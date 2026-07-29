@@ -18,6 +18,7 @@ export function Header() {
           <Link href="/company/onds">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
+          <Link href="/admin">Editor</Link>
         </nav>
         <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><Link href="/watchlist">My watchlist</Link><Link className="nav-cta" href="/company/onds">Start researching</Link></div>
         <button className="menu-button" aria-label="Toggle menu" onClick={() => setOpen(!open)}>☰</button>

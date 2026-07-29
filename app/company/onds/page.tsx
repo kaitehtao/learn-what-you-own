@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "../../ui";
 
 const risks = [
@@ -22,6 +22,16 @@ export default function OndasDossier() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(false);
 
+  useEffect(() => {
+    setWatching(window.localStorage.getItem("lwyo-watch-onds") === "true");
+  }, []);
+
+  function toggleWatchlist() {
+    const next = !watching;
+    setWatching(next);
+    window.localStorage.setItem("lwyo-watch-onds", String(next));
+  }
+
   return (
     <main className="dossier-page">
       <Header />
@@ -33,7 +43,7 @@ export default function OndasDossier() {
             <div><div className="eyebrow">NASDAQ · ONDS</div><h1>Ondas Holdings</h1><p>Autonomous systems and mission-critical private wireless networks.</p></div>
           </div>
           <div className="dossier-actions">
-            <button className={watching ? "watch-button watching" : "watch-button"} onClick={() => setWatching(!watching)}>{watching ? "✓ Watching" : "+ Add to watchlist"}</button>
+            <button className={watching ? "watch-button watching" : "watch-button"} onClick={toggleWatchlist}>{watching ? "✓ Watching" : "+ Add to watchlist"}</button>
             <button className="share-button">Share ↗</button>
           </div>
         </div>
@@ -93,6 +103,15 @@ export default function OndasDossier() {
             </div>
           </section>
 
+          <section className="dossier-section">
+            <div className="section-title"><div><span className="section-number">06</span><h2>Research & filings</h2></div><span className="reviewed">8 documents · 2 reports</span></div>
+            <div className="document-list">
+              <button onClick={() => setSource(sources[0])}><span className="document-type">10-K</span><span><strong>Annual report for fiscal 2024</strong><small>SEC filing · Filed March 31, 2025 · Approved</small></span><em>Open source ↗</em></button>
+              <button onClick={() => setSource(sources[1])}><span className="document-type">LTR</span><span><strong>Q1 2025 shareholder letter</strong><small>Company publication · May 15, 2025 · Approved</small></span><em>Open source ↗</em></button>
+              <Link href="/research/ondas-owner-manual"><span className="document-type report">RPT</span><span><strong>Ondas Holdings: The owner’s manual</strong><small>Founding research · Long-term thesis · Editor reviewed</small></span><em>Read report →</em></Link>
+            </div>
+          </section>
+
           <section className="ask-section" id="ask">
             <span className="kicker">ASK THE DOSSIER</span><h2>What do you need to understand?</h2><p>Answers are limited to approved ONDS research and cite the evidence used.</p>
             <div className="question-box"><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. What would invalidate the bull thesis?" onKeyDown={(e) => e.key === "Enter" && setAnswer(true)} /><button onClick={() => setAnswer(true)}>Ask →</button></div>
@@ -104,6 +123,7 @@ export default function OndasDossier() {
         <aside className="dossier-aside">
           <div className="aside-card"><small>DOSSIER COMPLETENESS</small><div className="completion"><strong>82%</strong><span><i /></span></div><ul><li className="done">Business model</li><li className="done">Investment thesis</li><li className="done">Key risks</li><li className="done">Financial history</li><li>Management scorecard</li></ul></div>
           <div className="aside-card"><small>KEY QUESTIONS</small><ol><li>When do program wins become recurring revenue?</li><li>How much capital is needed to reach breakeven?</li><li>Which segment deserves most investment?</li></ol><Link href="#ask">Ask a question →</Link></div>
+          <div className="aside-card"><small>EDITORIAL WORKFLOW</small><p>One proposed correction and one filing update are waiting for review.</p><Link href="/admin">Open editor preview →</Link></div>
           <div className="aside-card"><small>DISCLOSURE</small><p>Demonstration research only. Financial figures and events may be illustrative.</p></div>
         </aside>
       </div>
