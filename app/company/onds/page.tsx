@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Header } from "../../ui";
+import { WatchlistButton } from "../../WatchlistButton";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -18,19 +19,8 @@ const sources = [
 
 export default function OndasDossier() {
   const [source, setSource] = useState<(typeof sources)[0] | null>(null);
-  const [watching, setWatching] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(false);
-
-  useEffect(() => {
-    setWatching(window.localStorage.getItem("lwyo-watch-onds") === "true");
-  }, []);
-
-  function toggleWatchlist() {
-    const next = !watching;
-    setWatching(next);
-    window.localStorage.setItem("lwyo-watch-onds", String(next));
-  }
 
   return (
     <main className="dossier-page">
@@ -43,7 +33,7 @@ export default function OndasDossier() {
             <div><div className="eyebrow">NASDAQ · ONDS</div><h1>Ondas Holdings</h1><p>Autonomous systems and mission-critical private wireless networks.</p></div>
           </div>
           <div className="dossier-actions">
-            <button className={watching ? "watch-button watching" : "watch-button"} onClick={toggleWatchlist}>{watching ? "✓ Watching" : "+ Add to watchlist"}</button>
+            <WatchlistButton ticker="ONDS"/>
             <button className="share-button">Share ↗</button>
           </div>
         </div>
