@@ -86,7 +86,7 @@ export default function Home() {
           {companies.map((company, index) => (
             <Link className="company-card" href={company.ticker === "ONDS" ? "/company/onds" : "/companies"} key={company.ticker}>
               <div className="card-top">
-                <div className={`ticker-icon tint-${index + 1}`}>{company.ticker.slice(0, 2)}</div>
+                <div className={`ticker-icon tint-${index + 1}`}>{company.ticker}</div>
                 <div className="score-ring" style={{"--score": `${company.score * 3.6}deg`} as React.CSSProperties}><span>{company.score}</span></div>
               </div>
               <h3>{company.name}</h3>

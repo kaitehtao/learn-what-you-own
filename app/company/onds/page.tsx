@@ -39,7 +39,7 @@ export default function OndasDossier() {
       <section className="company-hero">
         <div className="container dossier-head">
           <div className="dossier-identity">
-            <div className="large-ticker">ON</div>
+            <div className="large-ticker">ONDS</div>
             <div><div className="eyebrow">NASDAQ · ONDS</div><h1>Ondas Holdings</h1><p>Autonomous systems and mission-critical private wireless networks.</p></div>
           </div>
           <div className="dossier-actions">
