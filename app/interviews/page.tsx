@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { Header } from "../ui";
+export default function Interviews(){return <main><Header/><section className="simple-page"><div className="container"><span className="kicker">MANAGEMENT CONVERSATIONS</span><h1>Questions owners<br/>actually need answered.</h1><p>Structured, searchable interviews—connected directly to the claims and unanswered questions inside every dossier.</p><div className="feature-placeholder"><span>COMING IN THE PRIVATE BETA</span><h2>The Owner’s Interview</h2><p>Business mechanics. Competitive truth. Capital allocation. Accountability. Thesis breakers.</p><Link href="/company/onds">Preview the research experience →</Link></div></div></section></main>}

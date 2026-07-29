@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { Header } from "../ui";
+export default function Watchlist(){return <main><Header/><section className="simple-page"><div className="container"><span className="kicker">YOUR WATCHLIST</span><h1>Follow understanding,<br/>not price movement.</h1><p>See only the filings, thesis changes, management statements, and new evidence that matter to businesses you follow.</p><div className="feature-placeholder"><span>YOUR FIRST COMPANY</span><h2>Build a calmer research habit.</h2><p>Add ONDS to your watchlist from its dossier to preview the interaction.</p><Link href="/company/onds">Open ONDS dossier →</Link></div></div></section></main>}
