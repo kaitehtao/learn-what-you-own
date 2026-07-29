@@ -95,13 +95,12 @@ export default function OndasDossier() {
           </section>
 
           <section className="dossier-section">
-            <div className="section-title"><div><span className="section-number">06</span><h2>Research & filings</h2></div><span className="reviewed">8 documents · 2 reports</span></div>
+            <div className="section-title"><div><span className="section-number">06</span><h2>Research & filings</h2></div><span className="reviewed">Official filings · Curated research</span></div>
+            <SecFilingsPanel ticker="ONDS" />
             <div className="document-list">
-              <button onClick={() => setSource(sources[0])}><span className="document-type">10-K</span><span><strong>Annual report for fiscal 2024</strong><small>SEC filing · Filed March 31, 2025 · Approved</small></span><em>Open source ↗</em></button>
               <button onClick={() => setSource(sources[1])}><span className="document-type">LTR</span><span><strong>Q1 2025 shareholder letter</strong><small>Company publication · May 15, 2025 · Approved</small></span><em>Open source ↗</em></button>
               <Link href="/research/ondas-owner-manual"><span className="document-type report">RPT</span><span><strong>Ondas Holdings: The owner’s manual</strong><small>Founding research · Long-term thesis · Editor reviewed</small></span><em>Read report →</em></Link>
             </div>
-            <SecFilingsPanel ticker="ONDS" />
           </section>
 
           <section className="ask-section" id="ask">
