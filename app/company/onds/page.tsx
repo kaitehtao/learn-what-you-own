@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Header } from "../../ui";
+import { SecFilingsPanel } from "../../SecFilingsPanel";
 import { WatchlistButton } from "../../WatchlistButton";
 
 const risks = [
@@ -46,7 +47,7 @@ export default function OndasDossier() {
         </div>
       </section>
 
-      <div className="dossier-nav"><div className="container"><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#ask">Ask AI</a></div></div>
+      <div className="dossier-nav"><div className="container"><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
 
       <div className="container dossier-layout">
         <article>
@@ -100,6 +101,7 @@ export default function OndasDossier() {
               <button onClick={() => setSource(sources[1])}><span className="document-type">LTR</span><span><strong>Q1 2025 shareholder letter</strong><small>Company publication · May 15, 2025 · Approved</small></span><em>Open source ↗</em></button>
               <Link href="/research/ondas-owner-manual"><span className="document-type report">RPT</span><span><strong>Ondas Holdings: The owner’s manual</strong><small>Founding research · Long-term thesis · Editor reviewed</small></span><em>Read report →</em></Link>
             </div>
+            <SecFilingsPanel ticker="ONDS" />
           </section>
 
           <section className="ask-section" id="ask">

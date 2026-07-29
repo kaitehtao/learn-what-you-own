@@ -33,3 +33,20 @@
 
 @media(max-width:900px){.account-layout,.portfolio-layout{grid-template-columns:1fr}.account-card{display:grid;grid-template-columns:58px 1fr;gap:0 18px}.account-card .account-avatar{grid-row:1/5}.account-card h2{margin:5px 0}.account-card p,.account-card em{margin:3px 0}.member-company-row{grid-template-columns:1fr auto}.member-tags{display:none}}
 @media(max-width:620px){.account-hero,.portfolio-hero{padding:65px 0}.account-hero h1,.portfolio-hero h1{font-size:40px}.account-layout,.portfolio-layout{padding:40px 0 75px}.member-add-bar{align-items:stretch;flex-direction:column}.member-add-bar input{width:100%}.member-company-row{padding:14px 12px}.watchlist-summary>div:nth-child(n+3){display:none}.starter-company-actions{align-items:flex-start;flex-direction:column}.submission-row{grid-template-columns:38px 1fr}.submission-row>em{grid-column:2}.moderation-actions{flex-direction:column}.my-submissions{padding:18px}}
+
+.sec-filings-panel{margin:32px 0 45px;padding:30px;background:#f1f5f2;border:1px solid #cfdbd4;scroll-margin-top:75px}
+.sec-filings-heading{display:flex;justify-content:space-between;align-items:flex-end}
+.sec-filings-heading h2{font-family:Georgia,serif;font-size:30px;font-weight:400;margin:8px 0}
+.sec-filings-heading>a{font-size:9px;color:var(--green);font-weight:700}
+.sec-filings-panel>p{font-size:11px;line-height:1.7;color:var(--muted);max-width:760px}
+.sec-filing-links{border:1px solid var(--line);background:#fff;margin-top:20px}
+.sec-filing-links>a{display:grid;grid-template-columns:50px 1fr auto;gap:15px;align-items:center;padding:16px;border-bottom:1px solid var(--line)}
+.sec-filing-links>a:last-child{border:0}
+.sec-filing-links>a:hover{background:#f7faf8}
+.sec-filing-links>a>span{width:42px;height:35px;background:var(--forest);color:#fff;display:grid;place-items:center;font-family:var(--font-geist-mono);font-size:8px}
+.sec-filing-links strong,.sec-filing-links small{display:block}
+.sec-filing-links strong{font-size:11px}
+.sec-filing-links small{font-size:8px;color:var(--muted);margin-top:4px}
+.sec-filing-links em{font-style:normal;color:var(--green);font-size:8px}
+.sec-availability{display:block!important;font-size:8px!important;line-height:1.6;color:var(--muted);margin-top:13px}
+@media(max-width:620px){.sec-filings-panel{padding:22px 16px}.sec-filings-heading{align-items:flex-start;gap:10px;flex-direction:column}.sec-filing-links>a{grid-template-columns:43px 1fr}.sec-filing-links em{display:none}}
