@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BrandMark, Header } from "./ui";
+import { companySlug, sp500Companies } from "./data/sp500";
 
 const companies = [
   { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", sources: 84, score: 82, note: "New defense program award" },
@@ -22,9 +23,13 @@ const updates = [
 export default function Home() {
   const [query, setQuery] = useState("");
   const matches = useMemo(
-    () => query.length > 0
-      ? companies.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(query.toLowerCase()))
-      : [],
+    () => {
+      if (!query.length) return [];
+      const normalized = query.toLowerCase();
+      const founding = companies.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(normalized)).map((company) => ({...company, founding: company.ticker === "ONDS"}));
+      const indexMatches = sp500Companies.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(normalized)).slice(0, 7).map((company) => ({...company, updated: "S&P 500", sources: 0, score: 0, note: "Founding coverage", founding: false}));
+      return [...founding, ...indexMatches].filter((company, index, all) => all.findIndex((item) => item.ticker === company.ticker) === index).slice(0, 8);
+    },
     [query]
   );
 
@@ -50,7 +55,7 @@ export default function Home() {
             {matches.length > 0 && (
               <div className="search-results">
                 {matches.map((company) => (
-                  <Link href={company.ticker === "ONDS" ? "/company/onds" : "/companies"} key={company.ticker}>
+                  <Link href={company.ticker === "ONDS" ? "/company/onds" : `/company/${companySlug(company.ticker)}`} key={company.ticker}>
                     <strong>{company.ticker}</strong>
                     <span>{company.name}</span>
                     <small>{company.sector}</small>
