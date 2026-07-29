@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BrandMark, Header } from "./ui";
-import { companySlug, sp500Companies } from "./data/sp500";
+import { companySlug, researchUniverse } from "./data/universe";
 
 const companies = [
   { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", sources: 84, score: 82, note: "New defense program award" },
@@ -27,7 +27,7 @@ export default function Home() {
       if (!query.length) return [];
       const normalized = query.toLowerCase();
       const founding = companies.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(normalized)).map((company) => ({...company, founding: company.ticker === "ONDS"}));
-      const indexMatches = sp500Companies.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(normalized)).slice(0, 7).map((company) => ({...company, updated: "S&P 500", sources: 0, score: 0, note: "Founding coverage", founding: false}));
+      const indexMatches = researchUniverse.filter((company) => `${company.ticker} ${company.name} ${company.sector}`.toLowerCase().includes(normalized)).slice(0, 7).map((company) => ({...company, updated: company.memberships.join(" · "), sources: 0, score: 0, note: "Founding coverage", founding: false}));
       return [...founding, ...indexMatches].filter((company, index, all) => all.findIndex((item) => item.ticker === company.ticker) === index).slice(0, 8);
     },
     [query]
@@ -70,8 +70,8 @@ export default function Home() {
 
       <section className="proof-strip">
         <div className="container proof-grid">
-          <div><strong>2,418</strong><span>verified claims</span></div>
-          <div><strong>46</strong><span>living dossiers</span></div>
+          <div><strong>{researchUniverse.length.toLocaleString()}</strong><span>researchable tickers</span></div>
+          <div><strong>2</strong><span>index universes unified</span></div>
           <div><strong>8,903</strong><span>primary sources</span></div>
           <div><strong>100%</strong><span>claims cited</span></div>
         </div>
