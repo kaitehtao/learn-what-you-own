@@ -8,6 +8,7 @@ import { MarketDataPanel } from "../../MarketDataPanel";
 import { EarningsCallsPanel } from "../../EarningsCallsPanel";
 import { WatchlistButton } from "../../WatchlistButton";
 import { CommunityInsights } from "../../CommunityInsights";
+import { ResearchFoundationPanel } from "../../ResearchFoundationPanel";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -42,18 +43,21 @@ export default function OndasDossier() {
           </div>
         </div>
         <div className="container metrics-bar">
-          <div><small>MARKET CAP</small><strong>$1.24B</strong><span className="demo-label">DEMO</span></div>
-          <div><small>REVENUE · TTM</small><strong>$24.8M</strong><span className="demo-label">DEMO</span></div>
-          <div><small>CASH</small><strong>$31.2M</strong><span className="demo-label">DEMO</span></div>
-          <div><small>DOSSIER SCORE</small><strong className="positive">82 / 100</strong><span>84 sources</span></div>
-          <div><small>LAST REVIEWED</small><strong>Today</strong><span>Editor verified</span></div>
+          <div><small>MARKET DATA</small><strong>Live chart</strong><span>Displayed below</span></div>
+          <div><small>FINANCIAL FACTS</small><strong>SEC sourced</strong><span>No analyst estimates</span></div>
+          <div><small>RELATIONSHIP MAP</small><strong>Evidence linked</strong><span>Supplier → customer</span></div>
+          <div><small>COMMUNITY</small><strong className="positive">Moderated</strong><span>Username attributed</span></div>
+          <div><small>DOSSIER STATUS</small><strong>Living research</strong><span>Verify at the source</span></div>
         </div>
       </section>
 
-      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
+      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
 
       <div className="container market-data-wide">
         <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
+      </div>
+      <div className="container research-foundation-wide">
+        <ResearchFoundationPanel ticker="ONDS" companyName="Ondas Holdings" />
       </div>
       <div className="container earnings-calls-wide">
         <EarningsCallsPanel ticker="ONDS" />
@@ -82,12 +86,8 @@ export default function OndasDossier() {
           </section>
 
           <section className="dossier-section" id="financials">
-            <div className="section-title"><div><span className="section-number">03</span><h2>Financial pulse</h2></div><span className="demo-label">ILLUSTRATIVE PROTOTYPE DATA</span></div>
-            <div className="chart-card">
-              <div className="chart-heading"><div><small>REVENUE</small><strong>$24.8M</strong><span>Trailing twelve months</span></div><div className="legend"><span><i className="actual" /> Actual</span><span><i className="estimate" /> Estimate</span></div></div>
-              <div className="bar-chart">{[22,30,25,38,48,42,61,76].map((height, index) => <div key={index} className={index > 5 ? "estimated-bar" : ""} style={{height: `${height}%`}}><span>{index < 4 ? `Q${index + 1} 24` : `Q${index - 3} 25`}</span></div>)}</div>
-              <div className="financial-row"><div><small>GROSS MARGIN</small><strong>31.4%</strong><span className="positive">↑ 6.2 pts</span></div><div><small>OPERATING CASH FLOW</small><strong>($32.1M)</strong><span className="negative">Cash consuming</span></div><div><small>SHARE COUNT</small><strong>96.4M</strong><span className="negative">↑ 18% YoY</span></div></div>
-            </div>
+            <div className="section-title"><div><span className="section-number">03</span><h2>Financial evidence</h2></div><span className="reviewed">SEC Company Facts · Source linked</span></div>
+            <div className="editor-note"><span>No illustrative figures</span><p>Financial figures for ONDS now come from the normalized public-filing layer above. Each value identifies its reporting period, form, filing date, and original SEC source rather than mixing estimates with filed results.</p><a href="#research-foundation">Open filing facts and relationship graph ↑</a></div>
           </section>
 
           <section className="dossier-section" id="risks">

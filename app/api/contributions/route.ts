@@ -3,7 +3,10 @@ import { apiError, getSupabaseForRequest, requireSupabaseUser } from "../../supa
 
 export const dynamic = "force-dynamic";
 
-const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "Competitive analysis", "Financial model", "Question for management"];
+const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "Competitive analysis", "Financial model", "Question for management", "Supplier / customer relationship"];
+const relationshipDirections = ["supplier_to_company", "company_to_customer"];
+const relationshipMaterialities = ["named", "material", "strategic", "unknown"];
+const relationshipEvidenceClasses = ["direct_disclosure", "corroborated", "inferred"];
 
 function mapContribution(row: Record<string, unknown>) {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
@@ -20,6 +23,13 @@ function mapContribution(row: Record<string, unknown>) {
     expertise: row.expertise,
     positionDisclosure: row.position_disclosure,
     conflictDisclosure: row.conflict_disclosure,
+    relatedCompany: row.related_company,
+    relatedTicker: row.related_ticker,
+    relationshipDirection: row.relationship_direction,
+    relationshipProduct: row.relationship_product,
+    relationshipMateriality: row.relationship_materiality,
+    relationshipEvidenceClass: row.relationship_evidence_class,
+    relationshipSourceType: row.relationship_source_type,
     status: row.status,
     moderationNote: row.moderation_note,
     createdAt: row.created_at,
@@ -64,6 +74,28 @@ export async function POST(request: Request) {
     if (claim.length < 20 || whyItMatters.length < 20) return Response.json({ error: "Explain the claim and why it matters in at least 20 characters each." }, { status: 400 });
     try { new URL(sourceUrl); } catch { return Response.json({ error: "Enter a valid source URL." }, { status: 400 }); }
     if (!evidenceDate || !positionDisclosure) return Response.json({ error: "Evidence date and position disclosure are required." }, { status: 400 });
+    const isRelationship = contributionType === "Supplier / customer relationship";
+    const relatedCompany = String(payload.relatedCompany ?? "").trim();
+    const relatedTicker = String(payload.relatedTicker ?? "").trim().toUpperCase();
+    const relationshipDirection = String(payload.relationshipDirection ?? "");
+    const relationshipProduct = String(payload.relationshipProduct ?? "").trim();
+    const relationshipMateriality = String(payload.relationshipMateriality ?? "unknown");
+    const relationshipEvidenceClass = String(payload.relationshipEvidenceClass ?? "direct_disclosure");
+    const relationshipSourceType = String(payload.relationshipSourceType ?? "sec");
+    if (isRelationship) {
+      if (relatedCompany.length < 2 || relationshipProduct.length < 3 || !relationshipDirections.includes(relationshipDirection)) {
+        return Response.json({ error: "Name the related organization, direction, and supplied product or service." }, { status: 400 });
+      }
+      if (relatedTicker && (!researchUniverse.some((company) => company.ticker === relatedTicker) || relatedTicker === ticker)) {
+        return Response.json({ error: "The related ticker must be a different company in the research universe, or left blank for a private organization." }, { status: 400 });
+      }
+      if (!relationshipMaterialities.includes(relationshipMateriality) || !relationshipEvidenceClasses.includes(relationshipEvidenceClass) || !["sec", "company"].includes(relationshipSourceType)) {
+        return Response.json({ error: "Choose a valid relationship significance and evidence strength." }, { status: 400 });
+      }
+      if (relationshipSourceType === "sec" && !new URL(sourceUrl).hostname.toLowerCase().endsWith("sec.gov")) {
+        return Response.json({ error: "An SEC relationship source must link directly to sec.gov." }, { status: 400 });
+      }
+    }
     const { data, error } = await supabase.from("contributions").insert({
       user_id: profile.user_id,
       ticker,
@@ -77,6 +109,13 @@ export async function POST(request: Request) {
       expertise: String(payload.expertise ?? "").trim().slice(0, 300),
       position_disclosure: positionDisclosure.slice(0, 300),
       conflict_disclosure: String(payload.conflictDisclosure ?? "").trim().slice(0, 500),
+      related_company: isRelationship ? relatedCompany.slice(0, 200) : null,
+      related_ticker: isRelationship && relatedTicker ? relatedTicker : null,
+      relationship_direction: isRelationship ? relationshipDirection : null,
+      relationship_product: isRelationship ? relationshipProduct.slice(0, 500) : null,
+      relationship_materiality: isRelationship ? relationshipMateriality : null,
+      relationship_evidence_class: isRelationship ? relationshipEvidenceClass : null,
+      relationship_source_type: isRelationship ? relationshipSourceType : null,
       status: "submitted",
     }).select("*").single();
     if (error) throw error;

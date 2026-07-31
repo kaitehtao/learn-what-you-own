@@ -38,6 +38,92 @@ export const dossierSources = sqliteTable("dossier_sources", {
   uniqueIndex("dossier_source_ticker_url_idx").on(table.ticker, table.url),
 ]);
 
+// Filing-derived numerical facts remain separate from editorial prose so every
+// chart point can be traced to the exact filing and reporting period.
+export const filingFacts = sqliteTable("filing_facts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  metricKey: text("metric_key").notNull(),
+  taxonomy: text("taxonomy").notNull().default("us-gaap"),
+  concept: text("concept").notNull(),
+  label: text("label").notNull(),
+  value: real("value").notNull(),
+  unit: text("unit").notNull(),
+  periodStart: text("period_start"),
+  periodEnd: text("period_end").notNull(),
+  fiscalYear: integer("fiscal_year"),
+  fiscalPeriod: text("fiscal_period"),
+  form: text("form").notNull(),
+  filedAt: text("filed_at").notNull(),
+  accessionNumber: text("accession_number").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  dimensionsJson: text("dimensions_json").notNull().default("{}"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("filing_fact_period_idx").on(
+    table.ticker,
+    table.metricKey,
+    table.periodEnd,
+    table.fiscalPeriod,
+  ),
+]);
+
+// A claim is the smallest publishable unit in a dossier. The classification
+// prevents an editorial interpretation from being presented as a filed fact.
+export const dossierClaims = sqliteTable("dossier_claims", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  section: text("section").notNull(),
+  claimType: text("claim_type", { enum: ["verified_fact", "company_statement", "editorial_analysis"] }).notNull(),
+  claim: text("claim").notNull(),
+  whyItMatters: text("why_it_matters").notNull().default(""),
+  sourceTitle: text("source_title").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  sourceExcerpt: text("source_excerpt").notNull().default(""),
+  evidenceDate: text("evidence_date").notNull(),
+  status: text("status", { enum: ["draft", "verified", "published"] }).notNull().default("draft"),
+  verifiedBy: text("verified_by"),
+  verifiedAt: text("verified_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("dossier_claim_source_idx").on(table.ticker, table.claim, table.sourceUrl),
+]);
+
+// A relationship always points from a supplier to a customer. Either endpoint
+// may be a private organization without a ticker; public tickers become links.
+export const companyRelationships = sqliteTable("company_relationships", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  supplierTicker: text("supplier_ticker").references(() => companies.ticker, { onDelete: "set null" }),
+  supplierName: text("supplier_name").notNull(),
+  customerTicker: text("customer_ticker").references(() => companies.ticker, { onDelete: "set null" }),
+  customerName: text("customer_name").notNull(),
+  productService: text("product_service").notNull(),
+  evidenceSummary: text("evidence_summary").notNull(),
+  materiality: text("materiality", { enum: ["named", "material", "strategic", "unknown"] }).notNull().default("unknown"),
+  evidenceClass: text("evidence_class", { enum: ["direct_disclosure", "corroborated", "inferred"] }).notNull().default("direct_disclosure"),
+  sourceType: text("source_type", { enum: ["sec", "company"] }).notNull(),
+  sourceTitle: text("source_title").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  evidenceDate: text("evidence_date").notNull(),
+  status: text("status", { enum: ["current", "historical"] }).notNull().default("current"),
+  contributorUsername: text("contributor_username"),
+  supabaseContributionId: text("supabase_contribution_id"),
+  verifiedBy: text("verified_by"),
+  verifiedAt: text("verified_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("company_relationship_evidence_idx").on(
+    table.supplierName,
+    table.customerName,
+    table.productService,
+    table.sourceUrl,
+  ),
+  uniqueIndex("company_relationship_contribution_idx").on(table.supabaseContributionId),
+]);
+
 export const profiles = sqliteTable("profiles", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull(),

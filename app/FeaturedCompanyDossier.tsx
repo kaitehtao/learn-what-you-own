@@ -10,6 +10,7 @@ import { SecFilingsPanel } from "./SecFilingsPanel";
 import { WatchlistButton } from "./WatchlistButton";
 import { EarningsCallsPanel } from "./EarningsCallsPanel";
 import { CommunityInsights } from "./CommunityInsights";
+import { ResearchFoundationPanel } from "./ResearchFoundationPanel";
 
 function displayName(name: string) {
   return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -36,9 +37,12 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>LAST REVIEWED</small><strong>July 2026</strong><span>Prototype editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Drivers</a><a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Drivers</a><a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
+    </div>
+    <div className="container research-foundation-wide">
+      <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name)} />
     </div>
     <div className="container earnings-calls-wide">
       <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />

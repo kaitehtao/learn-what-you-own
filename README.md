@@ -15,7 +15,9 @@ npm run dev
 ## Supabase member accounts
 
 1. Create a Supabase project.
-2. Open the Supabase SQL editor and run `supabase/migrations/20260731000000_user_accounts.sql`.
+2. Open the Supabase SQL editor and run these migrations in order:
+   - `supabase/migrations/20260731000000_user_accounts.sql`
+   - `supabase/migrations/20260731010000_relationship_contributions.sql`
 3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
 4. In **Authentication → URL Configuration**, set the production Site URL and allow:
    - `http://localhost:3000/auth/callback`
@@ -33,6 +35,18 @@ The publishable key is designed for browser use; row-level security protects pri
 4. Keep the application callback URLs listed above in Supabase's redirect allowlist.
 
 Email users select a unique username during registration. Google users select one after their first verified sign-in. Emails are held in Supabase Auth and are never displayed with published insights.
+
+## Filing facts and relationship graph
+
+Public research uses three deliberately separate D1 record types:
+
+- `filing_facts` contains normalized numerical facts and the exact SEC filing provenance for every period.
+- `dossier_claims` labels each published statement as a verified fact, company statement, or editorial analysis.
+- `company_relationships` stores directional supplier-to-customer edges. Public tickers are clickable; private organizations can still appear as named nodes.
+
+Apply `drizzle/0002_polite_betty_brant.sql` to the remote `site-creator-d1` database before deploying this version. Editors can then open `/admin` and import a ticker's normalized SEC Company Facts. The importer uses the verified ticker-to-CIK mapping and does not import analyst estimates.
+
+Members can submit a **Supplier / customer relationship** with primary evidence. The proposal stays private in Supabase until an editor approves it; approval promotes the structured edge to D1 while retaining the contributor username and disclosure trail.
 
 ## Security model
 
