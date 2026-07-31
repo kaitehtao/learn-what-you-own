@@ -23,6 +23,15 @@ function formatMarketCap(value: number | null) {
   return `$${value.toLocaleString()}`;
 }
 
+function indexWeightFor(company: (typeof researchUniverse)[number], selectedMembership: string) {
+  if (selectedMembership !== "All companies" && selectedMembership !== "Extended Coverage") {
+    const value = company.indexWeights[selectedMembership as keyof typeof company.indexWeights];
+    return value && value > 0 ? value : null;
+  }
+  const availableWeights = Object.values(company.indexWeights).filter((value) => value > 0);
+  return availableWeights.length ? Math.max(...availableWeights) : null;
+}
+
 export default function Companies() {
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState("All sectors");
@@ -45,6 +54,13 @@ export default function Companies() {
         if (a.marketCap === null) return b.marketCap === null ? a.ticker.localeCompare(b.ticker) : 1;
         if (b.marketCap === null) return -1;
         return (a.marketCap - b.marketCap) * multiplier || a.ticker.localeCompare(b.ticker);
+      }
+      if (sort === "Index weight") {
+        const aWeight = indexWeightFor(a, membership);
+        const bWeight = indexWeightFor(b, membership);
+        if (aWeight === null) return bWeight === null ? a.ticker.localeCompare(b.ticker) : 1;
+        if (bWeight === null) return -1;
+        return (aWeight - bWeight) * multiplier || a.ticker.localeCompare(b.ticker);
       }
       if (sort === "Company") return a.name.localeCompare(b.name) * multiplier;
       if (sort === "Index membership") {
@@ -70,8 +86,8 @@ export default function Companies() {
     <section className="container directory-section">
       <div className="index-callout"><div><span className="ticker-icon tint-1">ONDS</span><div><small>FOUNDING DOSSIER · EXTENDED COVERAGE</small><strong>Ondas Holdings</strong><p>Our fully developed prototype shows the research standard every company page will grow into.</p></div></div><Link href="/company/onds">Open flagship dossier →</Link></div>
       <div className="universe-explainer expanded"><div><span className="membership-badge sp-badge">S&P 500</span><p>{indexCounts["S&P 500"]} securities</p></div><div><span className="membership-badge qqq-badge">Nasdaq-100 (QQQ)</span><p>{indexCounts["Nasdaq-100 (QQQ)"]} securities</p></div><div><span className="membership-badge r3000-badge">Russell 3000</span><p>{indexCounts["Russell 3000"].toLocaleString()} securities</p></div><div><span className="membership-badge russell-badge">Russell 2000</span><p>{indexCounts["Russell 2000"].toLocaleString()} securities</p></div><strong>One deduplicated company library.</strong></div>
-      <div className="filter-row"><strong>{filtered.length.toLocaleString()} securities</strong><div className="directory-controls"><label><span>Index member</span><select value={membership} onChange={(event) => {setMembership(event.target.value); setPage(1);}}><option>All companies</option><option>Extended Coverage</option><option>S&P 500</option><option>Nasdaq-100 (QQQ)</option><option>Russell 3000</option><option>Russell 2000</option></select></label><label><span>Sector</span><select value={sector} onChange={(event) => { setSector(event.target.value); setPage(1); }}><option>All sectors</option>{sectors.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Sort by</span><select value={sort} onChange={(event) => {setSort(event.target.value); setPage(1);}}><option>Market cap</option><option>Index membership</option><option>Company</option><option>Ticker</option></select></label><label><span>Direction</span><select value={direction} onChange={(event) => {setDirection(event.target.value); setPage(1);}}><option>Descending</option><option>Ascending</option></select></label></div></div>
-      <div className="directory-table"><div className="directory-row universe-row directory-labels"><span>COMPANY</span><span>MARKET CAP</span><span>COVERAGE / INDEX</span><span>SECTOR</span><span>EXCHANGE</span><span /></div>{visible.map((company) => <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row universe-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong></span></span><span className="market-cap-cell">{formatMarketCap(company.marketCap)}</span><span className="membership-list">{company.memberships.map((index) => <em className={`membership-badge ${index === "S&P 500" ? "sp-badge" : index === "Russell 2000" ? "russell-badge" : index === "Russell 3000" ? "r3000-badge" : index === "Extended Coverage" ? "coverage-badge" : "qqq-badge"}`} key={index}>{index}</em>)}</span><span>{company.sector}</span><span>{company.exchange}</span><span>→</span></Link>)}</div>
+      <div className="filter-row"><strong>{filtered.length.toLocaleString()} securities</strong><div className="directory-controls"><label><span>Index member</span><select value={membership} onChange={(event) => {setMembership(event.target.value); setPage(1);}}><option>All companies</option><option>Extended Coverage</option><option>S&P 500</option><option>Nasdaq-100 (QQQ)</option><option>Russell 3000</option><option>Russell 2000</option></select></label><label><span>Sector</span><select value={sector} onChange={(event) => { setSector(event.target.value); setPage(1); }}><option>All sectors</option>{sectors.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Sort by</span><select value={sort} onChange={(event) => {setSort(event.target.value); setPage(1);}}><option>Market cap</option><option>Index weight</option><option>Index membership</option><option>Company</option><option>Ticker</option></select></label><label><span>Direction</span><select value={direction} onChange={(event) => {setDirection(event.target.value); setPage(1);}}><option>Descending</option><option>Ascending</option></select></label></div></div>
+      <div className="directory-table"><div className="directory-row universe-row directory-labels"><span>COMPANY</span><span>MARKET CAP</span><span>COVERAGE / INDEX</span><span>SECTOR</span><span>EXCHANGE</span><span /></div>{visible.map((company) => { const indexWeight = indexWeightFor(company, membership); return <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row universe-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong></span></span><span className="market-cap-cell">{formatMarketCap(company.marketCap)}</span><span className="membership-list">{company.memberships.map((index) => <em className={`membership-badge ${index === "S&P 500" ? "sp-badge" : index === "Russell 2000" ? "russell-badge" : index === "Russell 3000" ? "r3000-badge" : index === "Extended Coverage" ? "coverage-badge" : "qqq-badge"}`} key={index}>{index}</em>)}{sort === "Index weight" && <small className="index-weight-value">{indexWeight === null ? "Weight not available" : `${membership === "All companies" ? "Highest weight" : "Index weight"}: ${indexWeight.toFixed(3)}%`}</small>}</span><span>{company.sector}</span><span>{company.exchange}</span><span>→</span></Link>; })}</div>
       {visible.length === 0 && <div className="directory-empty"><strong>No companies found.</strong><p>Try another ticker, company name, sector, or index-membership filter.</p></div>}
       <div className="pagination"><button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>← Previous</button><span>Page {currentPage} of {pageCount}</span><button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next →</button></div>
       <p className="index-source">Constituent data reflects active listed equity holdings of index-tracking funds as of {researchUniverseAsOf}. Market caps are a July 30, 2026 snapshot and change with market prices. Membership changes over time. {universeSources.map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.label}>{source.label} ↗</a>)}</p>
