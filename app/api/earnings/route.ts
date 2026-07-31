@@ -40,26 +40,36 @@ export async function GET(request: Request) {
     data?: { asOf?: string; rows?: NasdaqRow[] | null };
   };
 
-  const events = (payload.data?.rows ?? []).map((row) => ({
-    ticker: row.symbol ?? "",
-    company: row.name ?? "",
-    session:
+  const events = (payload.data?.rows ?? []).map((row) => {
+    const ticker = row.symbol ?? "";
+    const providerSession =
       row.time === "time-pre-market"
         ? "BMO"
         : row.time === "time-after-hours"
           ? "AMC"
-          : "TNS",
+          : "TNS";
+    const verification = officialEarningsVerifications.get(`${date}:${ticker}`);
+    const session = verification?.session ?? providerSession;
+    return {
+    ticker,
+    company: row.name ?? "",
+    session,
     sessionLabel:
-      row.time === "time-pre-market"
+      session === "BMO"
         ? "Before market open"
-        : row.time === "time-after-hours"
+        : session === "AMC"
           ? "After market close"
           : "Time not supplied",
     marketCap: row.marketCap ?? "—",
     fiscalQuarter: row.fiscalQuarterEnding ?? "—",
     epsEstimate: row.epsForecast ?? "—",
     analystCount: row.noOfEsts ?? "—",
-  })).filter((event) => event.ticker);
+    verificationStatus: verification ? "company-confirmed" : "provider-estimate",
+    officialSourceUrl: verification?.sourceUrl ?? null,
+    officialSourceLabel: verification?.sourceLabel ?? null,
+    announcedTime: verification?.announcedTime ?? null,
+    verifiedAt: verification?.verifiedAt ?? null,
+  }}).filter((event) => event.ticker);
 
   return Response.json({
     date,
@@ -68,3 +78,4 @@ export async function GET(request: Request) {
     source: "Nasdaq earnings calendar / Zacks Investment Research",
   });
 }
+import { officialEarningsVerifications } from "../../data/earningsVerifications";

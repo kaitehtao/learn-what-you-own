@@ -13,6 +13,11 @@ type EarningsEvent = {
   fiscalQuarter: string;
   epsEstimate: string;
   analystCount: string;
+  verificationStatus: "company-confirmed" | "provider-estimate";
+  officialSourceUrl: string | null;
+  officialSourceLabel: string | null;
+  announcedTime: string | null;
+  verifiedAt: string | null;
 };
 
 function localDate(offset = 0) {
@@ -90,12 +95,13 @@ export default function EarningsCalendar() {
             aria-label={`Open the ${event.ticker} company dossier`}
             key={`${event.ticker}-${session}`}
           >
-            <span className="earnings-company"><i>{event.ticker}</i><strong>{event.company}</strong></span>
+            <span className="earnings-company"><i>{event.ticker}</i><span><strong>{event.company}</strong>{event.verificationStatus === "company-confirmed" ? <small className="company-confirmed">✓ Company confirmed · {event.announcedTime}</small> : <small className="provider-estimate">Provider estimate · verify with company IR</small>}</span></span>
             <span>{event.fiscalQuarter}</span><span>{event.epsEstimate}</span><span>{event.analystCount}</span><span>{event.marketCap}</span>
           </Link>)}
+          {groups[session].some(event => event.officialSourceUrl) && <div className="earnings-verification-sources">{groups[session].filter(event => event.officialSourceUrl).map(event => <a href={event.officialSourceUrl!} target="_blank" rel="noreferrer" key={`${event.ticker}-source`}>{event.ticker}: verify on {event.officialSourceLabel} ↗</a>)}</div>}
         </div>
       </section>)}
-      <p className="earnings-source">Expected dates may change and some release times are not supplied. Nasdaq states its calendar is derived from historical reporting patterns and identifies Zacks Investment Research as its data provider. Cross-check individual company investor-relations announcements before making decisions. <a href={`https://finance.yahoo.com/calendar/earnings?day=${date}`} target="_blank" rel="noreferrer">Cross-check on Yahoo Finance ↗</a> <a href={`https://www.nasdaq.com/market-activity/earnings?date=${date}`} target="_blank" rel="noreferrer">View Nasdaq source ↗</a></p>
+      <p className="earnings-source">A green “Company confirmed” label means the date and session were checked against an official investor-relations announcement, which overrides the calendar provider. All other entries remain provider estimates and may change. <a href={`https://finance.yahoo.com/calendar/earnings?day=${date}`} target="_blank" rel="noreferrer">Cross-check on Yahoo Finance ↗</a> <a href={`https://www.nasdaq.com/market-activity/earnings?date=${date}`} target="_blank" rel="noreferrer">View Nasdaq source ↗</a></p>
     </section>
   </main>;
 }
