@@ -29,6 +29,13 @@
       "when": 1785541567913,
       "tag": "0003_legacy-companies-compat",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785541887502,
+      "tag": "0004_seed-onds-sec-facts",
+      "breakpoints": true
     }
   ]
 }
