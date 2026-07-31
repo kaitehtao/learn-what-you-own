@@ -15,6 +15,8 @@ function allWordsMatch(queryWords: string[], targetWords: string[]) {
 export function companySearchScore(company: ResearchCompany, query: string) {
   const queryWords = searchWords(query);
   const tickerQuery = normalizedTicker(query);
+  if (!tickerQuery && queryWords.length === 0) return 0;
+
   const ticker = normalizedTicker(company.ticker);
   if (ticker === tickerQuery) return 1000;
   if (ticker.startsWith(tickerQuery)) return 800;
@@ -32,4 +34,20 @@ export function companySearchScore(company: ResearchCompany, query: string) {
   const membershipWords = searchWords(company.memberships.join(" "));
   if (allWordsMatch(queryWords, membershipWords)) return 250;
   return 0;
+}
+
+export function rankedCompanyMatches(companies: ResearchCompany[], query: string) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return [];
+
+  const exactTicker = companies.find(
+    (company) => normalizedTicker(company.ticker) === normalizedTicker(normalizedQuery),
+  );
+  if (exactTicker) return [exactTicker];
+
+  return companies
+    .map((company) => ({ company, score: companySearchScore(company, normalizedQuery) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.company.ticker.localeCompare(b.company.ticker))
+    .map(({ company }) => company);
 }

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Header } from "../ui";
 import { companySlug, indexCounts, researchUniverse, researchUniverseAsOf, universeSources } from "../data/universe";
-import { companySearchScore, normalizedTicker } from "../data/companySearch";
+import { companySearchScore, rankedCompanyMatches } from "../data/companySearch";
 
 const PAGE_SIZE = 40;
 const sectors = [...new Set(researchUniverse.map((company) => company.sector))].sort();
@@ -43,9 +43,11 @@ export default function Companies() {
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const exactTicker = normalized ? researchUniverse.find((company) => normalizedTicker(company.ticker) === normalizedTicker(normalized)) : null;
+    const matchingTickers = normalized
+      ? new Set(rankedCompanyMatches(researchUniverse, normalized).map((company) => company.ticker))
+      : null;
     const result = researchUniverse.filter((company) => {
-      const matchesSearch = !normalized || (exactTicker ? company.ticker === exactTicker.ticker : companySearchScore(company, normalized) > 0);
+      const matchesSearch = !matchingTickers || matchingTickers.has(company.ticker);
       const matchesSector = sector === "All sectors" || company.sector === sector;
       const matchesMembership = membership === "All companies" || company.memberships.includes(membership as "S&P 500" | "Russell 2000" | "Russell 3000" | "Nasdaq-100 (QQQ)" | "Extended Coverage");
       return matchesSearch && matchesSector && matchesMembership;
@@ -88,7 +90,7 @@ export default function Companies() {
   }
 
   return <main><Header />
-    <section className="directory-hero"><div className="container"><span className="kicker">THE RESEARCH UNIVERSE</span><h1>Every ticker is a door<br />into a real business.</h1><p>One unified library spanning large-cap leaders and smaller public companies—organized for understanding, not separated into market silos.</p><div className="directory-search">⌕ <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder={`Search ${researchUniverse.length.toLocaleString()} tickers and companies`} aria-label="Search the company research universe" /></div><div className="universe-note"><span>Universe verified {researchUniverseAsOf}</span><span>{researchUniverse.length.toLocaleString()} securities</span><span>Membership clearly labeled</span></div></div></section>
+    <section className="directory-hero"><div className="container"><span className="kicker">THE RESEARCH UNIVERSE</span><h1>Every ticker is a door<br />into a real business.</h1><p>One unified library spanning large-cap leaders and smaller public companies—organized for understanding, not separated into market silos.</p><div className="directory-search">⌕ <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder={`Search ${researchUniverse.length.toLocaleString()} tickers and companies`} aria-label="Search the company research universe" autoComplete="off" /></div><div className="universe-note"><span>Universe verified {researchUniverseAsOf}</span><span>{researchUniverse.length.toLocaleString()} securities</span><span>Membership clearly labeled</span></div></div></section>
     <section className="container directory-section">
       <div className="index-callout"><div><span className="ticker-icon tint-1">ONDS</span><div><small>FOUNDING DOSSIER · EXTENDED COVERAGE</small><strong>Ondas Holdings</strong><p>Our fully developed prototype shows the research standard every company page will grow into.</p></div></div><Link href="/company/onds">Open flagship dossier →</Link></div>
       <div className="universe-explainer expanded"><div><span className="membership-badge sp-badge">S&P 500</span><p>{indexCounts["S&P 500"]} securities</p></div><div><span className="membership-badge qqq-badge">Nasdaq-100 (QQQ)</span><p>{indexCounts["Nasdaq-100 (QQQ)"]} securities</p></div><div><span className="membership-badge r3000-badge">Russell 3000</span><p>{indexCounts["Russell 3000"].toLocaleString()} securities</p></div><div><span className="membership-badge russell-badge">Russell 2000</span><p>{indexCounts["Russell 2000"].toLocaleString()} securities</p></div><strong>One deduplicated company library.</strong></div>
