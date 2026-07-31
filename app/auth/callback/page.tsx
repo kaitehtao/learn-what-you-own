@@ -19,11 +19,15 @@ export default function AuthCallbackPage() {
           ({ data: { session } } = await supabase.auth.getSession());
         }
         if (!session) throw new Error("The verification link is invalid or expired.");
+        const requested = params.get("returnTo") ?? "/account";
+        const returnTo = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/account";
+        if (returnTo === "/auth/reset-password") {
+          window.location.replace(returnTo);
+          return;
+        }
         const accountResponse = await authenticatedFetch("/api/account");
         if (!accountResponse.ok) throw new Error("Your account was verified, but its profile could not be loaded.");
         const account = await accountResponse.json() as { profile: { onboarding_complete: boolean } };
-        const requested = params.get("returnTo") ?? "/account";
-        const returnTo = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/account";
         window.location.replace(account.profile.onboarding_complete ? returnTo : `/onboarding?returnTo=${encodeURIComponent(returnTo)}`);
       } catch (error) {
         if (active) setMessage(error instanceof Error ? error.message : "Unable to verify your account.");
