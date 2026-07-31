@@ -28,16 +28,36 @@ export function Header() {
     <header className="site-header">
       <div className="container nav-inner">
         <BrandMark />
-        <nav className={open ? "open" : ""}>
+        <nav
+          id="primary-navigation"
+          className={open ? "open" : ""}
+          aria-label="Primary navigation"
+          onClick={event => {
+            if ((event.target as HTMLElement).closest("a")) setOpen(false);
+          }}
+        >
           <Link href="/companies">Companies</Link>
           <Link href="/earnings">Earnings</Link>
           <Link href="/company/onds">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
           {signedIn && <Link href="/portfolio">Portfolio</Link>}
+          <div className="mobile-nav-actions">
+            {signedIn && <Link href="/watchlist">Watchlist</Link>}
+            {signedIn === false
+              ? <Link className="nav-cta" href="/login">Sign in</Link>
+              : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
+          </div>
         </nav>
         <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button>{signedIn && <Link href="/watchlist">Watchlist</Link>}{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
-        <button className="menu-button" aria-label="Toggle menu" onClick={() => setOpen(!open)}>☰</button>
+        <button
+          className="menu-button"
+          type="button"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-controls="primary-navigation"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >{open ? "×" : "☰"}</button>
       </div>
     </header>
   );
