@@ -2,6 +2,7 @@ import { companySlug, sp500AsOf, sp500Companies, sp500SourceUrl, tickerFromSlug 
 import { russell1000AsOf, russell1000Companies, russell1000SourceUrl } from "./russell1000";
 import { russell2000AsOf, russell2000Companies, russell2000SourceUrl } from "./russell2000";
 import { nasdaq100AsOf, nasdaq100Companies, nasdaq100SourceUrl } from "./nasdaq100";
+import { marketCaps, marketCapsAsOf, marketCapSourceUrl } from "./marketCaps.generated";
 
 export type IndexMembership = "S&P 500" | "Russell 2000" | "Russell 3000" | "Nasdaq-100 (QQQ)" | "Extended Coverage";
 
@@ -10,6 +11,7 @@ export type ResearchCompany = {
   name: string;
   sector: string;
   exchange: string;
+  marketCap: number | null;
   memberships: IndexMembership[];
   indexWeights: Partial<Record<IndexMembership, number>>;
 };
@@ -35,6 +37,7 @@ function addCompany(
     name: company.name,
     sector: company.sector || "Not classified",
     exchange: company.exchange,
+    marketCap: marketCaps[company.ticker] ?? null,
     memberships: [...memberships],
     indexWeights: Object.fromEntries(memberships.map((membership) => [membership, company.weight])),
   });
@@ -59,6 +62,7 @@ export const universeSources = [
   { label: "Russell 1000", url: russell1000SourceUrl },
   { label: "Russell 2000", url: russell2000SourceUrl },
   { label: "Nasdaq-100", url: nasdaq100SourceUrl },
+  { label: "Market caps", url: marketCapSourceUrl },
 ];
 
 export const indexCounts = {
@@ -68,6 +72,6 @@ export const indexCounts = {
   "Nasdaq-100 (QQQ)": nasdaq100Companies.length,
 };
 
-export const sourceDates = { sp500AsOf, russell1000AsOf, russell2000AsOf, nasdaq100AsOf };
+export const sourceDates = { sp500AsOf, russell1000AsOf, russell2000AsOf, nasdaq100AsOf, marketCapsAsOf };
 
 export { companySlug, tickerFromSlug };
