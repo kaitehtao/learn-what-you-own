@@ -8,6 +8,7 @@ import { Header } from "./ui";
 import { MarketDataPanel } from "./MarketDataPanel";
 import { SecFilingsPanel } from "./SecFilingsPanel";
 import { WatchlistButton } from "./WatchlistButton";
+import { EarningsCallsPanel } from "./EarningsCallsPanel";
 
 function displayName(name: string) {
   return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -34,10 +35,11 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>LAST REVIEWED</small><strong>July 2026</strong><span>Prototype editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Drivers</a><a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Drivers</a><a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
     <div className="container dossier-layout">
       <article>
         <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
+        <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />
         <section className="dossier-section" id="summary">
           <div className="section-title"><div><span className="section-number">01</span><h2>Owner’s summary</h2></div><span className="reviewed">Evidence-linked prototype</span></div>
           <p className="lede">{dossier.lede}</p>

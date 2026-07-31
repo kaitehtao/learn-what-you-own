@@ -6,6 +6,7 @@ import { WatchlistButton } from "../../WatchlistButton";
 import { companySlug, researchUniverse, tickerFromSlug, type ResearchCompany } from "../../data/universe";
 import { featuredDossiers } from "../../data/featuredDossiers";
 import { FeaturedCompanyDossier } from "../../FeaturedCompanyDossier";
+import { EarningsCallsPanel } from "../../EarningsCallsPanel";
 
 function displayName(name: string) {
   return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -48,6 +49,7 @@ export default async function CompanyStarterPage({
       <div className="coverage-banner"><span>FOUNDING COVERAGE</span><h2>This owner’s manual is ready to be built.</h2><p>The company and ticker are now part of the research universe. Verified claims, sources, business-model analysis, theses, filings, and expert contributions will be added through the editorial workflow.</p></div>
       <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ")}</strong></div><div><small>SECTOR</small><strong>{company.sector}</strong></div><div><small>EXCHANGE</small><strong>{company.exchange}</strong></div><div><small>DOSSIER STATUS</small><strong className="amber-text">Not yet researched</strong></div></div>
       {universeCompany && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
+      <EarningsCallsPanel ticker={company.ticker} />
       <div className="starter-sections">
         {["Owner’s summary","Business model","Why own it","Why not own it","Financial dashboard","What changed","Earnings & filings","Competitive landscape"].map((section, index) => <div key={section}><span>{String(index + 1).padStart(2,"0")}</span><strong>{section}</strong><em>{section === "Earnings & filings" ? "SEC links available" : "Awaiting research"}</em></div>)}
       </div>
