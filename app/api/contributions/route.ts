@@ -96,7 +96,7 @@ export async function POST(request: Request) {
         return Response.json({ error: "An SEC relationship source must link directly to sec.gov." }, { status: 400 });
       }
     }
-    const { data, error } = await supabase.from("contributions").insert({
+    const contributionRecord = {
       user_id: profile.user_id,
       ticker,
       contribution_type: contributionType,
@@ -109,16 +109,24 @@ export async function POST(request: Request) {
       expertise: String(payload.expertise ?? "").trim().slice(0, 300),
       position_disclosure: positionDisclosure.slice(0, 300),
       conflict_disclosure: String(payload.conflictDisclosure ?? "").trim().slice(0, 500),
-      related_company: isRelationship ? relatedCompany.slice(0, 200) : null,
-      related_ticker: isRelationship && relatedTicker ? relatedTicker : null,
-      relationship_direction: isRelationship ? relationshipDirection : null,
-      relationship_product: isRelationship ? relationshipProduct.slice(0, 500) : null,
-      relationship_materiality: isRelationship ? relationshipMateriality : null,
-      relationship_evidence_class: isRelationship ? relationshipEvidenceClass : null,
-      relationship_source_type: isRelationship ? relationshipSourceType : null,
       status: "submitted",
-    }).select("*").single();
-    if (error) throw error;
+      ...(isRelationship ? {
+        related_company: relatedCompany.slice(0, 200),
+        related_ticker: relatedTicker || null,
+        relationship_direction: relationshipDirection,
+        relationship_product: relationshipProduct.slice(0, 500),
+        relationship_materiality: relationshipMateriality,
+        relationship_evidence_class: relationshipEvidenceClass,
+        relationship_source_type: relationshipSourceType,
+      } : {}),
+    };
+    const { data, error } = await supabase.from("contributions").insert(contributionRecord).select("*").single();
+    if (error) {
+      if (isRelationship && (error.code === "PGRST204" || error.message.includes("relationship_"))) {
+        return Response.json({ error: "Relationship submissions are temporarily unavailable while the database upgrade is applied. Other insight types remain available." }, { status: 503 });
+      }
+      throw error;
+    }
     return Response.json({ submission: mapContribution(data as Record<string, unknown>) }, { status: 201 });
   } catch (error) {
     return apiError(error);
