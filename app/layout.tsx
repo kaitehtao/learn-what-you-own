@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BrandMark } from "./ui";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -24,5 +25,18 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        {children}
+        <footer>
+          <div className="container footer-inner">
+            <BrandMark />
+            <p>Research and education—not individualized investment advice.</p>
+            <span>© 2026 Learn What You Own. All rights reserved.</span>
+          </div>
+        </footer>
+      </body>
+    </html>
+  );
 }

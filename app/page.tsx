@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BrandMark, Header } from "./ui";
+import { Header } from "./ui";
 import { companySlug, researchUniverse } from "./data/universe";
 
 const companies = [
@@ -136,9 +136,6 @@ export default function Home() {
         </div>
       </section>
 
-      <footer>
-        <div className="container footer-inner"><BrandMark /><p>Research and education—not individualized investment advice.</p><span>© 2026 Learn What You Own</span></div>
-      </footer>
     </main>
   );
 }
