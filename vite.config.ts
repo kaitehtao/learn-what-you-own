@@ -14,6 +14,9 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Supabase's public runtime values are managed in the Cloudflare dashboard.
+  // Preserve them when the Git integration runs `wrangler deploy`.
+  keep_vars: true,
   d1_databases: d1
     ? [
         {
