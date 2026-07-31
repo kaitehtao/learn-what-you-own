@@ -23,6 +23,7 @@ export function Header() {
         <BrandMark />
         <nav className={open ? "open" : ""}>
           <Link href="/companies">Companies</Link>
+          <Link href="/earnings">Earnings</Link>
           <Link href="/company/onds">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
