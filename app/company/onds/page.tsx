@@ -51,9 +51,11 @@ export default function OndasDossier() {
 
       <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
 
+      <div className="container market-data-wide">
+        <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
+      </div>
       <div className="container dossier-layout">
         <article>
-          <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
           <section className="dossier-section" id="summary">
             <div className="section-title"><div><span className="section-number">01</span><h2>Owner’s summary</h2></div><span className="reviewed">✓ Reviewed today</span></div>
             <p className="lede">Ondas is building two businesses around infrastructure that must remain reliable when ordinary networks or manual operations are not enough.</p>
