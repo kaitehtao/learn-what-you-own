@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "../../ui";
 import { SecFilingsPanel } from "../../SecFilingsPanel";
+import { MarketDataPanel } from "../../MarketDataPanel";
 import { WatchlistButton } from "../../WatchlistButton";
 import { companySlug, researchUniverse, tickerFromSlug } from "../../data/universe";
 
@@ -27,6 +28,7 @@ export default async function CompanyStarterPage({ params }: { params: Promise<{
     <section className="container starter-dossier">
       <div className="coverage-banner"><span>FOUNDING COVERAGE</span><h2>This owner’s manual is ready to be built.</h2><p>The company and ticker are now part of the research universe. Verified claims, sources, business-model analysis, theses, filings, and expert contributions will be added through the editorial workflow.</p></div>
       <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ")}</strong></div><div><small>SECTOR</small><strong>{company.sector}</strong></div><div><small>EXCHANGE</small><strong>{company.exchange}</strong></div><div><small>DOSSIER STATUS</small><strong className="amber-text">Not yet researched</strong></div></div>
+      <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
       <div className="starter-sections">
         {["Owner’s summary","Business model","Why own it","Why not own it","Financial dashboard","What changed","Earnings & filings","Competitive landscape"].map((section, index) => <div key={section}><span>{String(index + 1).padStart(2,"0")}</span><strong>{section}</strong><em>{section === "Earnings & filings" ? "SEC links available" : "Awaiting research"}</em></div>)}
       </div>
