@@ -40,9 +40,11 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
     </div>
+    <div className="container earnings-calls-wide">
+      <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />
+    </div>
     <div className="container dossier-layout">
       <article>
-        <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />
         <section className="dossier-section" id="summary">
           <div className="section-title"><div><span className="section-number">01</span><h2>Owner’s summary</h2></div><span className="reviewed">Evidence-linked prototype</span></div>
           <p className="lede">{dossier.lede}</p>
