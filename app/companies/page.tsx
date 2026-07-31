@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Header } from "../ui";
 import { companySlug, indexCounts, researchUniverse, researchUniverseAsOf, universeSources } from "../data/universe";
+import { companySearchScore, normalizedTicker } from "../data/companySearch";
 
 const PAGE_SIZE = 40;
 const sectors = [...new Set(researchUniverse.map((company) => company.sector))].sort();
@@ -42,14 +43,19 @@ export default function Companies() {
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
+    const exactTicker = normalized ? researchUniverse.find((company) => normalizedTicker(company.ticker) === normalizedTicker(normalized)) : null;
     const result = researchUniverse.filter((company) => {
-      const matchesSearch = !normalized || `${company.ticker} ${company.name} ${company.sector} ${company.memberships.join(" ")}`.toLowerCase().includes(normalized);
+      const matchesSearch = !normalized || (exactTicker ? company.ticker === exactTicker.ticker : companySearchScore(company, normalized) > 0);
       const matchesSector = sector === "All sectors" || company.sector === sector;
       const matchesMembership = membership === "All companies" || company.memberships.includes(membership as "S&P 500" | "Russell 2000" | "Russell 3000" | "Nasdaq-100 (QQQ)" | "Extended Coverage");
       return matchesSearch && matchesSector && matchesMembership;
     });
     const multiplier = direction === "Ascending" ? 1 : -1;
     return [...result].sort((a, b) => {
+      if (normalized) {
+        const relevanceDifference = companySearchScore(b, normalized) - companySearchScore(a, normalized);
+        if (relevanceDifference !== 0) return relevanceDifference;
+      }
       if (sort === "Market cap") {
         if (a.marketCap === null) return b.marketCap === null ? a.ticker.localeCompare(b.ticker) : 1;
         if (b.marketCap === null) return -1;
