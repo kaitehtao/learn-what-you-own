@@ -9,6 +9,7 @@ import { MarketDataPanel } from "./MarketDataPanel";
 import { SecFilingsPanel } from "./SecFilingsPanel";
 import { WatchlistButton } from "./WatchlistButton";
 import { EarningsCallsPanel } from "./EarningsCallsPanel";
+import { CommunityInsights } from "./CommunityInsights";
 
 function displayName(name: string) {
   return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -86,5 +87,6 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
       </aside>
     </div>
     {source && <div className="source-overlay" onClick={() => setSourceIndex(null)}><aside className="source-drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setSourceIndex(null)}>×</button><span className="kicker">PRIMARY SOURCE {String((sourceIndex ?? 0) + 1).padStart(2,"0")}</span><h2>{source.title}</h2><p className="source-meta">{source.meta}</p><blockquote>{source.excerpt}</blockquote><div className="verification-box"><span>✓</span><div><strong>Official source</strong><p>Use the original filing or company publication to verify current details.</p></div></div><a className="button dark-button" href={source.href} target="_blank" rel="noreferrer">Open original source ↗</a></aside></div>}
+    <div className="container"><CommunityInsights ticker={company.ticker}/></div>
   </main>;
 }

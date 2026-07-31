@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 const contributionTypes = ["Factual correction","Thesis update","Industry observation","Competitive analysis","Financial model","Question for management"];
 type Submission = { id:number; ticker:string; contributionType:string; claim:string; status:string; moderationNote:string; createdAt:string };
@@ -19,15 +20,16 @@ const emptyForm = {
   conflictDisclosure: "",
 };
 
-export function ContributionClient({ displayName, initialTicker }: { displayName: string; initialTicker?: string }) {
+export function ContributionClient({ initialTicker }: { initialTicker?: string }) {
   const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [username, setUsername] = useState("your username");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/contributions");
+    const response = await authenticatedFetch("/api/contributions");
     if (response.ok) {
       const data = await response.json() as { contributions: Submission[] };
       setSubmissions(data.contributions);
@@ -35,19 +37,29 @@ export function ContributionClient({ displayName, initialTicker }: { displayName
   }, []);
   useEffect(() => {
     let active = true;
-    fetch("/api/contributions").then(async (response) => {
-      if (!response.ok || !active) return;
+    Promise.all([authenticatedFetch("/api/contributions"), authenticatedFetch("/api/account")]).then(async ([response, accountResponse]) => {
+      if (!active) return;
+      if (response.status === 401 || accountResponse.status === 401) {
+        window.location.href = loginPath(`/contribute${initialTicker ? `?ticker=${encodeURIComponent(initialTicker)}` : ""}`);
+        return;
+      }
+      if (!response.ok) return;
       const data = await response.json() as { contributions: Submission[] };
       if (active) setSubmissions(data.contributions);
+      if (accountResponse.ok) {
+        const account = await accountResponse.json() as { profile?: { username?: string; onboarding_complete?: boolean } };
+        if (!account.profile?.onboarding_complete) window.location.href = "/onboarding";
+        else if (account.profile.username) setUsername(account.profile.username);
+      }
     });
     return () => { active = false; };
-  }, []);
+  }, [initialTicker]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError("");
-    const response = await fetch("/api/contributions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
+    const response = await authenticatedFetch("/api/contributions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
     const data = await response.json() as { error?: string };
     if (!response.ok) {
       setError(data.error ?? "Unable to submit your contribution.");
@@ -61,7 +73,7 @@ export function ContributionClient({ displayName, initialTicker }: { displayName
   }
 
   return <section className="container contribute-layout">
-    <aside><span className="kicker">CONTRIBUTION TYPES</span>{contributionTypes.map((item,index)=><button type="button" className={form.contributionType===item?"active":""} onClick={()=>setForm({...form,contributionType:item})} key={item}><span>0{index+1}</span>{item}</button>)}<div className="contributor-standard"><strong>Submitting as {displayName}</strong><p>Be specific. Cite primary evidence. Separate fact from interpretation. Disclose your position and conflicts.</p></div></aside>
+    <aside><span className="kicker">CONTRIBUTION TYPES</span>{contributionTypes.map((item,index)=><button type="button" className={form.contributionType===item?"active":""} onClick={()=>setForm({...form,contributionType:item})} key={item}><span>0{index+1}</span>{item}</button>)}<div className="contributor-standard"><strong>Submitting as @{username}</strong><p>Be specific. Cite primary evidence. Separate fact from interpretation. Disclose your position and conflicts.</p></div></aside>
     <article>
       {submitted&&<div className="submission-banner">✓ Submitted for editorial review. It will remain unpublished until an editor approves it.</div>}
       <form onSubmit={submit}>

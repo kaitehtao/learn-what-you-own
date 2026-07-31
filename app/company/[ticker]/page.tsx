@@ -7,6 +7,7 @@ import { companySlug, researchUniverse, tickerFromSlug, type ResearchCompany } f
 import { featuredDossiers } from "../../data/featuredDossiers";
 import { FeaturedCompanyDossier } from "../../FeaturedCompanyDossier";
 import { EarningsCallsPanel } from "../../EarningsCallsPanel";
+import { CommunityInsights } from "../../CommunityInsights";
 
 function displayName(name: string) {
   return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -54,6 +55,7 @@ export default async function CompanyStarterPage({
         {["Owner’s summary","Business model","Why own it","Why not own it","Financial dashboard","What changed","Earnings & filings","Competitive landscape"].map((section, index) => <div key={section}><span>{String(index + 1).padStart(2,"0")}</span><strong>{section}</strong><em>{section === "Earnings & filings" ? "SEC links available" : "Awaiting research"}</em></div>)}
       </div>
       <SecFilingsPanel ticker={company.ticker} />
+      <CommunityInsights ticker={company.ticker} />
       <div className="coverage-actions"><div><span className="kicker">HELP BUILD THIS DOSSIER</span><h2>Know this business deeply?</h2><p>Submit a fact, source, correction, or question for management. Every contribution is reviewed before publication.</p></div><Link className="button dark-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Start a contribution →</Link></div>
     </section>
   </main>;

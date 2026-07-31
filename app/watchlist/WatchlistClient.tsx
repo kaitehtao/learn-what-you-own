@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { companySlug } from "../data/universe";
+import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 type WatchItem = { id: number; ticker: string; name: string; sector: string; memberships: string[] };
 
@@ -13,7 +14,7 @@ export function WatchlistClient() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/watchlist");
+    const response = await authenticatedFetch("/api/watchlist");
     const data = await response.json() as { items?: WatchItem[]; error?: string };
     if (response.ok) setItems(data.items ?? []);
     else setError(data.error ?? "Unable to load your watchlist.");
@@ -22,10 +23,11 @@ export function WatchlistClient() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/watchlist").then(async (response) => {
+    authenticatedFetch("/api/watchlist").then(async (response) => {
       const data = await response.json() as { items?: WatchItem[]; error?: string };
       if (!active) return;
       if (response.ok) setItems(data.items ?? []);
+      else if (response.status === 401) window.location.href = loginPath("/watchlist");
       else setError(data.error ?? "Unable to load your watchlist.");
       setLoading(false);
     });
@@ -35,7 +37,7 @@ export function WatchlistClient() {
   async function add(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const response = await fetch("/api/watchlist", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker }) });
+    const response = await authenticatedFetch("/api/watchlist", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker }) });
     const data = await response.json() as { error?: string };
     if (!response.ok) return setError(data.error ?? "Unable to add that company.");
     setTicker("");
@@ -43,7 +45,7 @@ export function WatchlistClient() {
   }
 
   async function remove(itemTicker: string) {
-    await fetch("/api/watchlist", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: itemTicker }) });
+    await authenticatedFetch("/api/watchlist", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: itemTicker }) });
     await load();
   }
 

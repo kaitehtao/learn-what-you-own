@@ -1,50 +1,44 @@
-import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "../../../db";
-import { portfolioPositions } from "../../../db/schema";
 import { researchUniverse } from "../../data/universe";
-import { ensureMemberProfile } from "../../member";
+import { apiError, requireSupabaseUser } from "../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const rows = await getDb().select().from(portfolioPositions).where(eq(portfolioPositions.userEmail, profile.email)).orderBy(desc(portfolioPositions.createdAt));
-  return Response.json({
-    positions: rows.map((row) => ({
-      ...row,
-      companyName: researchUniverse.find((company) => company.ticker === row.ticker)?.name ?? row.ticker,
-    })),
-  });
+export async function GET(request: Request) {
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const { data, error } = await supabase.from("portfolio_positions").select("*").eq("user_id", profile.user_id).order("created_at", { ascending: false });
+    if (error) throw error;
+    return Response.json({ positions: (data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, accountLabel: row.account_label, shares: row.shares, notes: row.notes, createdAt: row.created_at, companyName: researchUniverse.find((company) => company.ticker === row.ticker)?.name ?? row.ticker })) });
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 export async function POST(request: Request) {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const payload = await request.json() as { ticker?: string; shares?: number | string; accountLabel?: string; notes?: string };
-  const ticker = payload.ticker?.trim().toUpperCase() ?? "";
-  if (!researchUniverse.some((company) => company.ticker === ticker)) {
-    return Response.json({ error: "Choose a ticker from the research universe." }, { status: 400 });
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const payload = await request.json() as { ticker?: string; shares?: number | string; accountLabel?: string; notes?: string };
+    const ticker = payload.ticker?.trim().toUpperCase() ?? "";
+    if (!researchUniverse.some((company) => company.ticker === ticker)) return Response.json({ error: "Choose a ticker from the research universe." }, { status: 400 });
+    const shares = payload.shares === "" || payload.shares == null ? null : Number(payload.shares);
+    if (shares != null && (!Number.isFinite(shares) || shares < 0)) return Response.json({ error: "Shares must be a positive number." }, { status: 400 });
+    const { data, error } = await supabase.from("portfolio_positions").insert({ user_id: profile.user_id, ticker, shares, account_label: payload.accountLabel?.trim().slice(0, 80) || "Primary portfolio", notes: payload.notes?.trim().slice(0, 500) || "" }).select("*").single();
+    if (error) throw error;
+    return Response.json({ position: data }, { status: 201 });
+  } catch (error) {
+    return apiError(error);
   }
-  const shares = payload.shares === "" || payload.shares == null ? null : Number(payload.shares);
-  if (shares != null && (!Number.isFinite(shares) || shares < 0)) {
-    return Response.json({ error: "Shares must be a positive number." }, { status: 400 });
-  }
-  const [position] = await getDb().insert(portfolioPositions).values({
-    userEmail: profile.email,
-    ticker,
-    shares,
-    accountLabel: payload.accountLabel?.trim().slice(0, 80) || "Primary portfolio",
-    notes: payload.notes?.trim().slice(0, 500) || "",
-  }).returning();
-  return Response.json({ position }, { status: 201 });
 }
 
 export async function DELETE(request: Request) {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const payload = await request.json() as { id?: number };
-  if (!Number.isInteger(payload.id)) return Response.json({ error: "Position id is required." }, { status: 400 });
-  await getDb().delete(portfolioPositions).where(and(eq(portfolioPositions.id, payload.id!), eq(portfolioPositions.userEmail, profile.email)));
-  return Response.json({ ok: true });
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const payload = await request.json() as { id?: number };
+    if (!Number.isInteger(payload.id)) return Response.json({ error: "Position id is required." }, { status: 400 });
+    const { error } = await supabase.from("portfolio_positions").delete().eq("user_id", profile.user_id).eq("id", payload.id!);
+    if (error) throw error;
+    return Response.json({ ok: true });
+  } catch (error) {
+    return apiError(error);
+  }
 }
