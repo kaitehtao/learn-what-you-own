@@ -19,8 +19,8 @@ const emptyForm = {
   conflictDisclosure: "",
 };
 
-export function ContributionClient({ displayName }: { displayName: string }) {
-  const [form, setForm] = useState(emptyForm);
+export function ContributionClient({ displayName, initialTicker }: { displayName: string; initialTicker?: string }) {
+  const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");

@@ -84,7 +84,12 @@ export default function EarningsCalendar() {
         <div className="earnings-group-title"><span className={`session-pill ${session.toLowerCase()}`}>{session}</span><div><h2>{groups[session][0].sessionLabel}</h2><p>{groups[session].length} expected reports</p></div></div>
         <div className="earnings-table">
           <div className="earnings-row earnings-labels"><span>Company</span><span>Fiscal quarter</span><span>EPS estimate</span><span>Analysts</span><span>Market cap</span></div>
-          {groups[session].map((event) => <Link href={`/company/${event.ticker.toLowerCase().replaceAll(".", "-")}`} className="earnings-row" key={`${event.ticker}-${session}`}>
+          {groups[session].map((event) => <Link
+            href={`/company/${event.ticker.toLowerCase().replaceAll(".", "-")}?name=${encodeURIComponent(event.company)}`}
+            className="earnings-row"
+            aria-label={`Open the ${event.ticker} company dossier`}
+            key={`${event.ticker}-${session}`}
+          >
             <span className="earnings-company"><i>{event.ticker}</i><strong>{event.company}</strong></span>
             <span>{event.fiscalQuarter}</span><span>{event.epsEstimate}</span><span>{event.analystCount}</span><span>{event.marketCap}</span>
           </Link>)}
