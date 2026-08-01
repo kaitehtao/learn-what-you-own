@@ -41,6 +41,8 @@ export type FeaturedDossier = {
 };
 
 import { flagshipDossierUpgrades } from "./featuredDossierUpgrades";
+import { spcxDossier } from "./spcxDossier";
+import { tslaDossier } from "./tslaDossier";
 
 export const featuredDossiers: Record<string, FeaturedDossier> = {
   AMZN: {
@@ -537,3 +539,6 @@ for (const [ticker, upgrade] of Object.entries(flagshipDossierUpgrades)) {
   const existing = featuredDossiers[ticker];
   if (existing) featuredDossiers[ticker] = { ...existing, ...upgrade };
 }
+
+featuredDossiers.SPCX = spcxDossier;
+featuredDossiers.TSLA = tslaDossier;
