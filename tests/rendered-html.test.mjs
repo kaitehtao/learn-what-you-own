@@ -97,6 +97,35 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
   assert.match(ondas, /<ResearchFoundationPanel/);
 });
 
+test("publishes flagship-depth SPCX and TSLA owner dossiers with SEC-grounded official archives", async () => {
+  const [registry, spcx, tsla, newsRoute, featured] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/data/spcxDossier.ts"),
+    source("app/data/tslaDossier.ts"),
+    source("app/api/company-news/route.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+  ]);
+
+  assert.match(registry, /featuredDossiers\.SPCX = spcxDossier/);
+  assert.match(registry, /featuredDossiers\.TSLA = tslaDossier/);
+  for (const dossier of [spcx, tsla]) {
+    assert.match(dossier, /completeness: 100/);
+    assert.match(dossier, /newsroomFeedUrl: secFeed/);
+    assert.match(dossier, /financialDrivers: \[/);
+    assert.match(dossier, /risks: \[/);
+    assert.match(dossier, /comparables: \[/);
+    assert.match(dossier, /sources: \[/);
+  }
+  assert.match(spcx, /SpaceX Final IPO Prospectus/);
+  assert.match(spcx, /\$20\.737B capex/);
+  assert.match(tsla, /Tesla Second-Quarter 2026 Form 10-Q/);
+  assert.match(tsla, />\$25B capex expected/);
+  assert.match(newsRoute, /<entry\\b\[\\s\\S\]\*\?<\\\/entry>/);
+  assert.match(newsRoute, /SEC EDGAR official filing/);
+  assert.match(featured, /SpaceX \(Space Exploration Technologies Corp\.\)/);
+  assert.match(featured, /Tesla, Inc\./);
+});
+
 test("adds sector-aware external intelligence with moderated public evidence", async () => {
   const [registry, panel, featured, starter, ondas, contributionClient, contributionRoute, schema, migration] = await Promise.all([
     source("app/data/externalIntelligence.ts"),
