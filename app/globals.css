@@ -173,3 +173,15 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
   input:not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:1rem}
   .notebook-note-body{font-size:1.0625rem}
 }
+
+/* Signed-in navigation has more destinations. Collapse it before the larger
+   accessible type can crowd the brand or create horizontal page scrolling. */
+@media(max-width:1280px){
+  .nav-inner nav,.nav-actions{display:none}
+  .menu-button{display:block;cursor:pointer;line-height:1}
+  .nav-inner nav.open{display:flex;position:absolute;top:100%;left:0;right:0;background:#fff;flex-direction:column;gap:0;padding:10px 24px 20px;border-top:1px solid var(--line);box-shadow:0 15px 25px rgba(0,0,0,.1)}
+  .nav-inner nav.open>a{padding:12px 0}
+  .mobile-nav-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px;padding-top:18px;border-top:1px solid var(--line)}
+  .mobile-nav-actions>a:not(.nav-cta){padding:5px 0}
+  .mobile-nav-actions .nav-cta{text-align:center;margin-top:2px}
+}
