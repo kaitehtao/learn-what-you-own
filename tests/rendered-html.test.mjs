@@ -134,7 +134,9 @@ test("keeps the canonical public domain attached to the production Worker", asyn
     source("docs/ARCHITECTURE.md"),
   ]);
   assert.match(config, /pattern: "learnwhatyouown\.com\/\*"/);
+  assert.match(config, /pattern: "www\.learnwhatyouown\.com\/\*"/);
   assert.match(config, /zone_name: "learnwhatyouown\.com"/);
+  assert.match(config, /workers_dev: true/);
   assert.match(architecture, /Public origin \| `https:\/\/learnwhatyouown\.com`/);
 });
 

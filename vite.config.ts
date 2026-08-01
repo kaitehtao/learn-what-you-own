@@ -14,6 +14,8 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Preserve a direct fallback URL for smoke tests and incident recovery.
+  workers_dev: true,
   // Supabase's public runtime values are managed in the Cloudflare dashboard.
   // Preserve them when the Git integration runs `wrangler deploy`.
   keep_vars: true,
@@ -22,6 +24,7 @@ const localBindingConfig = {
   // serving an older Sites deployment.
   routes: [
     { pattern: "learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
+    { pattern: "www.learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
   ],
   // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
   // America/Los_Angeles local time before delivering, so only one run proceeds.
