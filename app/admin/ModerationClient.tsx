@@ -48,8 +48,8 @@ export function ModerationClient() {
     setImportBusy(true);
     setMessage("");
     const response = await authenticatedFetch("/api/admin/research/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticker: importTicker }) });
-    const result = await response.json() as { error?: string; imported?: number; metrics?: number };
-    setMessage(response.ok ? `${importTicker}: imported ${result.imported} filing facts across ${result.metrics} normalized metrics.` : result.error ?? "SEC import failed.");
+    const result = await response.json() as { error?: string; imported?: number; metrics?: number; claims?: number; dossierStatus?: string };
+    setMessage(response.ok ? `${importTicker}: imported ${result.imported} filing facts across ${result.metrics} normalized metrics and ${result.claims ?? 0} sourced claims (${result.dossierStatus}).` : result.error ?? "SEC import failed.");
     setImportBusy(false);
   }
 

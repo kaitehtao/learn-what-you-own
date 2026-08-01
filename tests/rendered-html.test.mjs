@@ -58,3 +58,27 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
   assert.match(starter, /<ResearchFoundationPanel/);
   assert.match(ondas, /<ResearchFoundationPanel/);
 });
+
+test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
+  const [claims, importRoute] = await Promise.all([
+    source("app/data/curatedDossierClaims.ts"),
+    source("app/api/admin/research/import/route.ts"),
+  ]);
+
+  assert.match(claims, /firstAlphabeticalABatch = \["A", "AA", "AAL", "AAMI", "AAOI", "AAON", "AAP", "AAPL", "AAT", "ABAT"\]/);
+  assert.equal((claims.match(/sourceUrl: "https:\/\/www\.sec\.gov\/Archives\/edgar\/data\//g) ?? []).length, 10);
+  assert.equal((claims.match(/\n    filingType: "10-K"/g) ?? []).length, 10);
+  assert.equal((claims.match(/\{ section: "business_model"/g) ?? []).length, 10);
+  assert.equal((claims.match(/\{ section: "segments"/g) ?? []).length, 10);
+  assert.equal((claims.match(/\{ section: "revenue_drivers"/g) ?? []).length, 10);
+  assert.equal((claims.match(/\{ section: "risk_factors"/g) ?? []).length, 10);
+  assert.equal((claims.match(/\{ section: "owner_watchlist"/g) ?? []).length, 10);
+  assert.equal((claims.match(/whyItMatters:/g) ?? []).length, 51);
+  assert.equal((claims.match(/sourceExcerpt:/g) ?? []).length, 51);
+
+  assert.match(importRoute, /sourceHostname !== "sec\.gov"/);
+  assert.match(importRoute, /db\.insert\(companyDossiers\)/);
+  assert.match(importRoute, /db\.insert\(dossierSources\)/);
+  assert.match(importRoute, /db\.insert\(dossierClaims\)/);
+  assert.match(importRoute, /dossierStatus: dossier \? "published" : "facts-only"/);
+});
