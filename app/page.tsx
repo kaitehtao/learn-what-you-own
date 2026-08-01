@@ -21,6 +21,7 @@ const companies = [
   { ticker: "BA", name: "Boeing", sector: "Aerospace & Defense", updated: "3d ago", score: 92, note: "Production recovery evidence reviewed" },
   { ticker: "CAT", name: "Caterpillar", sector: "Industrial Equipment", updated: "4d ago", score: 92, note: "Dealer inventory signals updated" },
   { ticker: "CRWV", name: "CoreWeave", sector: "AI Infrastructure", updated: "4d ago", score: 90, note: "Backlog and financing review" },
+  { ticker: "ORCL", name: "Oracle", sector: "Enterprise Software & Cloud", updated: "Today", score: 100, note: "FY2026 cloud, backlog, and financing review" },
 ];
 
 const updates = [
@@ -181,7 +182,7 @@ export default function Home() {
 
       <section className="container content-section">
         <div className="section-heading">
-          <div><span className="kicker">COMMUNITY RESEARCH DEMAND</span><h2>Hot companies, ranked by owners.</h2><p className="section-intro">Verified member requests and privacy-preserving 30-day readership determine which twelve dossiers rise to the top.</p></div>
+          <div><span className="kicker">COMMUNITY RESEARCH DEMAND</span><h2>Hot companies, ranked by owners.</h2><p className="section-intro">Verified member requests and privacy-preserving 30-day readership help determine which dossiers receive featured coverage.</p></div>
           <Link className="text-link" href="/companies">Explore all dossiers <span>→</span></Link>
         </div>
         <div className="company-grid">
@@ -201,7 +202,7 @@ export default function Home() {
             </article>
           ))}
         </div>
-        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured twelve</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
+        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured dossiers</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
       </section>
 
       <section className="dark-section">
