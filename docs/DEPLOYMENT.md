@@ -77,6 +77,7 @@ The migration lineage is:
 6. `drizzle/0005_emerging-companies-and-aapl-supply-chain.sql` — emerging-company records and initial relationship evidence
 7. `drizzle/0006_official-exchange-universe.sql` — official catalog metadata and lookup indexes
 8. `drizzle/0007_sec-fact-import-status.sql` — SEC Company Facts refresh state and audit metadata
+9. `drizzle/0008_product_feedback.sql` — private, verified-member product feedback and moderation status
 
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 
