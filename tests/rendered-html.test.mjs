@@ -467,14 +467,14 @@ test("keeps long starter-company names clear of account actions", async () => {
   assert.match(styles, /\.starter-company-actions\{max-width:540px[^}]*flex-wrap:wrap/);
 });
 
-test("ranks twelve homepage dossiers by verified community research demand", async () => {
+test("ranks featured homepage dossiers by verified community research demand", async () => {
   const [home, route, migration] = await Promise.all([
     source("app/page.tsx"),
     source("app/api/research-demand/route.ts"),
     source("supabase/migrations/20260801060000_company_research_demand.sql"),
   ]);
 
-  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
+  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV", "ORCL"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
   assert.match(home, /Hot companies, ranked by owners/);
   assert.match(home, /toggleDemand/);
   assert.match(home, /viewerVotes/);
@@ -487,14 +487,14 @@ test("ranks twelve homepage dossiers by verified community research demand", asy
   assert.match(migration, /auth\.uid\(\) = user_id/);
 });
 
-test("provides full primary-source dossiers for all twelve homepage companies", async () => {
+test("provides full primary-source dossiers for all homepage companies", async () => {
   const [dossiers, featuredPage, starterPage, ondas] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/FeaturedCompanyDossier.tsx"),
     source("app/company/[ticker]/page.tsx"),
     source("app/company/onds/page.tsx"),
   ]);
-  for (const ticker of ["NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
+  for (const ticker of ["NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV", "ORCL"]) assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
   assert.match(dossiers, /BlackBerry 2026 Form 10-K/);
   assert.match(dossiers, /Bloom Energy 2025 Form 10-K/);
   assert.match(dossiers, /Rocket Lab 2025 Form 10-K/);
@@ -553,6 +553,29 @@ test("publishes a complete filing-grounded CoreWeave ownership dossier", async (
   assert.match(dossiers, /Crusoe/);
   assert.match(dossiers, /Second-quarter results · August 11/);
   assert.match(featuredPage, /CoreWeave, Inc\./);
+});
+
+test("publishes a complete filing-grounded Oracle ownership dossier", async () => {
+  const [home, dossiers, featuredPage] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+  ]);
+
+  assert.match(home, /ticker: "ORCL"/);
+  assert.match(dossiers, /ticker: "ORCL"[\s\S]{0,120}completeness: 100/);
+  assert.match(dossiers, /Oracle 2026 Form 10-K/);
+  assert.match(dossiers, /\$638 billion/);
+  assert.match(dossiers, /\$55\.66 billion/);
+  assert.match(dossiers, /\$129\.54 billion/);
+  assert.match(dossiers, /\$260 billion/);
+  assert.match(dossiers, /Microsoft Azure/);
+  assert.match(dossiers, /Amazon Web Services/);
+  assert.match(dossiers, /SAP/);
+  assert.match(dossiers, /Salesforce/);
+  assert.match(dossiers, /Epic Systems/);
+  assert.match(dossiers, /Customer status should not be confused with supplier status/);
+  assert.match(featuredPage, /Oracle Corporation/);
 });
 
 test("publishes the founder mission with @Yourhost as host and letter author", async () => {
