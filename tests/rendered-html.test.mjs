@@ -165,13 +165,16 @@ test("keeps investment notebooks private while supporting sourced public handoff
 });
 
 test("creates private member notifications and opt-in email delivery", async () => {
-  const [migration, route, bell, center, messages, emailDelivery, header] = await Promise.all([
+  const [migration, route, bell, center, messages, emailDelivery, digestRoute, worker, viteConfig, header] = await Promise.all([
     source("supabase/migrations/20260801030000_member_notifications.sql"),
     source("app/api/notifications/route.ts"),
     source("app/NotificationBell.tsx"),
     source("app/notifications/NotificationsClient.tsx"),
     source("app/messages/MessagesClient.tsx"),
     source("app/email-notifications.ts"),
+    source("app/api/notifications/email-digest/route.ts"),
+    source("worker/index.ts"),
+    source("vite.config.ts"),
     source("app/ui.tsx"),
   ]);
 
@@ -193,6 +196,11 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(emailDelivery, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(emailDelivery, /RESEND_API_KEY/);
   assert.doesNotMatch(emailDelivery, /messageBody|message_body/);
+  assert.match(digestRoute, /NOTIFICATION_CRON_SECRET/);
+  assert.match(worker, /America\/Los_Angeles/);
+  assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
+  assert.match(worker, /\/api\/notifications\/email-digest/);
+  assert.match(viteConfig, /0 15,16 \* \* \*/);
   assert.match(header, /NotificationBell/);
   assert.match(header, /href="\/notifications"/);
 });

@@ -17,6 +17,9 @@ const localBindingConfig = {
   // Supabase's public runtime values are managed in the Cloudflare dashboard.
   // Preserve them when the Git integration runs `wrangler deploy`.
   keep_vars: true,
+  // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
+  // America/Los_Angeles local time before delivering, so only one run proceeds.
+  triggers: { crons: ["0 15,16 * * *"] },
   d1_databases: d1
     ? [
         {
