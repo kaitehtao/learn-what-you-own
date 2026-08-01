@@ -2,6 +2,7 @@ import {
   getSecCompany,
   secCompaniesGeneratedAsOf,
 } from "./data/secCompanies.generated";
+import { SaveToNotebookButton } from "./SaveToNotebookButton";
 
 type FilingGroup = {
   code: string;
@@ -173,6 +174,7 @@ export function SecFilingsPanel({ ticker }: { ticker: string }) {
         <a href={entityUrl(secCompany.cik)} target="_blank" rel="noreferrer">
           Open filer profile ↗
         </a>
+        <SaveToNotebookButton compact ticker={normalizedTicker} companyName={secCompany.name} title={`${normalizedTicker} SEC filing research`} sourceTitle="SEC EDGAR filer profile" sourceUrl={entityUrl(secCompany.cik)} />
       </div>
 
       <p>

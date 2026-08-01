@@ -136,3 +136,30 @@ test("supports public member profiles, follows, and per-message visibility", asy
   assert.match(messageClient, /Only you and the recipient/);
   assert.match(messageClient, /Also appears on their profile/);
 });
+
+test("keeps investment notebooks private while supporting sourced public handoff", async () => {
+  const [migration, route, client, captureButton, contributionPage, header] = await Promise.all([
+    source("supabase/migrations/20260801020000_private_research_notebooks.sql"),
+    source("app/api/notebook/route.ts"),
+    source("app/notebook/NotebookClient.tsx"),
+    source("app/SaveToNotebookButton.tsx"),
+    source("app/contribute/page.tsx"),
+    source("app/ui.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.research_notebooks/);
+  assert.match(migration, /create table if not exists public\.research_notes/);
+  assert.match(migration, /auth\.uid\(\) = user_id/);
+  assert.match(migration, /revoke all on public\.research_notebooks from anon/);
+  assert.match(migration, /revoke all on public\.research_notes from anon/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /Choose a ticker from the research universe/);
+  assert.match(route, /Source URL must begin with http:\/\/ or https:\/\//);
+  assert.match(client, /PRIVATE BY DEFAULT/);
+  assert.match(client, /ONE-SENTENCE WORKING THESIS/);
+  assert.match(client, /Prepare public contribution/);
+  assert.match(client, /setTimeout[\s\S]*850/);
+  assert.match(captureButton, /action: "capture"/);
+  assert.match(contributionPage, /initialDraft/);
+  assert.match(header, /href="\/notebook"/);
+});

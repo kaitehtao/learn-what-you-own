@@ -27,8 +27,8 @@ const emptyForm = {
   relationshipSourceType: "sec",
 };
 
-export function ContributionClient({ initialTicker, initialType }: { initialTicker?: string; initialType?: string }) {
-  const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker, contributionType: contributionTypes.includes(initialType ?? "") ? initialType! : emptyForm.contributionType });
+export function ContributionClient({ initialTicker, initialType, initialDraft }: { initialTicker?: string; initialType?: string; initialDraft?: { claim?: string; whyItMatters?: string; sourceUrl?: string } }) {
+  const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker, contributionType: contributionTypes.includes(initialType ?? "") ? initialType! : emptyForm.contributionType, claim: initialDraft?.claim ?? "", whyItMatters: initialDraft?.whyItMatters ?? "", sourceUrl: initialDraft?.sourceUrl ?? "" });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [username, setUsername] = useState("your username");
   const [submitted, setSubmitted] = useState(false);
@@ -47,7 +47,7 @@ export function ContributionClient({ initialTicker, initialType }: { initialTick
     Promise.all([authenticatedFetch("/api/contributions"), authenticatedFetch("/api/account")]).then(async ([response, accountResponse]) => {
       if (!active) return;
       if (response.status === 401 || accountResponse.status === 401) {
-        window.location.href = loginPath(`/contribute${initialTicker ? `?ticker=${encodeURIComponent(initialTicker)}` : ""}`);
+        window.location.href = loginPath(`${window.location.pathname}${window.location.search}`);
         return;
       }
       if (!response.ok) return;

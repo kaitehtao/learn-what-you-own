@@ -2,6 +2,7 @@ type EarningsCallsPanelProps = {
   ticker: string;
   investorRelationsUrl?: string;
 };
+import { SaveToNotebookButton } from "./SaveToNotebookButton";
 
 const verifiedCallArchives: Record<string, { transcripts: string; audio: string }> = {
   NVDA: {
@@ -30,7 +31,7 @@ export function EarningsCallsPanel({ ticker, investorRelationsUrl }: EarningsCal
   return <section className="earnings-calls-panel" id="earnings-calls">
     <div className="earnings-calls-heading">
       <div><span className="kicker">MANAGEMENT COMMENTARY</span><h2>Earnings call transcripts &amp; audio</h2></div>
-      <strong>{symbol}</strong>
+      <div><strong>{symbol}</strong><SaveToNotebookButton compact ticker={symbol} title={`${symbol} earnings-call research`} sourceTitle="Company earnings-call materials" sourceUrl={officialTranscriptUrl} /></div>
     </div>
     <p>Read management’s prepared remarks and analyst Q&amp;A, then listen to the recording to evaluate emphasis, tone, and changes in language over time.</p>
     <div className="earnings-call-links">

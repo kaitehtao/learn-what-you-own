@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { SaveToNotebookButton } from "./SaveToNotebookButton";
 
 type FilingFact = {
   id: number;
@@ -123,7 +124,7 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
 
       <div className="filing-facts-block">
         <div className="research-subheading"><div><small>PUBLIC FILING FACTS</small><h3>Financial evidence</h3></div><span>{data.facts.length ? `${factsByMetric.size} normalized metrics` : "Awaiting SEC import"}</span></div>
-        {latestFacts.length ? <div className="filing-fact-grid">{latestFacts.map((fact) => <a href={fact.sourceUrl} target="_blank" rel="noreferrer" key={`${fact.metricKey}-${fact.periodEnd}`}><small>{fact.label}</small><strong>{compactNumber(fact.value, fact.unit)}</strong><span>{fact.fiscalPeriod ?? fact.form} · period ended {fact.periodEnd}</span><em>{fact.form} filed {fact.filedAt} ↗</em></a>)}</div> : <div className="research-foundation-state"><strong>No normalized filing facts published yet.</strong><p>An editor can import this company’s SEC Company Facts without turning unverified estimates into dossier data.</p></div>}
+        {latestFacts.length ? <div className="filing-fact-grid">{latestFacts.map((fact) => <div className="filing-fact-card" key={`${fact.metricKey}-${fact.periodEnd}`}><a href={fact.sourceUrl} target="_blank" rel="noreferrer"><small>{fact.label}</small><strong>{compactNumber(fact.value, fact.unit)}</strong><span>{fact.fiscalPeriod ?? fact.form} · period ended {fact.periodEnd}</span><em>{fact.form} filed {fact.filedAt} ↗</em></a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={`${fact.label}: ${compactNumber(fact.value, fact.unit)}`} sourceTitle={`${fact.form} filed ${fact.filedAt}`} sourceUrl={fact.sourceUrl} sourceExcerpt={`${fact.label} was ${compactNumber(fact.value, fact.unit)} for the period ended ${fact.periodEnd}.`} /></div>)}</div> : <div className="research-foundation-state"><strong>No normalized filing facts published yet.</strong><p>An editor can import this company’s SEC Company Facts without turning unverified estimates into dossier data.</p></div>}
       </div>
 
       <div className="relationship-block">
@@ -138,7 +139,7 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
         </> : <div className="research-foundation-state"><strong>No verified supplier or customer edges yet.</strong><p>Named relationships are published only after an editor verifies the filing or official-company evidence.</p><Link href={relationshipHref(ticker)}>Submit the first relationship →</Link></div>}
       </div>
 
-      {data.claims.length > 0 && <div className="evidence-ledger"><div className="research-subheading"><div><small>CLAIM-LEVEL PROVENANCE</small><h3>Evidence ledger</h3></div><span>{data.claims.length} published claims</span></div><div>{data.claims.map((claim) => <article key={claim.id}><span className={`${claim.claimType.replaceAll("_", "-")}-badge`}>{claim.claimType.replaceAll("_", " ")}</span><small>{claim.section}</small><h4>{claim.claim}</h4>{claim.whyItMatters && <p>{claim.whyItMatters}</p>}<a href={claim.sourceUrl} target="_blank" rel="noreferrer">{claim.sourceTitle} · {claim.evidenceDate} ↗</a></article>)}</div></div>}
+      {data.claims.length > 0 && <div className="evidence-ledger"><div className="research-subheading"><div><small>CLAIM-LEVEL PROVENANCE</small><h3>Evidence ledger</h3></div><span>{data.claims.length} published claims</span></div><div>{data.claims.map((claim) => <article key={claim.id}><span className={`${claim.claimType.replaceAll("_", "-")}-badge`}>{claim.claimType.replaceAll("_", " ")}</span><small>{claim.section}</small><h4>{claim.claim}</h4>{claim.whyItMatters && <p>{claim.whyItMatters}</p>}<a href={claim.sourceUrl} target="_blank" rel="noreferrer">{claim.sourceTitle} · {claim.evidenceDate} ↗</a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={claim.claim} body={claim.whyItMatters} sourceTitle={claim.sourceTitle} sourceUrl={claim.sourceUrl} /></article>)}</div></div>}
     </>}
   </section>;
 }

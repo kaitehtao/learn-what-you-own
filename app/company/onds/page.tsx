@@ -9,6 +9,7 @@ import { EarningsCallsPanel } from "../../EarningsCallsPanel";
 import { WatchlistButton } from "../../WatchlistButton";
 import { CommunityInsights } from "../../CommunityInsights";
 import { ResearchFoundationPanel } from "../../ResearchFoundationPanel";
+import { SaveToNotebookButton } from "../../SaveToNotebookButton";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -39,6 +40,7 @@ export default function OndasDossier() {
           </div>
           <div className="dossier-actions">
             <WatchlistButton ticker="ONDS"/>
+            <SaveToNotebookButton ticker="ONDS" companyName="Ondas Holdings" title="ONDS research starting point" body="Private working notes for the Ondas Holdings investment dossier." />
             <button className="share-button">Share ↗</button>
           </div>
         </div>
