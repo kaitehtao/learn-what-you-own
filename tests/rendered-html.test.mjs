@@ -128,6 +128,16 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(migration, /match_confidence/);
 });
 
+test("keeps the canonical public domain attached to the production Worker", async () => {
+  const [config, architecture] = await Promise.all([
+    source("vite.config.ts"),
+    source("docs/ARCHITECTURE.md"),
+  ]);
+  assert.match(config, /pattern: "learnwhatyouown\.com\/\*"/);
+  assert.match(config, /zone_name: "learnwhatyouown\.com"/);
+  assert.match(architecture, /Public origin \| `https:\/\/learnwhatyouown\.com`/);
+});
+
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
   const [claims, importRoute, factRepository] = await Promise.all([
     source("app/data/curatedDossierClaims.ts"),

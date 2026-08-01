@@ -17,6 +17,12 @@ const localBindingConfig = {
   // Supabase's public runtime values are managed in the Cloudflare dashboard.
   // Preserve them when the Git integration runs `wrangler deploy`.
   keep_vars: true,
+  // Keep the canonical public origin attached to this Worker. Without an
+  // explicit route, a successful workers.dev deploy can leave the apex domain
+  // serving an older Sites deployment.
+  routes: [
+    { pattern: "learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
+  ],
   // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
   // America/Los_Angeles local time before delivering, so only one run proceeds.
   triggers: { crons: ["0 15,16 * * *"] },
