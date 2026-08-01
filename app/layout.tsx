@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import { BrandMark } from "./ui";
 import { VisitorTracker } from "./VisitorTracker";
 import "./globals.css";
@@ -31,11 +32,32 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <VisitorTracker />
         {children}
-        <footer>
-          <div className="container footer-inner">
-            <BrandMark />
-            <p>Research and education—not individualized investment advice.</p>
-            <span>© 2026 Learn What You Own. All rights reserved.</span>
+        <footer id="site-footer" className="site-footer">
+          <div className="container footer-main">
+            <div className="footer-brand">
+              <BrandMark />
+              <p>Evidence-linked research for investors who want to understand the business behind the ticker.</p>
+            </div>
+            <nav className="footer-navigation" aria-label="Footer navigation">
+              <div>
+                <strong>Explore</strong>
+                <Link href="/companies">Companies</Link>
+                <Link href="/earnings">Earnings calendar</Link>
+                <Link href="/interviews">Interviews</Link>
+                <Link href="/company/onds">Featured dossier</Link>
+              </div>
+              <div>
+                <strong>Your workspace</strong>
+                <Link href="/notebook">Notebook</Link>
+                <Link href="/messages">Messages</Link>
+                <Link href="/contribute">Contribute research</Link>
+                <Link href="/account">Account</Link>
+              </div>
+            </nav>
+          </div>
+          <div className="container footer-legal">
+            <span>© {new Date().getFullYear()} Learn What You Own. All rights reserved.</span>
+            <p>For research and educational purposes only. Not individualized investment advice.</p>
           </div>
         </footer>
       </body>

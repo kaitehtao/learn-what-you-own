@@ -231,3 +231,37 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
   .mobile-workspace-links>span{grid-column:1/-1}
   .mobile-nav-actions{align-items:stretch;flex-direction:column}
 }
+
+/* Branded site footer */
+.site-footer{border-top:0;padding:0;background:var(--forest);color:#fff}
+.footer-main{display:grid;grid-template-columns:minmax(320px,1.35fr) minmax(390px,1fr);gap:90px;padding-top:58px;padding-bottom:50px}
+.footer-brand{max-width:470px}
+.site-footer .brand{display:inline-flex;color:#fff}
+.site-footer .brand-symbol{border-color:rgba(255,255,255,.72);background:rgba(255,255,255,.06);box-shadow:none}
+.site-footer .brand-symbol i{background:#86c9ae}
+.site-footer .brand-name{color:#fff}
+.site-footer .brand-tagline{color:#a9c2b8}
+.footer-brand>p{max-width:440px;margin:24px 0 0;color:#c3d1cc;font-size:1.0625rem;line-height:1.7}
+.footer-navigation{display:grid;grid-template-columns:1fr 1fr;gap:65px}
+.footer-navigation>div{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.footer-navigation strong{margin-bottom:5px;font-family:var(--font-geist-mono);font-size:.8125rem;letter-spacing:.11em;text-transform:uppercase;color:#8fc8b1}
+.footer-navigation a{font-size:1rem;color:#e7eeeb;line-height:1.4}
+.footer-navigation a:hover{color:#fff;text-decoration:underline;text-underline-offset:4px}
+.footer-legal{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:32px;border-top:1px solid rgba(255,255,255,.15);color:#aebfb8;font-size:.875rem}
+.footer-legal span{white-space:nowrap}
+.footer-legal p{margin:0;text-align:right;line-height:1.55}
+
+@media(max-width:850px){
+  .footer-main{grid-template-columns:1fr;gap:42px;padding-top:48px;padding-bottom:42px}
+  .footer-navigation{max-width:560px;gap:40px}
+}
+
+@media(max-width:620px){
+  .footer-main{gap:36px;padding-top:42px;padding-bottom:35px}
+  .footer-brand>p{font-size:1rem;margin-top:20px}
+  .footer-navigation{grid-template-columns:1fr 1fr;gap:24px}
+  .footer-navigation a{font-size:.9375rem}
+  .footer-legal{min-height:0;align-items:flex-start;flex-direction:column;gap:8px;padding-top:22px;padding-bottom:25px}
+  .footer-legal span{white-space:normal}
+  .footer-legal p{text-align:left}
+}
