@@ -63,6 +63,9 @@ function htmlAttribute(attributes: string, name: string): string {
 }
 
 function titleCase(value: string): string {
+  const normalized = value.toLowerCase();
+  if (normalized === "ai-ml") return "AI / ML";
+  if (normalized === "ai-infrastructure") return "AI Infrastructure";
   return value.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
