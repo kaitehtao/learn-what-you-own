@@ -307,12 +307,13 @@ test("opens homepage sample cards and changelog rows as company dossiers", async
 });
 
 test("keeps NYSE and Nasdaq separate from the official FINRA OTC catalog", async () => {
-  const [directory, api, schema, migration, updater, metadata, header, footer] = await Promise.all([
+  const [directory, api, schema, migration, updater, overlay, metadata, header, footer] = await Promise.all([
     source("app/CompanyUniverseDirectory.tsx"),
     source("app/api/universe/route.ts"),
     source("db/schema.ts"),
     source("drizzle/0006_official-exchange-universe.sql"),
     source("scripts/update-exchange-universe.mjs"),
+    source("scripts/generate-company-index-overlay.ts"),
     source("app/data/exchangeUniverseMeta.generated.ts"),
     source("app/ui.tsx"),
     source("app/layout.tsx"),
@@ -331,6 +332,9 @@ test("keeps NYSE and Nasdaq separate from the official FINRA OTC catalog", async
   assert.match(updater, /company_tickers_exchange\.json/);
   assert.match(updater, /otcSecurityMaster/);
   assert.match(updater, /nasdaqlisted\.txt/);
+  assert.match(overlay, /memberships_json = excluded\.memberships_json/);
+  assert.doesNotMatch(overlay, /exchange = excluded\.exchange/);
+  assert.doesNotMatch(overlay, /company_dossiers/);
   assert.match(metadata, /listedSecurityCount = \d+/);
   assert.match(metadata, /otcSecurityCount = \d+/);
   assert.match(header, /href="\/otc"/);

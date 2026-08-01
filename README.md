@@ -88,5 +88,6 @@ Run `npm run universe:update` to refresh the generated catalog metadata and batc
 - `npm test` — project tests
 - `npm run db:generate` — generate D1/Drizzle migrations
 - `npm run db:seed:dossiers` — regenerate the ignored dossier seed SQL
+- `npm run db:seed:company-overlay` — regenerate the company-only index metadata overlay
 - `npm run sec:update` — refresh the SEC ticker-to-CIK directory
 - `npm run universe:update` — refresh SEC/Nasdaq-listed and FINRA OTC catalog seed data

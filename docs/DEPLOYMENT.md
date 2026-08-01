@@ -99,6 +99,8 @@ npx wrangler d1 execute site-creator-d1 --remote --file drizzle/seed-exchange-un
 
 After import, audit `companies` grouped by `listing_scope` and `exchange`, require official source/as-of metadata on every active row, and confirm `company_dossiers`, `dossier_sources`, filing facts, claims, and relationships were not deleted or promoted. The seed updates catalog identity fields only and does not create a published dossier.
 
+If the production dossier table follows the legacy schema, do not run `seed-dossiers.sql` merely to restore index tags. Generate and apply `drizzle/seed-company-index-overlay.sql`; it updates only company/index metadata and leaves every dossier table untouched.
+
 ## Google authentication
 
 1. In Google Cloud, use the Web OAuth client belonging to Learn What You Own.
