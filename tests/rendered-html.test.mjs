@@ -349,6 +349,7 @@ test("keeps long starter-company names clear of account actions", async () => {
   ]);
 
   assert.match(starter, /name: catalogCompany\?\.name \|\| universeCompany\.name/);
+  assert.match(starter, /normalized\(firstWord\) === normalized\(ticker\)/);
   assert.match(styles, /@media\(max-width:1100px\)\{\.starter-company-hero>\.container\{grid-template-columns:1fr/);
   assert.match(styles, /\.starter-company-title h1\{max-width:24ch/);
   assert.match(styles, /\.starter-company-actions\{max-width:540px[^}]*flex-wrap:wrap/);
