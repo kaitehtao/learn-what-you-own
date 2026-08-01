@@ -8,6 +8,23 @@ async function source(path) {
   return readFile(new URL(path, root), "utf8");
 }
 
+test("describes homepage search honestly and offers supported examples", async () => {
+  const [home, search] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/data/companySearch.ts"),
+  ]);
+
+  assert.match(home, /placeholder="Search ticker, company, sector, or index"/);
+  assert.match(home, /Search by ticker, company, sector, or index/);
+  assert.match(home, /\["AAPL", "NVIDIA", "Semiconductors", "S&P 500"\]/);
+  assert.doesNotMatch(home, />Popular </);
+  assert.doesNotMatch(home, /executive, or theme/);
+  assert.match(search, /company\.ticker/);
+  assert.match(search, /company\.name/);
+  assert.match(search, /company\.sector/);
+  assert.match(search, /company\.memberships/);
+});
+
 test("keeps filed facts, editorial claims, and company relationships as separate public records", async () => {
   const [schema, migration] = await Promise.all([
     source("db/schema.ts"),
@@ -286,7 +303,6 @@ test("opens homepage sample cards and changelog rows as company dossiers", async
   assert.match(home, /const dossierHref = \(ticker: string\) => `\/company\/\$\{companySlug\(ticker\)\}`/);
   assert.match(home, /className="company-card-link" href=\{dossierHref\(company\.ticker\)\}/);
   assert.match(home, /href=\{dossierHref\(update\.ticker\)\} className="change-row"/);
-  assert.match(home, /href=\{dossierHref\("NVDA"\)\}>NVDA/);
   assert.doesNotMatch(home, /company\.ticker === "ONDS" \? "\/company\/onds" : "\/companies"/);
 });
 

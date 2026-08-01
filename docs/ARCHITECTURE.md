@@ -79,6 +79,7 @@ Resend sends opt-in notification email. It does not store private-message bodies
 - `vite.config.ts` — Cloudflare binding, cron, and build configuration
 - `.openai/hosting.json` — Sites binding names and project identifier
 - `tests/rendered-html.test.mjs` — build-level feature and security assertions
+- `docs/NATURAL_LANGUAGE_SEARCH.md` — phased, evidence-aware search architecture and acceptance tests
 
 ## Safe continuation rules for coding agents
 

@@ -29,6 +29,7 @@ const updates = [
 ];
 
 const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
+const searchExamples = ["AAPL", "NVIDIA", "Semiconductors", "S&P 500"];
 type Demand = { ticker: string; vote_count: number; page_views: number; demand_score: number };
 
 export default function Home() {
@@ -64,9 +65,9 @@ export default function Home() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ticker }),
     });
-    if (response.status === 401) { window.location.href = loginPath("/"); return; }
+    if (response.status === 401) { window.location.assign(loginPath("/")); return; }
     if (response.ok) {
-      setViewerVotes((current) => { const next = new Set(current); voted ? next.delete(ticker) : next.add(ticker); return next; });
+      setViewerVotes((current) => { const next = new Set(current); if (voted) next.delete(ticker); else next.add(ticker); return next; });
       setDemand((current) => ({ ...current, [ticker]: { ticker, vote_count: Math.max(0, (current[ticker]?.vote_count ?? 0) + (voted ? -1 : 1)), page_views: current[ticker]?.page_views ?? 0, demand_score: Math.max(0, (current[ticker]?.demand_score ?? 0) + (voted ? -10 : 10)) } }));
     }
     setDemandBusy("");
@@ -87,7 +88,7 @@ export default function Home() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search a company, ticker, executive, or theme"
+              placeholder="Search ticker, company, sector, or index"
               aria-label="Search companies"
               autoComplete="off"
             />
@@ -104,7 +105,10 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="popular">Popular <Link href={dossierHref("ONDS")}>ONDS</Link><Link href={dossierHref("NVDA")}>NVDA</Link><Link href="/companies">AI infrastructure</Link><Link href={dossierHref("BB")}>QNX</Link></div>
+          <div className="search-guidance" aria-label="Supported search types and examples">
+            <span>Search by ticker, company, sector, or index</span>
+            <div><strong>Try</strong>{searchExamples.map((example) => <button type="button" onClick={() => setQuery(example)} key={example}>{example}</button>)}</div>
+          </div>
         </div>
       </section>
 
