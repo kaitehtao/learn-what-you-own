@@ -392,3 +392,25 @@ test("provides full primary-source dossiers for all twelve homepage companies", 
   assert.match(starterPage, /ResearchDemandButton/);
   assert.match(ondas, /ResearchDemandButton/);
 });
+
+test("publishes complete primary-source owner dossiers for AMC and RCL", async () => {
+  const [dossiers, featuredPage, generator] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("scripts/generate-normalized-dossier-publish.ts"),
+  ]);
+
+  for (const ticker of ["AMC", "RCL"]) {
+    assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
+    assert.match(dossiers, new RegExp(`ticker: "${ticker}"[\\s\\S]{0,120}completeness: 100`));
+  }
+  assert.match(dossiers, /AMC Entertainment 2025 Form 10-K/);
+  assert.match(dossiers, /AMC Second-Quarter 2026 Form 10-Q/);
+  assert.match(dossiers, /Royal Caribbean 2025 Form 10-K/);
+  assert.match(dossiers, /Royal Caribbean Second-Quarter 2026 Results/);
+  assert.match(featuredPage, /Primary-source editorial review/);
+  assert.match(featuredPage, /item\.href\.includes\("sec\.gov"\)/);
+  assert.match(generator, /financial_drivers_json/);
+  assert.match(generator, /INSERT INTO dossier_claims/);
+  assert.match(generator, /DELETE FROM dossier_sources WHERE ticker/);
+});

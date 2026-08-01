@@ -1,5 +1,7 @@
 export type FeaturedDossier = {
   ticker: string;
+  reviewed?: string;
+  completeness?: number;
   description: string;
   lede: string;
   sells: string;
@@ -251,5 +253,111 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     questions: ["What are normalized automotive margins without regulatory credits?", "How durable are energy-storage margins as competition scales?", "Which autonomy milestones are independently verifiable and economically material?"],
     competitors: "BYD, Volkswagen Group, General Motors, Ford, Hyundai Motor Group, Chinese EV manufacturers, autonomous-driving developers, battery-storage suppliers, utilities, and distributed-energy providers.",
     sources: [{ title: "Tesla 2025 Form 10-K", meta: "SEC filing · Filed January 28, 2026", href: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm", excerpt: "The filing describes Tesla’s automotive and energy businesses, physical-AI strategy, manufacturing, capital requirements, competition, supply chain, regulation, and risk factors." }, { title: "Tesla Investor Relations", meta: "Company primary materials", href: "https://ir.tesla.com/", excerpt: "Official quarterly disclosures, shareholder decks, webcasts, production and delivery releases, SEC filings, and annual reports published by Tesla." }],
+  },
+  AMC: {
+    ticker: "AMC",
+    reviewed: "August 1, 2026",
+    completeness: 100,
+    description: "Theatrical exhibition across the United States and Europe, with admissions, food and beverage, premium formats, loyalty, advertising, and other theatre revenue.",
+    lede: "AMC is a high-fixed-cost theatrical exhibition network whose owner economics depend on the film slate, attendance, per-patron spending, studio film-rental terms, theatre productivity, interest expense, and the number of shares over which any recovery is spread.",
+    sells: "Movie admissions; premium large-format, recliner, dine-in, and subscription experiences; food and beverage; ticketing; advertising; theatre rentals; gift products; and selected alternative programming across U.S. and European theatres.",
+    revenueModel: "Admissions revenue is shared with film distributors through film-exhibition costs. AMC retains food-and-beverage and other theatre revenue after related operating costs, while a large theatre, lease, labor, and interest-cost base creates substantial operating leverage in both directions.",
+    opportunity: "A steadier theatrical release slate, premium-format mix, loyalty participation, higher food-and-beverage conversion, disciplined theatre pruning, and alternative content can raise revenue per patron and improve the productivity of AMC’s existing footprint.",
+    mustGoRight: "Industry box office and AMC attendance must normalize, per-patron economics must remain resilient, theatre-level profit must cover rent and interest, and management must improve the balance sheet without transferring most of the recovery to new creditors or newly issued shares.",
+    editorNote: "AMC’s June 2026 quarter showed the operating leverage in the model: attendance rose 13.5%, total revenue rose 14.2% to $1.60 billion, and food and beverage per patron reached $8.08. The same filing also says historical cash burn is not sustainable long term and documents major equity issuance, so owners must analyze enterprise recovery and per-share recovery separately.",
+    bullTitle: "A scarce global cinema platform with recovery leverage",
+    bull: [
+      "A large U.S. and European footprint gives AMC broad access to improving film supply and event programming without rebuilding the network.",
+      "Premium formats, recliners, loyalty, subscription, and food-and-beverage initiatives can deepen engagement and lift revenue per visit.",
+      "High fixed costs can create meaningful incremental profit when attendance and theatre productivity rise above the break-even level.",
+    ],
+    bearTitle: "The capital structure can absorb the operating recovery",
+    bear: [
+      "Studio release timing and film popularity remain outside AMC’s control, while streaming and other leisure choices compete for time and spending.",
+      "Debt, leases, interest, maintenance, and working-capital needs leave little room for a weak slate or execution setback.",
+      "Repeated common-stock issuance and securities exchangeable into equity can improve liquidity while materially diluting each existing share’s claim on future value.",
+    ],
+    thesisBreaker: "If a normalized film slate and higher attendance do not produce sustained positive free cash flow before financing, or if balance-sheet repair requires continuing dilution faster than enterprise value improves, the common-equity recovery thesis breaks.",
+    financialDrivers: [
+      { label: "ATTENDANCE", value: "Slate conversion", detail: "Box office, patron counts, premium-format mix, market share, and theatre productivity" },
+      { label: "PER PATRON", value: "Visit economics", detail: "Average ticket price, film-rental rate, food and beverage per patron, and other theatre revenue" },
+      { label: "CAPITAL STRUCTURE", value: "Per-share outcome", detail: "Cash generation, interest, maturities, lease obligations, share issuance, and fully diluted share count" },
+    ],
+    risks: [
+      { title: "Film supply and attendance", level: "High", text: "Revenue depends on the quantity, timing, and commercial appeal of films supplied by distributors; production disruptions and changing release strategies can leave the fixed theatre base underutilized.", signal: "Domestic and international box office, AMC attendance, and admissions revenue versus industry results" },
+      { title: "Leverage and liquidity", level: "High", text: "Debt service, leases, capital needs, and a historically volatile cash profile can force refinancing or capital raising before the operating thesis matures.", signal: "Operating cash flow, free cash flow, cash balance, interest expense, maturities, and covenant headroom" },
+      { title: "Equity dilution", level: "High", text: "At-the-market sales, registered offerings, exchangeable securities, and equity-settled obligations can expand liquidity but reduce each existing share’s ownership percentage.", signal: "Basic and fully diluted shares, equity proceeds per share, and debt retired per share issued" },
+    ],
+    monitor: [
+      { title: "Film slate into attendance", text: "Compare industry box office with AMC patron growth and theatre productivity; a strong slate only matters if AMC converts it efficiently.", impact: "BULL CASE" },
+      { title: "Contribution per patron", text: "Track ticket price and film rent alongside food and beverage per patron, premium-format mix, and other theatre revenue.", impact: "NEUTRAL" },
+      { title: "Enterprise value versus share count", text: "Maintain a bridge from cash generation and debt reduction to the fully diluted common-share count after every financing transaction.", impact: "BEAR CASE" },
+    ],
+    questions: [
+      "What annual attendance and contribution per patron are required to cover cash interest, leases, and maintenance capital spending?",
+      "How much of an industry box-office recovery is AMC retaining after film rent and theatre operating costs?",
+      "Is each financing transaction increasing or decreasing value per fully diluted share?",
+      "Which theatres and premium formats earn attractive four-wall returns after required reinvestment?",
+    ],
+    competitors: "Cinemark, Regal and other cinema operators, independent theatres, premium home entertainment, streaming services, gaming, live events, and other out-of-home leisure spending.",
+    sources: [
+      { title: "AMC Entertainment 2025 Form 10-K", meta: "SEC filing · Filed February 23, 2026", href: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000016/amc-20251231x10k.htm", excerpt: "The annual filing describes AMC’s U.S. and International theatrical exhibition segments, admissions and food-and-beverage model, film exhibition costs, theatre concepts, debt, leases, competition, liquidity, and risk factors." },
+      { title: "AMC 2026 Financial Results", meta: "Company primary materials · Q2 2026 release, webcast, and filing links", href: "https://investor.amctheatres.com/financial-information/financial-results", excerpt: "AMC’s official results page links the June 2026 earnings release, webcast audio, Form 10-Q, and XBRL package, alongside prior quarterly and annual materials." },
+      { title: "AMC Second-Quarter 2026 Form 10-Q", meta: "SEC filing · Filed July 23, 2026", href: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000059/amc-20260630x10q.htm", excerpt: "The filing reports June-quarter attendance, admissions, food and beverage, other theatre revenue, cash, financing activity, segment results, liquidity language, debt, leases, and share issuance." },
+      { title: "AMC Investor Relations", meta: "Company primary materials", href: "https://investor.amctheatres.com/", excerpt: "Official earnings materials, SEC filings, presentations, events, governance information, and shareholder communications published by AMC." },
+    ],
+  },
+  RCL: {
+    ticker: "RCL",
+    reviewed: "August 1, 2026",
+    completeness: 100,
+    description: "A global cruise and vacation platform spanning Royal Caribbean International, Celebrity Cruises, Silversea, partner brands, ships, private destinations, loyalty, and onboard experiences.",
+    lede: "Royal Caribbean Group combines differentiated ships and brands with advance bookings, passenger tickets, onboard spending, private destinations, loyalty, and a multi-year newbuild pipeline; owner value depends on sustaining pricing and guest spend while earning attractive returns on a very capital-intensive fleet.",
+    sells: "Cruise vacations under Royal Caribbean International, Celebrity Cruises, and Silversea; onboard dining, beverage, casino, retail, internet, shore-excursion, spa, and other experiences; destination products; and vacation offerings through its TUI Cruises joint venture.",
+    revenueModel: "Guests pay passenger-ticket revenue before sailing and buy onboard and destination experiences before and during the cruise. Profit is driven by available passenger cruise days, load factor, net yield, onboard spend, fleet and itinerary mix, and unit costs including fuel, payroll, food, commissions, and ship operating expense.",
+    opportunity: "New Icon-class and other ships, differentiated brands, private destinations, digital pre-cruise merchandising, loyalty, and broader vacation products can increase capacity, price, repeat behavior, and the share of each guest’s vacation wallet.",
+    mustGoRight: "New capacity must enter at attractive yields, net yield must outrun controllable unit costs, onboard and destination spending must remain strong, safety and reliability must be preserved, and ship investment plus shareholder returns must fit within a durable balance sheet.",
+    editorNote: "Royal Caribbean’s July 2026 release reported $4.8 billion of quarterly revenue, a 110% load factor, 1.2% constant-currency net-yield growth, and $1.8 billion of adjusted EBITDA while raising full-year adjusted EPS guidance. Owners should now focus less on simple post-pandemic recovery and more on normalized yield, cost, return on invested capital, and whether new ships and destinations expand value faster than commitments and capital returns consume cash.",
+    bullTitle: "Differentiated vacation assets with pricing power",
+    bull: [
+      "Royal Caribbean, Celebrity, and Silversea address distinct customer segments while shared scale supports distribution, procurement, technology, and destination investment.",
+      "Large, differentiated ships and private destinations can create experiences that are difficult to replicate and support ticket price plus onboard spend.",
+      "Advance bookings, deposits, loyalty, and pre-cruise purchases provide demand visibility and opportunities to deepen guest engagement.",
+    ],
+    bearTitle: "Strong demand must carry a very large asset base",
+    bear: [
+      "Ships require long lead times, large progress payments, ongoing maintenance, and high utilization; supply cannot be adjusted quickly when demand changes.",
+      "Geopolitics, recession, fuel, weather, illness, incidents, port restrictions, or negative publicity can disrupt itineraries and booking behavior.",
+      "Newbuilds, destination projects, debt service, dividends, and repurchases compete for cash, making capital-allocation discipline central to per-share returns.",
+    ],
+    thesisBreaker: "If record pricing and high load factors fail to translate into durable free cash flow and high-teen returns on invested capital after newbuild, destination, maintenance, and financing needs, the differentiated-vacation-platform thesis requires reassessment.",
+    financialDrivers: [
+      { label: "NET YIELD", value: "Guest economics", detail: "Ticket pricing, load factor, onboard and destination spend, itinerary and brand mix, and cancellations" },
+      { label: "UNIT COST", value: "Operating leverage", detail: "Net cruise cost excluding fuel per APCD, fuel, crew, drydock, food, commissions, and productivity" },
+      { label: "INVESTED CAPITAL", value: "Fleet returns", detail: "New-ship and destination capex, delivery schedule, financing, free cash flow, leverage, and ROIC" },
+    ],
+    risks: [
+      { title: "Demand and itinerary disruption", level: "High", text: "Consumer confidence, air access, geopolitical events, weather, health events, and port availability can alter bookings, pricing, cancellations, and deployment.", signal: "Booked load factors and prices, close-in demand, cancellations, itinerary changes, and customer deposits" },
+      { title: "Fleet and capital commitments", level: "High", text: "Ships and destinations require multi-year commitments; delays, shipyard constraints, cost inflation, or weaker utilization can reduce lifetime returns while debt and progress payments remain due.", signal: "Orderbook, committed financing, capex, net debt, interest expense, free cash flow, and ROIC" },
+      { title: "Safety, environmental, and operating events", level: "High", text: "A ship or destination incident, cyber failure, illness, regulatory breach, or environmental event can interrupt operations and damage brand trust across the portfolio.", signal: "Material incidents, voyage disruptions, regulatory actions, insurance costs, and guest-satisfaction trends" },
+    ],
+    monitor: [
+      { title: "Price, load, and onboard spend", text: "Separate capacity growth from like-for-like pricing and measure whether onboard and destination engagement expands total yield.", impact: "BULL CASE" },
+      { title: "Cost per APCD", text: "Compare constant-currency net cruise cost excluding fuel with net-yield growth, adjusting for drydock and timing effects.", impact: "NEUTRAL" },
+      { title: "Newbuild and destination returns", text: "Track each major ship and destination from committed capital through utilization, yield premium, cash generation, and return on invested capital.", impact: "BEAR CASE" },
+    ],
+    questions: [
+      "How much current net-yield growth comes from like-for-like price and spend rather than new capacity and mix?",
+      "What cash-on-cash returns do the newest ships and private destinations earn after all associated capital and financing costs?",
+      "Can net cruise cost excluding fuel remain below yield growth through the next delivery and drydock cycle?",
+      "How should owners balance newbuild investment, debt reduction, dividends, and repurchases at the current point in the cycle?",
+    ],
+    competitors: "Carnival Corporation, Norwegian Cruise Line Holdings, MSC Cruises, premium and luxury cruise operators, resorts, hotels, tour operators, theme parks, and other global vacation alternatives.",
+    sources: [
+      { title: "Royal Caribbean 2025 Form 10-K", meta: "SEC filing · Filed February 11, 2026", href: "https://www.sec.gov/Archives/edgar/data/884887/000088488726000007/rcl-20251231.htm", excerpt: "The annual filing describes Royal Caribbean, Celebrity, Silversea, TUI Cruises, the combined fleet, passenger-ticket and onboard revenue, capacity and yield metrics, ship commitments, debt, competition, regulation, and operating risks." },
+      { title: "Royal Caribbean Second-Quarter 2026 Results", meta: "Company earnings release · Published July 28, 2026", href: "https://www.rclinvestor.com/press-releases/release/?id=1845", excerpt: "The official release reports second-quarter revenue, guests, load factor, net yields, unit costs, adjusted EBITDA, updated guidance, booking conditions, fuel hedging, and capital returns." },
+      { title: "Royal Caribbean First-Quarter 2026 Form 10-Q", meta: "SEC filing · Filed April 30, 2026", href: "https://www.sec.gov/Archives/edgar/data/884887/000088488726000026/rcl-20260331.htm", excerpt: "The filing details passenger-ticket and onboard revenue, cruise operating costs, liquidity, fleet obligations, joint-venture income, customer deposits, derivatives, debt, and risk disclosures." },
+      { title: "Royal Caribbean Investor Relations", meta: "Company primary materials", href: "https://www.rclinvestor.com/", excerpt: "Official earnings releases, SEC filings, webcasts, presentations, governance materials, dividend history, and shareholder information published by Royal Caribbean Group." },
+    ],
   },
 };

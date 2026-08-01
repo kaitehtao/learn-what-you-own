@@ -13,9 +13,12 @@ import { EarningsCallsPanel } from "./EarningsCallsPanel";
 import { CommunityInsights } from "./CommunityInsights";
 import { ResearchFoundationPanel } from "./ResearchFoundationPanel";
 
-function displayName(name: string) {
-  return name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
+function displayName(name: string, ticker: string) {
+  const formatted = name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
     .replace("Nvidia", "NVIDIA").replace("Amazon.Com", "Amazon.com");
+  const firstWord = formatted.split(/\s/, 1)[0];
+  const normalized = (value: string) => value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return normalized(firstWord) === normalized(ticker) ? `${ticker}${formatted.slice(firstWord.length)}` : formatted;
 }
 
 export function FeaturedCompanyDossier({ company, dossier }: { company: ResearchCompany; dossier: FeaturedDossier }) {
@@ -24,10 +27,10 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
 
   return <main className="dossier-page">
     <Header />
-    <div className="container breadcrumbs"><Link href="/">Home</Link><span>/</span><Link href="/companies">Companies</Link><span>/</span><strong>{displayName(company.name)}</strong></div>
+    <div className="container breadcrumbs"><Link href="/">Home</Link><span>/</span><Link href="/companies">Companies</Link><span>/</span><strong>{displayName(company.name, company.ticker)}</strong></div>
     <section className="company-hero">
       <div className="container dossier-head">
-        <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name)}</h1><p>{dossier.description}</p></div></div>
+        <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
         <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
       </div>
       <div className="container metrics-bar featured-metrics">
@@ -35,7 +38,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>SECTOR</small><strong>{company.sector}</strong></div>
         <div><small>PRIMARY SOURCES</small><strong>{dossier.sources.length}</strong><span>Linked below</span></div>
         <div><small>DOSSIER STATUS</small><strong className="positive">Flagship coverage</strong><span>Structured owner research</span></div>
-        <div><small>LAST REVIEWED</small><strong>July 2026</strong><span>Prototype editorial review</span></div>
+        <div><small>LAST REVIEWED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>
     </section>
     <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Drivers</a><a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
@@ -43,7 +46,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
     </div>
     <div className="container research-foundation-wide">
-      <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name)} />
+      <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
     </div>
     <div className="container earnings-calls-wide">
       <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />
@@ -51,7 +54,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <div className="container dossier-layout">
       <article>
         <section className="dossier-section" id="summary">
-          <div className="section-title"><div><span className="section-number">01</span><h2>Owner’s summary</h2></div><span className="reviewed">Evidence-linked prototype</span></div>
+          <div className="section-title"><div><span className="section-number">01</span><h2>Owner’s summary</h2></div><span className="reviewed">Evidence-linked owner research</span></div>
           <p className="lede">{dossier.lede}</p>
           <div className="summary-grid">
             <div><small>WHAT IT SELLS</small><p>{dossier.sells}</p><button onClick={() => setSourceIndex(0)}>Primary source [1]</button></div>
@@ -85,11 +88,11 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <section className="dossier-section">
           <div className="section-title"><div><span className="section-number">06</span><h2>Research &amp; filings</h2></div><span className="reviewed">Official primary sources</span></div>
           <SecFilingsPanel ticker={company.ticker}/>
-          <div className="document-list">{dossier.sources.map((item, index) => <a href={item.href} target="_blank" rel="noreferrer" key={item.title}><span className="document-type">{index === 0 ? "SEC" : "IR"}</span><span><strong>{item.title}</strong><small>{item.meta}</small></span><em>Open source ↗</em></a>)}</div>
+          <div className="document-list">{dossier.sources.map((item) => <a href={item.href} target="_blank" rel="noreferrer" key={item.title}><span className="document-type">{item.href.includes("sec.gov") || item.meta.toLowerCase().includes("sec filing") ? "SEC" : "IR"}</span><span><strong>{item.title}</strong><small>{item.meta}</small></span><em>Open source ↗</em></a>)}</div>
         </section>
       </article>
       <aside className="dossier-aside">
-        <div className="aside-card"><small>DOSSIER COMPLETENESS</small><div className="completion"><strong>76%</strong><span><i style={{width:"76%"}}/></span></div><ul><li className="done">Business model</li><li className="done">Investment debate</li><li className="done">Key risks</li><li className="done">Primary sources</li><li>Management scorecard</li></ul></div>
+        <div className="aside-card"><small>DOSSIER COMPLETENESS</small><div className="completion"><strong>{dossier.completeness ?? 76}%</strong><span><i style={{width:`${dossier.completeness ?? 76}%`}}/></span></div><ul><li className="done">Business model</li><li className="done">Investment debate</li><li className="done">Key risks</li><li className="done">Primary sources</li><li className={(dossier.completeness ?? 76) >= 90 ? "done" : undefined}>Management &amp; capital allocation</li></ul></div>
         <div className="aside-card"><small>KEY QUESTIONS</small><ol>{dossier.questions.map(question => <li key={question}>{question}</li>)}</ol></div>
         <div className="aside-card"><small>COMPETITIVE SET</small><p>{dossier.competitors}</p></div>
         <div className="aside-card"><small>DISCLOSURE</small><p>Educational prototype research, not individualized investment advice. Verify all figures in primary filings.</p></div>
