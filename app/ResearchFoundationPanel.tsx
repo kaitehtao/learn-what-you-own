@@ -15,6 +15,16 @@ type FilingFact = {
   form: string;
   filedAt: string;
   sourceUrl: string;
+  updatedAt: string;
+};
+
+type FactsImport = {
+  status: "success" | "no_compatible_facts" | "error";
+  sourceUrl: string;
+  importedCount: number;
+  metricCount: number;
+  lastAttemptedAt: string;
+  lastSuccessAt: string | null;
 };
 
 type ResearchClaim = {
@@ -51,6 +61,7 @@ type ResearchResponse = {
   facts: FilingFact[];
   claims: ResearchClaim[];
   relationships: CompanyRelationship[];
+  factsImport: FactsImport | null;
   error?: string;
 };
 
@@ -79,6 +90,22 @@ function relationshipHref(ticker: string, type = "Supplier / customer relationsh
   return `/contribute?ticker=${encodeURIComponent(ticker)}&type=${encodeURIComponent(type)}`;
 }
 
+function shortDate(value: string | null | undefined) {
+  if (!value) return "not yet refreshed";
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? value.slice(0, 10) : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function comparableFacts(facts: FilingFact[], latest: FilingFact) {
+  const comparable = facts.filter((fact) => fact.fiscalPeriod === latest.fiscalPeriod);
+  return comparable.length > 1 ? comparable.slice(0, 5) : facts.slice(0, 5);
+}
+
+function percentChange(current: number, prior: number) {
+  if (prior === 0) return null;
+  return ((current - prior) / Math.abs(prior)) * 100;
+}
+
 function RelationshipNode({ relationship }: { relationship: CompanyRelationship }) {
   const content = <><strong>{relationship.relatedTicker ?? relationship.relatedName}</strong><span>{relationship.relatedTicker ? relationship.relatedName : relationship.productService}</span></>;
   return relationship.relatedTicker
@@ -87,7 +114,7 @@ function RelationshipNode({ relationship }: { relationship: CompanyRelationship 
 }
 
 export function ResearchFoundationPanel({ ticker, companyName }: { ticker: string; companyName: string }) {
-  const [data, setData] = useState<ResearchResponse>({ facts: [], claims: [], relationships: [] });
+  const [data, setData] = useState<ResearchResponse>({ facts: [], claims: [], relationships: [], factsImport: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -109,22 +136,33 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
     for (const fact of data.facts) grouped.set(fact.metricKey, [...(grouped.get(fact.metricKey) ?? []), fact]);
     return grouped;
   }, [data.facts]);
-  const latestFacts = priorityMetrics.flatMap((metric) => factsByMetric.get(metric)?.[0] ?? []).slice(0, 8);
+  const displayMetrics = [...priorityMetrics, ...[...factsByMetric.keys()].filter((metric) => !priorityMetrics.includes(metric))];
+  const latestFacts = displayMetrics.flatMap((metric) => factsByMetric.get(metric)?.[0] ?? []);
+  const latestPeriodEnd = data.facts.reduce((latest, fact) => fact.periodEnd > latest ? fact.periodEnd : latest, "");
   const suppliers = data.relationships.filter((relationship) => relationship.direction === "supplier");
   const customers = data.relationships.filter((relationship) => relationship.direction === "customer");
 
   return <section className="research-foundation" id="research-foundation">
     <div className="research-foundation-heading">
       <div><span className="kicker">EVIDENCE + NETWORK INTELLIGENCE</span><h2>The facts beneath the ownership story</h2><p>Numerical facts come from public filings. Editorial analysis and member insights remain visibly labeled so evidence, interpretation, and opinion never become interchangeable.</p></div>
-      <Link href={relationshipHref(ticker)}>Add relationship evidence →</Link>
+      <div className="research-foundation-actions">{ticker==="AAPL"&&<Link href="/company/aapl/supply-chain">Open Apple supply-chain document →</Link>}<Link href={relationshipHref(ticker)}>Add relationship evidence →</Link></div>
     </div>
 
     {loading ? <div className="research-foundation-state">Loading filing-grounded research…</div> : error ? <div className="research-foundation-state error">{error}</div> : <>
       <div className="evidence-layer-legend"><span className="fact-layer">FILED FACT</span><span className="statement-layer">COMPANY STATEMENT</span><span className="analysis-layer">EDITORIAL ANALYSIS</span><span className="community-layer">MEMBER INSIGHT</span></div>
 
       <div className="filing-facts-block">
-        <div className="research-subheading"><div><small>PUBLIC FILING FACTS</small><h3>Financial evidence</h3></div><span>{data.facts.length ? `${factsByMetric.size} normalized metrics` : "Awaiting SEC import"}</span></div>
-        {latestFacts.length ? <div className="filing-fact-grid">{latestFacts.map((fact) => <div className="filing-fact-card" key={`${fact.metricKey}-${fact.periodEnd}`}><a href={fact.sourceUrl} target="_blank" rel="noreferrer"><small>{fact.label}</small><strong>{compactNumber(fact.value, fact.unit)}</strong><span>{fact.fiscalPeriod ?? fact.form} · period ended {fact.periodEnd}</span><em>{fact.form} filed {fact.filedAt} ↗</em></a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={`${fact.label}: ${compactNumber(fact.value, fact.unit)}`} sourceTitle={`${fact.form} filed ${fact.filedAt}`} sourceUrl={fact.sourceUrl} sourceExcerpt={`${fact.label} was ${compactNumber(fact.value, fact.unit)} for the period ended ${fact.periodEnd}.`} /></div>)}</div> : <div className="research-foundation-state"><strong>No normalized filing facts published yet.</strong><p>An editor can import this company’s SEC Company Facts without turning unverified estimates into dossier data.</p></div>}
+        <div className="research-subheading"><div><small>PUBLIC FILING FACTS</small><h3>Filed financial history</h3></div><span>{data.facts.length ? `${factsByMetric.size} metrics · through ${latestPeriodEnd}` : data.factsImport?.status === "no_compatible_facts" ? "SEC data reviewed" : "Financial import queued"}</span></div>
+        {latestFacts.length ? <>
+          <p className="filing-facts-explainer">Values are normalized from SEC XBRL and link to the exact 10-K or 10-Q accession. Comparable-period changes use the same fiscal-period label, avoiding a quarterly-versus-annual comparison.</p>
+          <div className="filing-fact-grid">{latestFacts.map((fact) => {
+            const history = comparableFacts(factsByMetric.get(fact.metricKey) ?? [], fact);
+            const prior = history[1];
+            const change = prior ? percentChange(fact.value, prior.value) : null;
+            return <div className="filing-fact-card" key={`${fact.metricKey}-${fact.periodEnd}`}><a href={fact.sourceUrl} target="_blank" rel="noreferrer"><small>{fact.label}</small><strong>{compactNumber(fact.value, fact.unit)}</strong>{change !== null && <b className={change >= 0 ? "fact-change positive" : "fact-change negative"}>{change >= 0 ? "+" : ""}{change.toFixed(1)}% vs prior {fact.fiscalPeriod ?? "period"}</b>}<span>{fact.fiscalPeriod ?? fact.form} · period ended {fact.periodEnd}</span><div className="filing-history" aria-label={`${fact.label} comparable filing history`}>{[...history].reverse().map((point) => <i key={`${point.periodEnd}-${point.fiscalPeriod}`}><span>{point.periodEnd.slice(0, 4)}</span><em>{compactNumber(point.value, point.unit)}</em></i>)}</div><em>{fact.form} filed {fact.filedAt} · open SEC filing ↗</em></a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={`${fact.label}: ${compactNumber(fact.value, fact.unit)}`} sourceTitle={`${fact.form} filed ${fact.filedAt}`} sourceUrl={fact.sourceUrl} sourceExcerpt={`${fact.label} was ${compactNumber(fact.value, fact.unit)} for the period ended ${fact.periodEnd}.`} /></div>;
+          })}</div>
+          <div className="filing-facts-provenance"><span>Source: SEC Company Facts and direct EDGAR accessions</span>{data.factsImport?.sourceUrl && <a href={data.factsImport.sourceUrl} target="_blank" rel="noreferrer">Open machine-readable source ↗</a>}<span>Refreshed {shortDate(data.factsImport?.lastSuccessAt ?? data.facts[0]?.updatedAt)}</span></div>
+        </> : data.factsImport?.status === "no_compatible_facts" ? <div className="research-foundation-state compact"><strong>No compatible standardized facts were reported.</strong><p>The SEC Company Facts record was checked, but this issuer did not expose the supported US-GAAP or IFRS concepts. No estimates were substituted.</p><a href={data.factsImport.sourceUrl} target="_blank" rel="noreferrer">Inspect the SEC Company Facts record ↗</a></div> : <div className="research-foundation-state compact"><strong>Filed financial history is being normalized.</strong><p>The dossier can remain readable while the scheduled importer retries the SEC record. No placeholder or analyst estimate is shown as a filed fact.</p></div>}
       </div>
 
       <div className="relationship-block">

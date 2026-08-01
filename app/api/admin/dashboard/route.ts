@@ -1,0 +1,168 @@
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { apiError, getSupabaseAdminClient, requireAdmin } from "../../../supabase-server";
+
+export const dynamic = "force-dynamic";
+
+type ProfileRow = {
+  user_id: string;
+  username: string;
+  display_name: string;
+  role: "member" | "contributor" | "editor" | "admin";
+  onboarding_complete: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const USERNAME = /^[A-Za-z0-9_]{3,24}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ROLES = new Set(["member", "contributor", "editor", "admin"]);
+
+async function allAuthUsers(admin: SupabaseClient) {
+  const users: User[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw error;
+    users.push(...data.users);
+    if (data.users.length < 200) break;
+  }
+  return users;
+}
+
+function dateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function signupSeries(profiles: ProfileRow[]) {
+  const counts = new Map<string, number>();
+  for (const profile of profiles) counts.set(dateKey(profile.created_at), (counts.get(dateKey(profile.created_at)) ?? 0) + 1);
+  return Array.from({ length: 14 }, (_, index) => {
+    const day = new Date();
+    day.setUTCHours(0, 0, 0, 0);
+    day.setUTCDate(day.getUTCDate() - (13 - index));
+    const date = day.toISOString().slice(0, 10);
+    return { date, signups: counts.get(date) ?? 0 };
+  });
+}
+
+async function adminCount(admin: SupabaseClient) {
+  const { count, error } = await admin.from("profiles").select("user_id", { count: "exact", head: true }).eq("role", "admin");
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function targetProfile(admin: SupabaseClient, userId: string) {
+  const { data, error } = await admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,created_at,updated_at").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data as ProfileRow | null;
+}
+
+export async function GET(request: Request) {
+  try {
+    await requireAdmin(request);
+    const admin = getSupabaseAdminClient();
+    const [{ data: profiles, error: profileError }, authUsers, { data: visitorMetrics, error: metricsError }, { data: audit, error: auditError }] = await Promise.all([
+      admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,created_at,updated_at").order("created_at", { ascending: false }),
+      allAuthUsers(admin),
+      admin.rpc("admin_dashboard_visitor_metrics"),
+      admin.from("admin_account_audit").select("id,actor_id,target_user_id,action,detail,created_at").order("created_at", { ascending: false }).limit(25),
+    ]);
+    if (profileError) throw profileError;
+    if (metricsError) throw metricsError;
+    if (auditError) throw auditError;
+    const profileRows = (profiles ?? []) as ProfileRow[];
+    const authById = new Map(authUsers.map((user) => [user.id, user]));
+    const now = Date.now();
+    const members = profileRows.map((profile) => {
+      const auth = authById.get(profile.user_id);
+      return {
+        id: profile.user_id,
+        username: profile.username,
+        displayName: profile.display_name,
+        role: profile.role,
+        onboardingComplete: profile.onboarding_complete,
+        email: auth?.email ?? "",
+        verified: Boolean(auth?.email_confirmed_at),
+        createdAt: profile.created_at,
+        lastSignInAt: auth?.last_sign_in_at ?? null,
+      };
+    });
+    const stats = {
+      totalAccounts: members.length,
+      verifiedAccounts: members.filter((member) => member.verified).length,
+      accounts7d: profileRows.filter((profile) => now - new Date(profile.created_at).getTime() <= 7 * 86400000).length,
+      accounts30d: profileRows.filter((profile) => now - new Date(profile.created_at).getTime() <= 30 * 86400000).length,
+      administrators: profileRows.filter((profile) => profile.role === "admin").length,
+    };
+    return Response.json({ stats, visitors: visitorMetrics, signupSeries: signupSeries(profileRows), members, audit: audit ?? [] });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { profile: actor } = await requireAdmin(request);
+    const payload = await request.json() as { email?: string; username?: string; displayName?: string };
+    const email = String(payload.email ?? "").trim().toLowerCase();
+    const username = String(payload.username ?? "").trim();
+    const displayName = String(payload.displayName ?? "").trim().slice(0, 80);
+    if (!EMAIL.test(email)) return Response.json({ error: "Enter a valid email address." }, { status: 400 });
+    if (username && !USERNAME.test(username)) return Response.json({ error: "Username must be 3–24 letters, numbers, or underscores." }, { status: 400 });
+    const admin = getSupabaseAdminClient();
+    if (username) {
+      const { data: existing } = await admin.from("profiles").select("user_id").ilike("username", username).maybeSingle();
+      if (existing) return Response.json({ error: "That username is already in use." }, { status: 409 });
+    }
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: "https://learnwhatyouown.com/auth/callback?returnTo=%2Faccount",
+      data: username ? { username, name: displayName || username } : { name: displayName },
+    });
+    if (error) throw error;
+    await admin.from("admin_account_audit").insert({ actor_id: actor.user_id, target_user_id: data.user.id, action: "invite", detail: { email, username: username || null } });
+    return Response.json({ invited: true, userId: data.user.id });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { profile: actor } = await requireAdmin(request);
+    const payload = await request.json() as { userId?: string; role?: string };
+    const userId = String(payload.userId ?? "");
+    const role = String(payload.role ?? "");
+    if (!userId || !ROLES.has(role)) return Response.json({ error: "A valid user and role are required." }, { status: 400 });
+    if (userId === actor.user_id) return Response.json({ error: "Use a separate administrator to change your own role." }, { status: 409 });
+    const admin = getSupabaseAdminClient();
+    const target = await targetProfile(admin, userId);
+    if (!target) return Response.json({ error: "Account not found." }, { status: 404 });
+    if (target.role === "admin" && role !== "admin" && await adminCount(admin) <= 1) return Response.json({ error: "The final administrator cannot be demoted." }, { status: 409 });
+    const { error } = await admin.from("profiles").update({ role }).eq("user_id", userId);
+    if (error) throw error;
+    await admin.from("admin_account_audit").insert({ actor_id: actor.user_id, target_user_id: userId, action: "role_update", detail: { username: target.username, from: target.role, to: role } });
+    return Response.json({ updated: true });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { profile: actor } = await requireAdmin(request);
+    const payload = await request.json() as { userId?: string; confirmation?: string };
+    const userId = String(payload.userId ?? "");
+    if (!userId) return Response.json({ error: "Account is required." }, { status: 400 });
+    if (userId === actor.user_id) return Response.json({ error: "You cannot delete the account you are currently using." }, { status: 409 });
+    const admin = getSupabaseAdminClient();
+    const target = await targetProfile(admin, userId);
+    if (!target) return Response.json({ error: "Account not found." }, { status: 404 });
+    if (payload.confirmation !== `DELETE @${target.username}`) return Response.json({ error: `Type DELETE @${target.username} to confirm.` }, { status: 400 });
+    if (target.role === "admin" && await adminCount(admin) <= 1) return Response.json({ error: "The final administrator cannot be deleted." }, { status: 409 });
+    await admin.from("admin_account_audit").insert({ actor_id: actor.user_id, target_user_id: userId, action: "delete", detail: { username: target.username, role: target.role } });
+    const { error } = await admin.auth.admin.deleteUser(userId, false);
+    if (error) throw error;
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    return apiError(error);
+  }
+}

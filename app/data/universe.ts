@@ -14,6 +14,10 @@ export type ResearchCompany = {
   marketCap: number | null;
   memberships: IndexMembership[];
   indexWeights: Partial<Record<IndexMembership, number>>;
+  cik?: string | null;
+  listingScope?: "listed" | "otc" | "other";
+  securityType?: string;
+  securityDescription?: string;
 };
 
 const companies = new Map<string, ResearchCompany>();
@@ -47,6 +51,11 @@ for (const company of sp500Companies) addCompany(company, ["S&P 500"]);
 for (const company of russell1000Companies) addCompany(company, ["Russell 3000"]);
 for (const company of russell2000Companies) addCompany(company, ["Russell 2000", "Russell 3000"]);
 for (const company of nasdaq100Companies) addCompany(company, ["Nasdaq-100 (QQQ)"]);
+const amc = companies.get("AMC");
+if (amc) {
+  amc.name = "AMC ENTERTAINMENT HOLDINGS, INC.";
+  amc.sector = "Communication Services";
+}
 addCompany({
   ticker: "BB",
   name: "BLACKBERRY LIMITED",

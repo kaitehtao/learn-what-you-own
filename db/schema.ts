@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const companies = sqliteTable("companies", {
   ticker: text("ticker").primaryKey(),
@@ -9,9 +9,20 @@ export const companies = sqliteTable("companies", {
   marketCap: real("market_cap"),
   membershipsJson: text("memberships_json").notNull().default("[]"),
   indexWeightsJson: text("index_weights_json").notNull().default("{}"),
+  cik: text("cik"),
+  listingScope: text("listing_scope", { enum: ["listed", "otc", "other"] }).notNull().default("other"),
+  securityType: text("security_type").notNull().default("Listed issuer security"),
+  securityDescription: text("security_description").notNull().default(""),
+  universeSourceUrl: text("universe_source_url").notNull().default(""),
+  universeSourceAsOf: text("universe_source_as_of").notNull().default(""),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("companies_listing_scope_ticker_idx").on(table.listingScope, table.ticker),
+  index("companies_exchange_ticker_idx").on(table.exchange, table.ticker),
+  index("companies_name_idx").on(table.name),
+]);
 
 export const companyDossiers = sqliteTable("company_dossiers", {
   ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
@@ -69,6 +80,21 @@ export const filingFacts = sqliteTable("filing_facts", {
   ),
 ]);
 
+// Import state distinguishes a queued refresh from an SEC issuer whose XBRL
+// filing does not expose any of the normalized metrics we currently support.
+export const filingFactImports = sqliteTable("filing_fact_imports", {
+  ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
+  status: text("status", { enum: ["success", "no_compatible_facts", "error"] }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+  importedCount: integer("imported_count").notNull().default(0),
+  metricCount: integer("metric_count").notNull().default(0),
+  lastAttemptedAt: text("last_attempted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastSuccessAt: text("last_success_at"),
+  errorMessage: text("error_message"),
+}, (table) => [
+  index("filing_fact_import_status_attempted_idx").on(table.status, table.lastAttemptedAt),
+]);
+
 // A claim is the smallest publishable unit in a dossier. The classification
 // prevents an editorial interpretation from being presented as a filed fact.
 export const dossierClaims = sqliteTable("dossier_claims", {
@@ -122,6 +148,32 @@ export const companyRelationships = sqliteTable("company_relationships", {
     table.sourceUrl,
   ),
   uniqueIndex("company_relationship_contribution_idx").on(table.supabaseContributionId),
+]);
+
+// Upcoming IPO and private-company dossiers enter through Supabase moderation.
+// Only approved profiles are copied into D1 and become publicly discoverable.
+export const emergingCompanyDossiers = sqliteTable("emerging_company_dossiers", {
+  slug: text("slug").primaryKey(),
+  companyName: text("company_name").notNull(),
+  companyType: text("company_type", { enum: ["upcoming_ipo", "private"] }).notNull(),
+  proposedTicker: text("proposed_ticker"),
+  proposedExchange: text("proposed_exchange"),
+  expectedIpoDate: text("expected_ipo_date"),
+  websiteUrl: text("website_url").notNull(),
+  summary: text("summary").notNull(),
+  whyItMatters: text("why_it_matters").notNull(),
+  primarySourceUrl: text("primary_source_url").notNull(),
+  roadshowTitle: text("roadshow_title"),
+  roadshowStoragePath: text("roadshow_storage_path"),
+  roadshowSourceUrl: text("roadshow_source_url"),
+  contributorUsername: text("contributor_username"),
+  supabaseContributionId: text("supabase_contribution_id").notNull(),
+  verifiedBy: text("verified_by").notNull(),
+  verifiedAt: text("verified_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("emerging_company_contribution_idx").on(table.supabaseContributionId),
 ]);
 
 export const profiles = sqliteTable("profiles", {

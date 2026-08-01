@@ -8,6 +8,44 @@ async function source(path) {
   return readFile(new URL(path, root), "utf8");
 }
 
+test("describes homepage search honestly and offers supported examples", async () => {
+  const [home, search] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/data/companySearch.ts"),
+  ]);
+
+  assert.match(home, /placeholder="Search ticker, company, sector, or index"/);
+  assert.match(home, /Search by ticker, company, sector, or index/);
+  assert.match(home, /\["AMC", "NVIDIA", "Semiconductors", "S&P 500"\]/);
+  assert.doesNotMatch(home, />Popular </);
+  assert.doesNotMatch(home, /executive, or theme/);
+  assert.match(search, /company\.ticker/);
+  assert.match(search, /company\.name/);
+  assert.match(search, /company\.sector/);
+  assert.match(search, /company\.memberships/);
+});
+
+test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
+  const [home, statsRoute, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/api/site-stats/route.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(home, /fetch\("\/api\/site-stats"\)/);
+  assert.match(home, /researchableSymbols/);
+  assert.match(home, /uniquePrimarySources/);
+  assert.match(home, /sourceCountsByTicker\[company\.ticker\]/);
+  assert.match(home, /\/api\/universe\?market=\$\{market\}/);
+  assert.doesNotMatch(home, /8,903/);
+  assert.doesNotMatch(home, /researchUniverse\.length\.toLocaleString/);
+  assert.match(statsRoute, /companies WHERE is_active=1/);
+  assert.match(statsRoute, /sec-accession:/);
+  assert.match(statsRoute, /COUNT\(DISTINCT source_key\)/);
+  assert.match(statsRoute, /cd\.status = 'published'/);
+  assert.match(styles, /\.proof-definition\{/);
+});
+
 test("keeps filed facts, editorial claims, and company relationships as separate public records", async () => {
   const [schema, migration] = await Promise.all([
     source("db/schema.ts"),
@@ -60,9 +98,10 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
 });
 
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
-  const [claims, importRoute] = await Promise.all([
+  const [claims, importRoute, factRepository] = await Promise.all([
     source("app/data/curatedDossierClaims.ts"),
     source("app/api/admin/research/import/route.ts"),
+    source("app/data/secFactsRepository.ts"),
   ]);
 
   assert.match(claims, /firstAlphabeticalABatch = \["A", "AA", "AAL", "AAMI", "AAOI", "AAON", "AAP", "AAPL", "AAT", "ABAT"\]/);
@@ -77,7 +116,7 @@ test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async 
   assert.equal((claims.match(/sourceExcerpt:/g) ?? []).length, 51);
 
   assert.match(importRoute, /sourceHostname !== "sec\.gov"/);
-  assert.match(importRoute, /const D1_FACT_BATCH_SIZE = 5/);
+  assert.match(factRepository, /const D1_FACT_BATCH_SIZE = 5/);
   assert.match(importRoute, /db\.insert\(companyDossiers\)/);
   assert.match(importRoute, /db\.insert\(dossierSources\)/);
   assert.match(importRoute, /db\.insert\(dossierClaims\)/);
@@ -205,4 +244,279 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(viteConfig, /0 15,16 \* \* \*/);
   assert.match(header, /NotificationBell/);
   assert.match(header, /href="\/notifications"/);
+});
+
+test("provides an admin-only audience and account control center", async () => {
+  const [migration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
+    source("supabase/migrations/20260801040000_admin_dashboard_analytics.sql"),
+    source("app/api/admin/dashboard/route.ts"),
+    source("app/admin/AdminDashboard.tsx"),
+    source("app/VisitorTracker.tsx"),
+    source("app/layout.tsx"),
+    source("app/admin/page.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.site_visits/);
+  assert.match(migration, /create table if not exists public\.admin_account_audit/);
+  assert.match(migration, /revoke all on public\.site_visits from anon, authenticated/);
+  assert.match(migration, /admin_dashboard_visitor_metrics/);
+  assert.doesNotMatch(migration, /ip_address|user_agent/);
+  assert.match(route, /requireAdmin/);
+  assert.match(route, /inviteUserByEmail/);
+  assert.match(route, /deleteUser\(userId, false\)/);
+  assert.match(route, /You cannot delete the account you are currently using/);
+  assert.match(route, /The final administrator cannot be deleted/);
+  assert.match(route, /admin_account_audit/);
+  assert.match(dashboard, /Audience and accounts/);
+  assert.match(dashboard, /Invite member/);
+  assert.match(dashboard, /DELETE @/);
+  assert.match(dashboard, /Visitor counts use a random first-party browser identifier/);
+  assert.match(tracker, /navigator\.doNotTrack/);
+  assert.match(tracker, /crypto\.randomUUID/);
+  assert.match(layout, /<VisitorTracker/);
+  assert.match(adminPage, /<AdminDashboard/);
+});
+
+test("moderates IPO and private-company dossiers before publishing them to D1", async () => {
+  const [schema, d1Migration, supabaseMigration, contributionRoute, moderationRoute, contributionClient, directory] = await Promise.all([
+    source("db/schema.ts"),
+    source("drizzle/0005_emerging-companies-and-aapl-supply-chain.sql"),
+    source("supabase/migrations/20260801050000_company_dossier_proposals.sql"),
+    source("app/api/contributions/route.ts"),
+    source("app/api/admin/contributions/route.ts"),
+    source("app/contribute/ContributionClient.tsx"),
+    source("app/emerging-companies/page.tsx"),
+  ]);
+
+  assert.match(schema, /export const emergingCompanyDossiers/);
+  assert.match(d1Migration, /CREATE TABLE IF NOT EXISTS `emerging_company_dossiers`/);
+  assert.match(supabaseMigration, /roadshow-materials/);
+  assert.match(supabaseMigration, /file_size_limit/);
+  assert.match(supabaseMigration, /application\/pdf/);
+  assert.match(contributionRoute, /Upcoming IPO dossier/);
+  assert.match(contributionRoute, /Private company dossier/);
+  assert.match(moderationRoute, /publishCompanyProposal/);
+  assert.match(moderationRoute, /payload\.status === "approved"/);
+  assert.match(contributionClient, /UPLOAD PDF · MAX 20 MB/);
+  assert.match(directory, /Upcoming IPOs/);
+  assert.match(directory, /Private companies/);
+});
+
+test("shows an evidence-classified Apple supply-chain research document", async () => {
+  const [document, panel, migration] = await Promise.all([
+    source("app/company/aapl/supply-chain/page.tsx"),
+    source("app/ResearchFoundationPanel.tsx"),
+    source("drizzle/0005_emerging-companies-and-aapl-supply-chain.sql"),
+  ]);
+
+  assert.match(document, /Apple’s 2025 Form 10-K/);
+  assert.match(document, /generally does <strong>not<\/strong> name the individual supplier/);
+  assert.match(document, /Apple Supplier List/);
+  assert.match(document, /What one graph relationship stores/);
+  assert.match(document, /Still unresolved/);
+  assert.match(panel, /Open Apple supply-chain document/);
+  assert.match(migration, /Taiwan Semiconductor Manufacturing Company Limited/);
+  assert.match(migration, /exact role in the cited list/);
+});
+
+test("opens homepage sample cards and changelog rows as company dossiers", async () => {
+  const home = await source("app/page.tsx");
+
+  assert.match(home, /const dossierHref = \(ticker: string\) => `\/company\/\$\{companySlug\(ticker\)\}`/);
+  assert.match(home, /className="company-card-link" href=\{dossierHref\(company\.ticker\)\}/);
+  assert.match(home, /href=\{dossierHref\(update\.ticker\)\} className="change-row"/);
+  assert.doesNotMatch(home, /company\.ticker === "ONDS" \? "\/company\/onds" : "\/companies"/);
+});
+
+test("keeps NYSE and Nasdaq separate from the official FINRA OTC catalog", async () => {
+  const [directory, api, schema, migration, updater, overlay, metadata, header, footer] = await Promise.all([
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/api/universe/route.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0006_official-exchange-universe.sql"),
+    source("scripts/update-exchange-universe.mjs"),
+    source("scripts/generate-company-index-overlay.ts"),
+    source("app/data/exchangeUniverseMeta.generated.ts"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+  ]);
+
+  assert.match(directory, /OTC does not mean “Pink Sheet” in every case/);
+  assert.match(directory, /Catalog coverage is separate from dossier completion/);
+  assert.match(directory, /SEC \+ Nasdaq Trader sources/);
+  assert.match(api, /c\.listing_scope = \?/);
+  assert.match(api, /LEFT JOIN company_dossiers/);
+  assert.match(api, /LIMIT \? OFFSET \?/);
+  assert.match(schema, /listingScope/);
+  assert.match(schema, /securityType/);
+  assert.match(schema, /universeSourceUrl/);
+  assert.match(migration, /companies_listing_scope_ticker_idx/);
+  assert.match(updater, /company_tickers_exchange\.json/);
+  assert.match(updater, /otcSecurityMaster/);
+  assert.match(updater, /nasdaqlisted\.txt/);
+  assert.match(overlay, /memberships_json = excluded\.memberships_json/);
+  assert.doesNotMatch(overlay, /exchange = excluded\.exchange/);
+  assert.doesNotMatch(overlay, /name = excluded\.name/);
+  assert.doesNotMatch(overlay, /company_dossiers/);
+  assert.match(metadata, /listedSecurityCount = \d+/);
+  assert.match(metadata, /otcSecurityCount = \d+/);
+  assert.match(header, /href="\/otc"/);
+  assert.match(footer, /OTC \/ Pink Market/);
+});
+
+test("keeps long starter-company names clear of account actions", async () => {
+  const [starter, styles] = await Promise.all([
+    source("app/company/[ticker]/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(starter, /name: catalogCompany\?\.name \|\| universeCompany\.name/);
+  assert.match(starter, /normalized\(firstWord\) === normalized\(ticker\)/);
+  assert.match(styles, /@media\(max-width:1100px\)\{\.starter-company-hero>\.container\{grid-template-columns:1fr/);
+  assert.match(styles, /\.starter-company-title h1\{max-width:24ch/);
+  assert.match(styles, /\.starter-company-actions\{max-width:540px[^}]*flex-wrap:wrap/);
+});
+
+test("ranks twelve homepage dossiers by verified community research demand", async () => {
+  const [home, route, migration] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/api/research-demand/route.ts"),
+    source("supabase/migrations/20260801060000_company_research_demand.sql"),
+  ]);
+
+  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
+  assert.match(home, /Hot companies, ranked by owners/);
+  assert.match(home, /toggleDemand/);
+  assert.match(home, /viewerVotes/);
+  assert.match(home, /NEXT IN THE RESEARCH QUEUE/);
+  assert.match(route, /company_research_demand/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(migration, /create table if not exists public\.company_research_votes/);
+  assert.match(migration, /count\(distinct s\.visitor_id\)/);
+  assert.match(migration, /vote_count \* 10 \+ c\.page_views/);
+  assert.match(migration, /auth\.uid\(\) = user_id/);
+});
+
+test("provides full primary-source dossiers for all twelve homepage companies", async () => {
+  const [dossiers, featuredPage, starterPage, ondas] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+  ]);
+  for (const ticker of ["NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
+  assert.match(dossiers, /BlackBerry 2026 Form 10-K/);
+  assert.match(dossiers, /Bloom Energy 2025 Form 10-K/);
+  assert.match(dossiers, /Rocket Lab 2025 Form 10-K/);
+  assert.match(dossiers, /Palantir 2025 Form 10-K/);
+  assert.match(dossiers, /Tesla 2025 Form 10-K/);
+  assert.match(featuredPage, /ResearchDemandButton/);
+  assert.match(starterPage, /ResearchDemandButton/);
+  assert.match(ondas, /ResearchDemandButton/);
+});
+
+test("publishes complete primary-source owner dossiers for AMC and RCL", async () => {
+  const [dossiers, featuredPage, generator] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("scripts/generate-normalized-dossier-publish.ts"),
+  ]);
+
+  for (const ticker of ["AMC", "RCL"]) {
+    assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
+    assert.match(dossiers, new RegExp(`ticker: "${ticker}"[\\s\\S]{0,120}completeness: 100`));
+  }
+  assert.match(dossiers, /AMC Entertainment 2025 Form 10-K/);
+  assert.match(dossiers, /AMC Second-Quarter 2026 Form 10-Q/);
+  assert.match(dossiers, /2026 YTD share-price return/);
+  assert.match(dossiers, /Cinemark Holdings/);
+  assert.match(dossiers, /Regal Cineworld Group/);
+  assert.match(dossiers, /IMAX Corporation/);
+  assert.match(featuredPage, /Competitors &amp; comparables/);
+  assert.match(featuredPage, /Performance—and what drove it/);
+  assert.match(dossiers, /Royal Caribbean 2025 Form 10-K/);
+  assert.match(dossiers, /Royal Caribbean Second-Quarter 2026 Results/);
+  assert.match(featuredPage, /Primary-source editorial review/);
+  assert.match(featuredPage, /item\.href\.includes\("sec\.gov"\)/);
+  assert.match(generator, /financial_drivers_json/);
+  assert.match(generator, /INSERT INTO dossier_claims/);
+  assert.match(generator, /DELETE FROM dossier_sources WHERE ticker/);
+});
+
+test("publishes the founder mission and RemarkAI host role", async () => {
+  const [home, letter, header, footer] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/founders-letter/page.tsx"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+  ]);
+
+  assert.match(home, /THE FOUNDER’S MISSION/);
+  assert.match(home, /Ownership should come with understanding/);
+  assert.match(home, /Ownership Intelligence Network/);
+  assert.match(home, /HOSTED &amp; MODERATED BY/);
+  assert.match(home, /RemarkAI/);
+  assert.match(letter, /We believe ownership should come with understanding/);
+  assert.match(letter, /Together, they create a new form of Ownership Intelligence/);
+  assert.match(home, /href="\/company\/amc"/);
+  assert.match(header, /href="\/company\/amc">Research/);
+  assert.match(footer, /Founder’s Letter/);
+  assert.match(footer, /Featured AMC dossier/);
+});
+
+test("separates company releases from external news on every dossier", async () => {
+  const [panel, route, dossiers, featuredPage, starterPage, ondas, styles] = await Promise.all([
+    source("app/CompanyNewsPanel.tsx"),
+    source("app/api/company-news/route.ts"),
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(panel, /Headline monitor, not verified research/);
+  assert.match(panel, /Company releases/);
+  assert.match(panel, /Public &amp; industry coverage/);
+  assert.match(route, /officialNews\(newsroomUrl, newsroomFeedUrl\)/);
+  assert.match(route, /www\.bing\.com\/news\/search/);
+  assert.match(route, /replace\(\/\^http:/);
+  assert.match(route, /parseNewsroomHtml/);
+  assert.match(route, /stale-while-revalidate=900/);
+  assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases/);
+  assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases\/rss/);
+  assert.match(dossiers, /rclinvestor\.com\/press-releases/);
+  assert.match(featuredPage, /href="#news"/);
+  assert.match(starterPage, /CompanyNewsPanel/);
+  assert.match(ondas, /CompanyNewsPanel/);
+  assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:1fr 1fr/);
+});
+
+test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
+  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, publisher, styles] = await Promise.all([
+    source("app/ResearchFoundationPanel.tsx"),
+    source("app/api/research/route.ts"),
+    source("app/data/secFactsRepository.ts"),
+    source("app/api/internal/sec-facts-refresh/route.ts"),
+    source("worker/index.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0007_sec-fact-import-status.sql"),
+    source("scripts/generate-normalized-dossier-publish.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(panel, /Filed financial history/);
+  assert.match(panel, /Comparable-period changes/);
+  assert.match(panel, /No estimates were substituted/);
+  assert.match(panel, /Open machine-readable source/);
+  assert.match(researchApi, /factsImport/);
+  assert.match(importer, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
+  assert.match(importer, /filingFactImports/);
+  assert.match(scheduledRoute, /DAILY_REFRESH_LIMIT = 5/);
+  assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
+  assert.match(worker, /refreshScheduledSecFacts/);
+  assert.match(schema, /filingFactImports/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `filing_fact_imports`/);
+  assert.match(publisher, /generateSecFactSql/);
+  assert.match(styles, /\.filing-history\{display:flex/);
 });

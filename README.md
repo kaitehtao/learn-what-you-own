@@ -2,6 +2,14 @@
 
 Evidence-led company dossiers built with vinext and deployed on Cloudflare. Public research stays in Cloudflare D1; member identity, profiles, watchlists, portfolio positions, and community insights use Supabase.
 
+## Operator documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system boundaries, authoritative production identifiers, and data ownership
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — migrations, environment configuration, OAuth, email, cron, and deployment procedure
+- [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md) — preflight, release, smoke-test, audit, and rollback checklist
+
+The canonical public origin is `https://learnwhatyouown.com`. The Cloudflare D1 database named `site-creator-d1` in account `e5c3672efaf52cf5b417da2b09e687af` is the authoritative public-research database. Preview deployments must not be treated as production or populated independently.
+
 ## Local development
 
 Requires Node.js `>=22.13.0`.
@@ -18,6 +26,11 @@ npm run dev
 2. Open the Supabase SQL editor and run these migrations in order:
    - `supabase/migrations/20260731000000_user_accounts.sql`
    - `supabase/migrations/20260731010000_relationship_contributions.sql`
+   - `supabase/migrations/20260801000000_private_messages.sql`
+   - `supabase/migrations/20260801010000_member_following_public_messages.sql`
+   - `supabase/migrations/20260801020000_private_research_notebooks.sql`
+   - `supabase/migrations/20260801030000_member_notifications.sql`
+   - `supabase/migrations/20260801040000_admin_dashboard_analytics.sql`
 3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
 4. In **Authentication → URL Configuration**, set the production Site URL and allow:
    - `http://localhost:3000/auth/callback`
@@ -36,6 +49,8 @@ The publishable key is designed for browser use; row-level security protects pri
 
 Email users select a unique username during registration. Google users select one after their first verified sign-in. Emails are held in Supabase Auth and are never displayed with published insights.
 
+Administrators can open `/admin` to review visitor/session metrics, account growth, invitations, roles, deletions, and the privileged-action audit log. Visitor analytics use a random first-party browser identifier, respect Do Not Track, and deliberately avoid IP addresses and user-agent fingerprinting.
+
 ## Filing facts and relationship graph
 
 Public research uses three deliberately separate D1 record types:
@@ -44,9 +59,18 @@ Public research uses three deliberately separate D1 record types:
 - `dossier_claims` labels each published statement as a verified fact, company statement, or editorial analysis.
 - `company_relationships` stores directional supplier-to-customer edges. Public tickers are clickable; private organizations can still appear as named nodes.
 
-Apply `drizzle/0002_polite_betty_brant.sql` to the remote `site-creator-d1` database before deploying this version. Editors can then open `/admin` and import a ticker's normalized SEC Company Facts. The importer uses the verified ticker-to-CIK mapping and does not import analyst estimates.
+Apply the D1 migrations in the order documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Do not apply them to a preview database under the production name. Editors can then open `/admin` and import a ticker's normalized SEC Company Facts. The importer uses the verified ticker-to-CIK mapping and does not import analyst estimates.
 
 Members can submit a **Supplier / customer relationship** with primary evidence. The proposal stays private in Supabase until an editor approves it; approval promotes the structured edge to D1 while retaining the contributor username and disclosure trail.
+
+## Exchange and OTC catalogs
+
+The public catalog has two deliberately separate lanes:
+
+- `/companies` serves current NYSE and Nasdaq ticker/exchange associations from the SEC, cross-checked against Nasdaq Trader's symbol-directory files.
+- `/otc` serves FINRA's current OTC security master. OTC is not treated as synonymous with the Pink market, and each record keeps its issue type.
+
+Run `npm run universe:update` to refresh the generated catalog metadata and batched `drizzle/seed-exchange-universe.sql`. Review the count changes, export production D1, apply `drizzle/0006_official-exchange-universe.sql` if it is not already present, and then execute the seed against the verified remote D1. Catalog import never publishes a dossier.
 
 ## Security model
 
@@ -63,3 +87,7 @@ Members can submit a **Supplier / customer relationship** with primary evidence.
 - `npm run build` — production build verification
 - `npm test` — project tests
 - `npm run db:generate` — generate D1/Drizzle migrations
+- `npm run db:seed:dossiers` — regenerate the ignored dossier seed SQL
+- `npm run db:seed:company-overlay` — regenerate the company-only index metadata overlay
+- `npm run sec:update` — refresh the SEC ticker-to-CIK directory
+- `npm run universe:update` — refresh SEC/Nasdaq-listed and FINRA OTC catalog seed data

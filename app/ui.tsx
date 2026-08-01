@@ -6,7 +6,15 @@ import { getSupabaseBrowserClient } from "./supabase-browser";
 import { NotificationBell } from "./NotificationBell";
 
 export function BrandMark() {
-  return <Link className="brand" href="/"><span className="brand-symbol"><i /><i /><i /></span><span>Learn What You Own</span></Link>;
+  return (
+    <Link className="brand" href="/" aria-label="Learn What You Own home">
+      <span className="brand-symbol" aria-hidden="true"><i /><i /><i /></span>
+      <span className="brand-copy">
+        <span className="brand-name">Learn What You Own</span>
+        <span className="brand-tagline">Evidence-led investment research</span>
+      </span>
+    </Link>
+  );
 }
 
 export function Header() {
@@ -38,14 +46,31 @@ export function Header() {
           }}
         >
           <Link href="/companies">Companies</Link>
+          <Link href="/otc">OTC</Link>
           <Link href="/earnings">Earnings</Link>
-          <Link href="/company/onds">Research</Link>
+          <Link href="/company/amc">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
-          {signedIn && <Link href="/portfolio">Portfolio</Link>}
-          {signedIn && <Link href="/notebook">Notebook</Link>}
-          {signedIn && <Link href="/messages">Messages</Link>}
-          {signedIn && <Link href="/notifications">Notifications</Link>}
+          {signedIn && (
+            <details className="workspace-menu">
+              <summary>Workspace</summary>
+              <div>
+                <Link href="/portfolio">Portfolio</Link>
+                <Link href="/notebook">Notebook</Link>
+                <Link href="/watchlist">Watchlist</Link>
+                <Link href="/messages">Messages</Link>
+                <Link href="/notifications">Notifications</Link>
+              </div>
+            </details>
+          )}
+          {signedIn && <div className="mobile-workspace-links">
+            <span>Your workspace</span>
+            <Link href="/portfolio">Portfolio</Link>
+            <Link href="/notebook">Notebook</Link>
+            <Link href="/watchlist">Watchlist</Link>
+            <Link href="/messages">Messages</Link>
+            <Link href="/notifications">Notifications</Link>
+          </div>}
           <div className="mobile-nav-actions">
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false
@@ -53,7 +78,7 @@ export function Header() {
               : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
           </div>
         </nav>
-        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn && <Link href="/watchlist">Watchlist</Link>}{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
+        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
         <button
           className="menu-button"
           type="button"

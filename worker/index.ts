@@ -45,6 +45,19 @@ async function deliverScheduledDigest(env: Env) {
   if (!response.ok) throw new Error(`Daily digest endpoint returned ${response.status}`);
 }
 
+async function refreshScheduledSecFacts(env: Env) {
+  if (!env.NOTIFICATION_CRON_SECRET) throw new Error("A scheduled-task secret is not configured");
+  const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
+  const response = await fetch(`${siteUrl}/api/internal/sec-facts-refresh`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
+      "user-agent": "learn-what-you-own-sec-refresh/1.0",
+    },
+  });
+  if (!response.ok) throw new Error(`SEC facts refresh endpoint returned ${response.status}`);
+}
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
@@ -79,7 +92,10 @@ const worker = {
     // invocation that is actually 08:00 in Los Angeles proceeds, keeping the
     // delivery time stable across daylight-saving changes.
     if (!isPacificDigestHour(controller.scheduledTime)) return;
-    ctx.waitUntil(deliverScheduledDigest(env));
+    ctx.waitUntil(Promise.all([
+      deliverScheduledDigest(env),
+      refreshScheduledSecFacts(env),
+    ]));
   },
 };
 

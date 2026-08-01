@@ -1,5 +1,5 @@
 import { getDb } from "../../../../db";
-import { companies, companyRelationships } from "../../../../db/schema";
+import { companies, companyRelationships, emergingCompanyDossiers } from "../../../../db/schema";
 import { researchUniverse } from "../../../data/universe";
 import { apiError, requireEditor } from "../../../supabase-server";
 
@@ -26,9 +26,55 @@ function mapRow(row: Record<string, unknown>) {
     relationshipMateriality: row.relationship_materiality,
     relationshipEvidenceClass: row.relationship_evidence_class,
     relationshipSourceType: row.relationship_source_type,
+    proposedCompanyName: row.proposed_company_name,
+    proposedCompanySlug: row.proposed_company_slug,
+    companyStage: row.company_stage,
+    proposedTicker: row.proposed_ticker,
+    proposedExchange: row.proposed_exchange,
+    expectedIpoDate: row.expected_ipo_date,
+    companyWebsite: row.company_website,
+    roadshowTitle: row.roadshow_title,
+    roadshowUrl: row.roadshow_storage_path ? `/api/admin/roadshows/${row.id}` : row.roadshow_source_url,
     evidenceDate: row.evidence_date,
     createdAt: row.created_at,
   };
+}
+
+async function publishCompanyProposal(row: Record<string, unknown>, editorUsername: string) {
+  if (row.contribution_type !== "Upcoming IPO dossier" && row.contribution_type !== "Private company dossier") return false;
+  const slug = String(row.proposed_company_slug ?? "").trim();
+  const companyName = String(row.proposed_company_name ?? "").trim();
+  const companyType = String(row.company_stage ?? "");
+  if (!slug || !companyName || !["upcoming_ipo", "private"].includes(companyType)) {
+    throw new Error("The company proposal is missing its name, slug, or stage.");
+  }
+  const profile = (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles) as { username?: string } | null;
+  const values = {
+    slug,
+    companyName,
+    companyType: companyType as "upcoming_ipo" | "private",
+    proposedTicker: row.proposed_ticker ? String(row.proposed_ticker) : null,
+    proposedExchange: row.proposed_exchange ? String(row.proposed_exchange) : null,
+    expectedIpoDate: row.expected_ipo_date ? String(row.expected_ipo_date) : null,
+    websiteUrl: String(row.company_website),
+    summary: String(row.claim).slice(0, 2500),
+    whyItMatters: String(row.why_it_matters).slice(0, 2500),
+    primarySourceUrl: String(row.source_url),
+    roadshowTitle: row.roadshow_title ? String(row.roadshow_title) : null,
+    roadshowStoragePath: row.roadshow_storage_path ? String(row.roadshow_storage_path) : null,
+    roadshowSourceUrl: row.roadshow_source_url ? String(row.roadshow_source_url) : null,
+    contributorUsername: profile?.username ?? "member",
+    supabaseContributionId: String(row.id),
+    verifiedBy: editorUsername,
+    verifiedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const db = getDb();
+  await db.insert(emergingCompanyDossiers).values(values).onConflictDoUpdate({
+    target: emergingCompanyDossiers.slug,
+    set: values,
+  });
+  return true;
 }
 
 async function ensureD1Company(ticker: string | null) {
@@ -123,7 +169,10 @@ export async function PATCH(request: Request) {
     const relationshipPublished = payload.status === "approved"
       ? await publishRelationship(contribution as Record<string, unknown>, profile.username)
       : false;
-    return Response.json({ ok: true, relationshipPublished });
+    const companyPublished = payload.status === "approved"
+      ? await publishCompanyProposal(contribution as Record<string, unknown>, profile.username)
+      : false;
+    return Response.json({ ok: true, relationshipPublished, companyPublished });
   } catch (error) {
     return apiError(error);
   }
