@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "./supabase-browser";
+import { NotificationBell } from "./NotificationBell";
 
 export function BrandMark() {
   return <Link className="brand" href="/"><span className="brand-symbol"><i /><i /><i /></span><span>Learn What You Own</span></Link>;
@@ -44,6 +45,7 @@ export function Header() {
           {signedIn && <Link href="/portfolio">Portfolio</Link>}
           {signedIn && <Link href="/notebook">Notebook</Link>}
           {signedIn && <Link href="/messages">Messages</Link>}
+          {signedIn && <Link href="/notifications">Notifications</Link>}
           <div className="mobile-nav-actions">
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false
@@ -51,7 +53,7 @@ export function Header() {
               : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
           </div>
         </nav>
-        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button>{signedIn && <Link href="/watchlist">Watchlist</Link>}{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
+        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn && <Link href="/watchlist">Watchlist</Link>}{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
         <button
           className="menu-button"
           type="button"

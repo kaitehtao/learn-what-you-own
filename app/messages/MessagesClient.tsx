@@ -36,25 +36,40 @@ export function MessagesClient() {
 
   const selected = messages.find(message => message.id === selectedId) ?? null;
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
       const response = await authenticatedFetch(`/api/messages?folder=${folder}`, { cache: "no-store" });
       if (response.status === 401) return void (window.location.href = loginPath("/messages"));
       const data = await response.json() as { messages?: Message[]; unread?: number; error?: string };
       if (!response.ok) throw new Error(data.error ?? "Unable to load messages.");
-      setMessages(data.messages ?? []);
-      setUnread(data.unread ?? 0);
-      setSelectedId(current => (data.messages ?? []).some(message => message.id === current) ? current : null);
+      const received = data.messages ?? [];
+      const requestedId = Number(new URLSearchParams(window.location.search).get("open"));
+      const requestedMessage = Number.isInteger(requestedId) ? received.find((message) => message.id === requestedId) : undefined;
+      const requestedWasUnread = Boolean(requestedMessage && requestedMessage.direction === "received" && !requestedMessage.readAt);
+      if (requestedMessage && requestedMessage.direction === "received" && !requestedMessage.readAt) {
+        const marked = await authenticatedFetch("/api/messages", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: requestedMessage.id }) });
+        if (marked.ok) { requestedMessage.readAt = new Date().toISOString(); window.dispatchEvent(new Event("lwy:notifications-changed")); }
+      }
+      setMessages(received);
+      setUnread(Math.max(0, (data.unread ?? 0) - (requestedWasUnread && requestedMessage?.readAt ? 1 : 0)));
+      setSelectedId(current => requestedMessage?.id ?? (received.some(message => message.id === current) ? current : null));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load messages.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [folder]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void load(true), 30000);
+    const refresh = () => void load(true);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [load]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -86,6 +101,7 @@ export function MessagesClient() {
       if (response.ok) {
         setMessages(current => current.map(item => item.id === message.id ? { ...item, readAt: new Date().toISOString() } : item));
         setUnread(current => Math.max(0, current - 1));
+        window.dispatchEvent(new Event("lwy:notifications-changed"));
       }
     }
   }

@@ -163,3 +163,36 @@ test("keeps investment notebooks private while supporting sourced public handoff
   assert.match(contributionPage, /initialDraft/);
   assert.match(header, /href="\/notebook"/);
 });
+
+test("creates private member notifications and opt-in email delivery", async () => {
+  const [migration, route, bell, center, messages, emailDelivery, header] = await Promise.all([
+    source("supabase/migrations/20260801030000_member_notifications.sql"),
+    source("app/api/notifications/route.ts"),
+    source("app/NotificationBell.tsx"),
+    source("app/notifications/NotificationsClient.tsx"),
+    source("app/messages/MessagesClient.tsx"),
+    source("app/email-notifications.ts"),
+    source("app/ui.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.notifications/);
+  assert.match(migration, /create table if not exists public\.notification_preferences/);
+  assert.match(migration, /create table if not exists public\.email_notification_outbox/);
+  assert.match(migration, /auth\.uid\(\) = user_id/);
+  assert.match(migration, /revoke all on public\.email_notification_outbox from anon, authenticated/);
+  assert.match(migration, /insert into public\.notifications/);
+  assert.match(migration, /on conflict \(user_id, entity_type, entity_id\) do nothing/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /read_all/);
+  assert.match(route, /emailAvailable/);
+  assert.match(bell, /30000/);
+  assert.match(bell, /unread notifications/);
+  assert.match(center, /Email delivery is awaiting provider connection/);
+  assert.match(messages, /lwy:notifications-changed/);
+  assert.match(emailDelivery, /The private message body is never included/);
+  assert.match(emailDelivery, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(emailDelivery, /RESEND_API_KEY/);
+  assert.doesNotMatch(emailDelivery, /messageBody|message_body/);
+  assert.match(header, /NotificationBell/);
+  assert.match(header, /href="\/notifications"/);
+});

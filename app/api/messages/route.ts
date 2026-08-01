@@ -1,4 +1,5 @@
 import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { deliverImmediateMessageEmail } from "../../email-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,14 @@ export async function POST(request: Request) {
       message_visibility: visibility,
     });
     if (error) return Response.json({ error: error.message }, { status: error.message.includes("not found") ? 404 : 400 });
+    const message = data as Record<string, unknown>;
+    await deliverImmediateMessageEmail({
+      recipientId: String(message.recipient_id),
+      messageId: Number(message.id),
+      senderUsername: profile.username,
+      subject,
+      visibility,
+    }).catch((caught) => console.error("Notification email delivery failed", caught));
     return Response.json({ message: data }, { status: 201 });
   } catch (error) {
     return apiError(error);
