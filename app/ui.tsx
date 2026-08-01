@@ -51,6 +51,7 @@ export function Header() {
           <Link href="/company/amc">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
+          <Link href="/feedback">Feedback</Link>
           {signedIn && (
             <details className="workspace-menu">
               <summary>Workspace</summary>
@@ -74,11 +75,11 @@ export function Header() {
           <div className="mobile-nav-actions">
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false
-              ? <Link className="nav-cta" href="/login">Sign in</Link>
+              ? <><Link href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></>
               : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
           </div>
         </nav>
-        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn === false ? <Link className="nav-cta" href="/login">Sign in</Link> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
+        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn === false ? <><Link className="nav-signin" href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
         <button
           className="menu-button"
           type="button"
