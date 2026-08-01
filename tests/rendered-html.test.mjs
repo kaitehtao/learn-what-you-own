@@ -626,21 +626,29 @@ test("separates company releases from external news on every dossier", async () 
     source("app/globals.css"),
   ]);
 
-  assert.match(panel, /Headline monitor, not verified research/);
-  assert.match(panel, /Company releases/);
+  assert.match(panel, /Official does not mean independently verified/);
+  assert.match(panel, /Official company releases/);
+  assert.match(panel, /SEARCH OFFICIAL RELEASES/);
+  assert.match(panel, /Verify original release/);
+  assert.match(panel, /Show 10 more official releases/);
   assert.match(panel, /Public &amp; industry coverage/);
   assert.match(route, /officialNews\(newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /www\.bing\.com\/news\/search/);
   assert.match(route, /replace\(\/\^http:/);
   assert.match(route, /parseNewsroomHtml/);
+  assert.match(route, /parseCoreWeaveNewsroom/);
+  assert.match(route, /data-content-type=\["'\]press-release/);
+  assert.match(route, /unique\(officialResult\.value, 100\)/);
   assert.match(route, /stale-while-revalidate=900/);
+  assert.match(dossiers, /www\.coreweave\.com\/newsroom/);
   assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases/);
   assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases\/rss/);
   assert.match(dossiers, /rclinvestor\.com\/press-releases/);
   assert.match(featuredPage, /href="#news"/);
   assert.match(starterPage, /CompanyNewsPanel/);
   assert.match(ondas, /CompanyNewsPanel/);
-  assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:1fr 1fr/);
+  assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:minmax\(0,1\.35fr\)/);
+  assert.match(styles, /\.official-news-list article/);
 });
 
 test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
