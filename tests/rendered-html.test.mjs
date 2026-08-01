@@ -16,7 +16,7 @@ test("describes homepage search honestly and offers supported examples", async (
 
   assert.match(home, /placeholder="Search ticker, company, sector, or index"/);
   assert.match(home, /Search by ticker, company, sector, or index/);
-  assert.match(home, /\["AAPL", "NVIDIA", "Semiconductors", "S&P 500"\]/);
+  assert.match(home, /\["AMC", "NVIDIA", "Semiconductors", "S&P 500"\]/);
   assert.doesNotMatch(home, />Popular </);
   assert.doesNotMatch(home, /executive, or theme/);
   assert.match(search, /company\.ticker/);
@@ -384,7 +384,7 @@ test("ranks twelve homepage dossiers by verified community research demand", asy
     source("supabase/migrations/20260801060000_company_research_demand.sql"),
   ]);
 
-  for (const ticker of ["ONDS", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
+  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
   assert.match(home, /Hot companies, ranked by owners/);
   assert.match(home, /toggleDemand/);
   assert.match(home, /viewerVotes/);
@@ -428,6 +428,12 @@ test("publishes complete primary-source owner dossiers for AMC and RCL", async (
   }
   assert.match(dossiers, /AMC Entertainment 2025 Form 10-K/);
   assert.match(dossiers, /AMC Second-Quarter 2026 Form 10-Q/);
+  assert.match(dossiers, /2026 YTD share-price return/);
+  assert.match(dossiers, /Cinemark Holdings/);
+  assert.match(dossiers, /Regal Cineworld Group/);
+  assert.match(dossiers, /IMAX Corporation/);
+  assert.match(featuredPage, /Competitors &amp; comparables/);
+  assert.match(featuredPage, /Performance—and what drove it/);
   assert.match(dossiers, /Royal Caribbean 2025 Form 10-K/);
   assert.match(dossiers, /Royal Caribbean Second-Quarter 2026 Results/);
   assert.match(featuredPage, /Primary-source editorial review/);
@@ -435,6 +441,27 @@ test("publishes complete primary-source owner dossiers for AMC and RCL", async (
   assert.match(generator, /financial_drivers_json/);
   assert.match(generator, /INSERT INTO dossier_claims/);
   assert.match(generator, /DELETE FROM dossier_sources WHERE ticker/);
+});
+
+test("publishes the founder mission and RemarkAI host role", async () => {
+  const [home, letter, header, footer] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/founders-letter/page.tsx"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+  ]);
+
+  assert.match(home, /THE FOUNDER’S MISSION/);
+  assert.match(home, /Ownership should come with understanding/);
+  assert.match(home, /Ownership Intelligence Network/);
+  assert.match(home, /HOSTED &amp; MODERATED BY/);
+  assert.match(home, /RemarkAI/);
+  assert.match(letter, /We believe ownership should come with understanding/);
+  assert.match(letter, /Together, they create a new form of Ownership Intelligence/);
+  assert.match(home, /href="\/company\/amc"/);
+  assert.match(header, /href="\/company\/amc">Research/);
+  assert.match(footer, /Founder’s Letter/);
+  assert.match(footer, /Featured AMC dossier/);
 });
 
 test("separates company releases from external news on every dossier", async () => {
