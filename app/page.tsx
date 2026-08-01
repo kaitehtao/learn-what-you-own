@@ -6,6 +6,7 @@ import { Header } from "./ui";
 import { companySlug, researchUniverse } from "./data/universe";
 import { normalizedTicker, rankedCompanyMatches } from "./data/companySearch";
 import { authenticatedFetch, loginPath } from "./supabase-browser";
+import { AccessComparison } from "./AccessComparison";
 
 const companies = [
   { ticker: "AMC", name: "AMC Entertainment", sector: "Theatrical Exhibition", updated: "Today", score: 100, note: "Q2 performance, debt actions, and comparables verified" },
@@ -240,6 +241,8 @@ export default function Home() {
           <button>View evidence <span>→</span></button>
         </div>
       </section>
+
+      <AccessComparison />
 
     </main>
   );
