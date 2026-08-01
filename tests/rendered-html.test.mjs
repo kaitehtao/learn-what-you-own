@@ -25,6 +25,27 @@ test("describes homepage search honestly and offers supported examples", async (
   assert.match(search, /company\.memberships/);
 });
 
+test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
+  const [home, statsRoute, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/api/site-stats/route.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(home, /fetch\("\/api\/site-stats"\)/);
+  assert.match(home, /researchableSymbols/);
+  assert.match(home, /uniquePrimarySources/);
+  assert.match(home, /sourceCountsByTicker\[company\.ticker\]/);
+  assert.match(home, /\/api\/universe\?market=\$\{market\}/);
+  assert.doesNotMatch(home, /8,903/);
+  assert.doesNotMatch(home, /researchUniverse\.length\.toLocaleString/);
+  assert.match(statsRoute, /companies WHERE is_active=1/);
+  assert.match(statsRoute, /sec-accession:/);
+  assert.match(statsRoute, /COUNT\(DISTINCT source_key\)/);
+  assert.match(statsRoute, /cd\.status = 'published'/);
+  assert.match(styles, /\.proof-definition\{/);
+});
+
 test("keeps filed facts, editorial claims, and company relationships as separate public records", async () => {
   const [schema, migration] = await Promise.all([
     source("db/schema.ts"),

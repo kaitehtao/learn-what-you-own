@@ -8,18 +8,18 @@ import { rankedCompanyMatches } from "./data/companySearch";
 import { authenticatedFetch, loginPath } from "./supabase-browser";
 
 const companies = [
-  { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", sources: 2, score: 82, note: "New defense program award" },
-  { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", sources: 2, score: 96, note: "Supply chain map refreshed" },
-  { ticker: "AAPL", name: "Apple", sector: "Consumer Technology", updated: "Today", sources: 2, score: 96, note: "Supplier evidence map added" },
-  { ticker: "AMZN", name: "Amazon", sector: "Commerce & Cloud", updated: "Today", sources: 2, score: 95, note: "AWS capital intensity reviewed" },
-  { ticker: "TSLA", name: "Tesla", sector: "Automotive & Energy", updated: "Today", sources: 2, score: 94, note: "AI and energy thesis refreshed" },
-  { ticker: "PLTR", name: "Palantir", sector: "Enterprise AI", updated: "3d ago", sources: 2, score: 95, note: "Commercial cohort review" },
-  { ticker: "RKLB", name: "Rocket Lab", sector: "Space Systems", updated: "2d ago", sources: 2, score: 93, note: "Neutron milestone added" },
-  { ticker: "BB", name: "BlackBerry", sector: "Infrastructure Software", updated: "Yesterday", sources: 2, score: 91, note: "QNX backlog analysis" },
-  { ticker: "BE", name: "Bloom Energy", sector: "Clean Energy", updated: "Yesterday", sources: 2, score: 88, note: "Margin thesis revised" },
-  { ticker: "BA", name: "Boeing", sector: "Aerospace & Defense", updated: "3d ago", sources: 2, score: 92, note: "Production recovery evidence reviewed" },
-  { ticker: "CAT", name: "Caterpillar", sector: "Industrial Equipment", updated: "4d ago", sources: 2, score: 92, note: "Dealer inventory signals updated" },
-  { ticker: "CRWV", name: "CoreWeave", sector: "AI Infrastructure", updated: "4d ago", sources: 2, score: 90, note: "Backlog and financing review" },
+  { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", score: 82, note: "New defense program award" },
+  { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", score: 96, note: "Supply chain map refreshed" },
+  { ticker: "AAPL", name: "Apple", sector: "Consumer Technology", updated: "Today", score: 96, note: "Supplier evidence map added" },
+  { ticker: "AMZN", name: "Amazon", sector: "Commerce & Cloud", updated: "Today", score: 95, note: "AWS capital intensity reviewed" },
+  { ticker: "TSLA", name: "Tesla", sector: "Automotive & Energy", updated: "Today", score: 94, note: "AI and energy thesis refreshed" },
+  { ticker: "PLTR", name: "Palantir", sector: "Enterprise AI", updated: "3d ago", score: 95, note: "Commercial cohort review" },
+  { ticker: "RKLB", name: "Rocket Lab", sector: "Space Systems", updated: "2d ago", score: 93, note: "Neutron milestone added" },
+  { ticker: "BB", name: "BlackBerry", sector: "Infrastructure Software", updated: "Yesterday", score: 91, note: "QNX backlog analysis" },
+  { ticker: "BE", name: "Bloom Energy", sector: "Clean Energy", updated: "Yesterday", score: 88, note: "Margin thesis revised" },
+  { ticker: "BA", name: "Boeing", sector: "Aerospace & Defense", updated: "3d ago", score: 92, note: "Production recovery evidence reviewed" },
+  { ticker: "CAT", name: "Caterpillar", sector: "Industrial Equipment", updated: "4d ago", score: 92, note: "Dealer inventory signals updated" },
+  { ticker: "CRWV", name: "CoreWeave", sector: "AI Infrastructure", updated: "4d ago", score: 90, note: "Backlog and financing review" },
 ];
 
 const updates = [
@@ -31,16 +31,38 @@ const updates = [
 const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
 const searchExamples = ["AAPL", "NVIDIA", "Semiconductors", "S&P 500"];
 type Demand = { ticker: string; vote_count: number; page_views: number; demand_score: number };
+type SearchMatch = { ticker: string; name: string; sector: string };
+type SiteStats = {
+  researchableSymbols: number;
+  listedSymbols: number;
+  otcSymbols: number;
+  publishedDossiers: number;
+  uniquePrimarySources: number;
+  claimSourceCoverage: number;
+  sourceCountsByTicker: Record<string, number>;
+};
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const [demand, setDemand] = useState<Record<string, Demand>>({});
   const [viewerVotes, setViewerVotes] = useState<Set<string>>(new Set());
   const [demandBusy, setDemandBusy] = useState("");
-  const matches = useMemo(
+  const [catalogSearch, setCatalogSearch] = useState<{ query: string; matches: SearchMatch[] }>({ query: "", matches: [] });
+  const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+  const localMatches = useMemo(
     () => rankedCompanyMatches(researchUniverse, query).slice(0, 8),
     [query]
   );
+  const matches = useMemo(() => {
+    if (!query.trim()) return [];
+    const seen = new Set<string>();
+    const catalogMatches = catalogSearch.query === query.trim() ? catalogSearch.matches : [];
+    return [...localMatches, ...catalogMatches].filter((company) => {
+      if (seen.has(company.ticker)) return false;
+      seen.add(company.ticker);
+      return true;
+    }).slice(0, 8);
+  }, [query, localMatches, catalogSearch]);
   useEffect(() => {
     authenticatedFetch("/api/research-demand", { cache: "no-store" }).then(async (response) => {
       if (!response.ok) return;
@@ -49,6 +71,23 @@ export default function Home() {
       setViewerVotes(new Set(payload.viewerVotes ?? []));
     }).catch(() => undefined);
   }, []);
+  useEffect(() => {
+    fetch("/api/site-stats").then(async (response) => {
+      if (response.ok) setSiteStats(await response.json() as SiteStats);
+    }).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    const search = query.trim();
+    if (!search) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({ q: search, pageSize: "10" });
+      Promise.all(["listed", "otc"].map((market) => fetch(`/api/universe?market=${market}&${params}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : { companies: [] })))
+        .then((payloads) => setCatalogSearch({ query: search, matches: payloads.flatMap((payload) => (payload.companies ?? []).map((company: { ticker: string; name: string; sector: string; exchange: string }) => ({ ticker: company.ticker, name: company.name, sector: company.sector === "Not classified" ? company.exchange : company.sector }))) }))
+        .catch(() => undefined);
+    }, 180);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [query]);
   const rankedCompanies = useMemo(() => [...companies].sort((a, b) => {
     const demandDifference = (demand[b.ticker]?.demand_score ?? 0) - (demand[a.ticker]?.demand_score ?? 0);
     return demandDifference || companies.indexOf(a) - companies.indexOf(b);
@@ -114,11 +153,12 @@ export default function Home() {
 
       <section className="proof-strip">
         <div className="container proof-grid">
-          <div><strong>{researchUniverse.length.toLocaleString()}</strong><span>researchable tickers</span></div>
-          <div><strong>4</strong><span>index memberships unified</span></div>
-          <div><strong>8,903</strong><span>primary sources</span></div>
-          <div><strong>100%</strong><span>claims cited</span></div>
+          <div title="Distinct active symbols in the production companies table"><strong>{siteStats?.researchableSymbols.toLocaleString() ?? "—"}</strong><span>researchable symbols</span></div>
+          <div title="Active exchange-listed catalog records"><strong>{siteStats?.listedSymbols.toLocaleString() ?? "—"}</strong><span>exchange-listed symbols</span></div>
+          <div title="Distinct evidence documents; SEC links are deduplicated by filing accession"><strong>{siteStats?.uniquePrimarySources.toLocaleString() ?? "—"}</strong><span>unique primary documents</span></div>
+          <div title="Published dossiers in the production research database"><strong>{siteStats?.publishedDossiers.toLocaleString() ?? "—"}</strong><span>published owner dossiers</span></div>
         </div>
+        <p className="container proof-definition">Live production counts. Researchable symbols include {siteStats?.otcSymbols.toLocaleString() ?? "—"} OTC securities; primary documents are deduplicated by SEC filing accession or canonical source URL. {siteStats ? `${siteStats.claimSourceCoverage}% of published claims carry a source link.` : ""}</p>
       </section>
 
       <section className="container content-section">
@@ -137,7 +177,7 @@ export default function Home() {
               <h3>{company.name}</h3>
               <p className="ticker-line">{company.ticker} · {company.sector}</p>
               <div className="card-update"><span>↗</span><div><small>LATEST UPDATE</small><p>{company.note}</p></div></div>
-              <div className="card-meta"><span>{company.sources} sources</span><span>Updated {company.updated}</span></div>
+              <div className="card-meta"><span>{siteStats?.sourceCountsByTicker[company.ticker]?.toLocaleString() ?? "—"} primary sources</span><span>Updated {company.updated}</span></div>
             </Link>
             <div className="company-demand"><span>{index < 3 && (demand[company.ticker]?.demand_score ?? 0) > 0 ? "HOT COMPANY" : "RESEARCH DEMAND"}<small>{demand[company.ticker]?.vote_count ?? 0} member requests · {demand[company.ticker]?.page_views ?? 0} readers</small></span><button className={viewerVotes.has(company.ticker) ? "voted" : ""} disabled={demandBusy === company.ticker} onClick={() => toggleDemand(company.ticker)}>{demandBusy === company.ticker ? "Saving…" : viewerVotes.has(company.ticker) ? "✓ Requested" : "▲ Upvote"}</button></div>
             </article>
