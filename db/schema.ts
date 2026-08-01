@@ -225,3 +225,21 @@ export const contributions = sqliteTable("contributions", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const productFeedback = sqliteTable("product_feedback", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  category: text("category", { enum: ["New feature", "Product improvement", "Research coverage", "Bug report", "Accessibility", "Other"] }).notNull(),
+  title: text("title").notNull(),
+  details: text("details").notNull(),
+  status: text("status", { enum: ["submitted", "reviewing", "planned", "completed", "declined"] }).notNull().default("submitted"),
+  moderatorNote: text("moderator_note").notNull().default(""),
+  moderatedBy: text("moderated_by"),
+  moderatedAt: text("moderated_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("product_feedback_user_created_idx").on(table.userId, table.createdAt),
+  index("product_feedback_status_created_idx").on(table.status, table.createdAt),
+]);
