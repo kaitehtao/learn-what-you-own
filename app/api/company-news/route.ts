@@ -35,12 +35,18 @@ function parseRss(xml: string): NewsItem[] {
 
 async function googleNews(query: string): Promise<NewsItem[]> {
   const params = new URLSearchParams({ q: query, hl: "en-US", gl: "US", ceid: "US:en" });
-  const response = await fetch(`https://news.google.com/rss/search?${params}`, {
-    headers: { "user-agent": "LearnWhatYouOwn/1.0 company-news reader" },
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) throw new Error(`News feed returned ${response.status}.`);
-  return parseRss(await response.text());
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(`https://news.google.com/rss/search?${params}`, {
+      headers: { "user-agent": "LearnWhatYouOwn/1.0 company-news reader" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`News feed returned ${response.status}.`);
+    return parseRss(await response.text());
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function unique(items: NewsItem[], limit: number): NewsItem[] {
