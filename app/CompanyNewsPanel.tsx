@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type NewsItem = { title: string; url: string; publishedAt: string; source: string };
+type NewsItem = { title: string; url: string; publishedAt: string; source: string; summary?: string; category?: string; readingMinutes?: number };
 type NewsResponse = {
   official: NewsItem[];
   public: NewsItem[];
@@ -22,6 +22,30 @@ function NewsList({ items, empty }: { items: NewsItem[]; empty: string }) {
   return <div className="company-news-list">{items.map((item) => <a href={item.url} target="_blank" rel="noreferrer" key={`${item.url}-${item.title}`}>
     <span>{item.source}</span><h4>{item.title}</h4><small>{dateLabel(item.publishedAt)} · Open story ↗</small>
   </a>)}</div>;
+}
+
+function OfficialNewsList({ items, empty }: { items: NewsItem[]; empty: string }) {
+  const [query, setQuery] = useState("");
+  const [visible, setVisible] = useState(10);
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return items;
+    return items.filter((item) => `${item.title} ${item.summary ?? ""} ${item.category ?? ""}`.toLowerCase().includes(normalized));
+  }, [items, query]);
+
+  if (items.length === 0) return <p className="news-empty">{empty}</p>;
+  return <div className="official-news-archive">
+    <label className="official-news-search"><span>SEARCH OFFICIAL RELEASES</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setVisible(10); }} placeholder="Partnership, financing, customer, product…"/></label>
+    <div className="official-news-count">Showing {Math.min(visible, filtered.length)} of {filtered.length} company-issued releases</div>
+    <div className="official-news-list">{filtered.slice(0, visible).map((item) => <article key={`${item.url}-${item.title}`}>
+      <div className="official-news-meta"><span>✓ OFFICIAL COMPANY RELEASE</span><time>{dateLabel(item.publishedAt)}</time></div>
+      <h4>{item.title}</h4>
+      <p>{item.summary || "This official release is indexed from the company archive. The company did not provide a separate archive summary."}</p>
+      <footer><span>{item.category || "Company update"}{item.readingMinutes ? ` · ${item.readingMinutes} min read` : ""}</span><a href={item.url} target="_blank" rel="noreferrer">Verify original release ↗</a></footer>
+    </article>)}</div>
+    {filtered.length === 0 && <p className="news-empty">No official releases match that search.</p>}
+    {visible < filtered.length && <button type="button" className="official-news-more" onClick={() => setVisible((count) => count + 10)}>Show 10 more official releases ↓</button>}
+  </div>;
 }
 
 export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker: string; companyName: string; newsroomUrl?: string }) {
@@ -44,12 +68,12 @@ export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker:
 
   const officialUrl = data?.newsroomUrl || newsroomUrl;
   return <section className="company-news-panel" id="news">
-    <div className="company-news-heading"><div><span className="kicker">NEWS &amp; DEVELOPMENTS · {ticker}</span><h2>What is changing around {companyName}</h2><p>Company-issued releases and independent coverage are separated so source incentives remain visible.</p></div>{officialUrl && <a href={officialUrl} target="_blank" rel="noreferrer">Official newsroom ↗</a>}</div>
-    <div className="company-news-notice"><strong>Headline monitor, not verified research.</strong><span>External stories may contain errors, opinions, or promotional claims. Promote a development into the dossier only after checking direct evidence.</span></div>
+    <div className="company-news-heading"><div><span className="kicker">NEWS &amp; DEVELOPMENTS · {ticker}</span><h2>What is changing around {companyName}</h2><p>Read the company’s official release archive here, alongside clearly separated independent coverage. Original source links remain available for verification.</p></div>{officialUrl && <a href={officialUrl} target="_blank" rel="noreferrer">Source archive ↗</a>}</div>
+    <div className="company-news-notice"><strong>Official does not mean independently verified.</strong><span>Company summaries reflect management’s framing. Learn What You Own keeps them on-site and promotes material developments into the dossier only after checking filings and other direct evidence.</span></div>
     {error && <p className="news-error">{error} <a href={`https://news.google.com/search?q=${encodeURIComponent(ticker)}`} target="_blank" rel="noreferrer">Open news search ↗</a></p>}
     {!data && !error && <div className="news-loading"><i/><span>Loading current releases and coverage…</span></div>}
     {data && <div className="company-news-grid">
-      <section><div className="news-column-title"><div><small>PRIMARY</small><h3>Company releases</h3></div><span>{data.official.length}</span></div><NewsList items={data.official} empty={officialUrl ? "No recent indexed releases. Open the official newsroom for the complete archive." : "An official newsroom has not yet been curated for this ticker."}/></section>
+      <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · ON-SITE ARCHIVE</small><h3>Official company releases</h3></div><span>{data.official.length}</span></div><OfficialNewsList items={data.official} empty={officialUrl ? "No official releases were returned by the company archive." : "An official newsroom has not yet been curated for this ticker."}/></section>
       <section><div className="news-column-title"><div><small>EXTERNAL</small><h3>Public &amp; industry coverage</h3></div><span>{data.public.length}</span></div><NewsList items={data.public} empty="No recent public coverage was returned. Try again later or open a broader news search."/></section>
     </div>}
     {data && <div className="news-updated">Feed checked {dateLabel(data.updatedAt)}{data.partial ? " · One source was temporarily unavailable" : ""}</div>}
