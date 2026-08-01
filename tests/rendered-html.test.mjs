@@ -443,6 +443,28 @@ test("publishes complete primary-source owner dossiers for AMC and RCL", async (
   assert.match(generator, /DELETE FROM dossier_sources WHERE ticker/);
 });
 
+test("publishes a complete filing-grounded CoreWeave ownership dossier", async () => {
+  const [dossiers, featuredPage] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+  ]);
+
+  assert.match(dossiers, /ticker: "CRWV"[\s\S]{0,120}completeness: 100/);
+  assert.match(dossiers, /CoreWeave First-Quarter 2026 Form 10-Q/);
+  assert.match(dossiers, /\$99\.4B/);
+  assert.match(dossiers, /65% top two/);
+  assert.match(dossiers, /\$25\.15B debt/);
+  assert.match(dossiers, /\$7\.70B Q1 capex/);
+  assert.match(dossiers, /NVIDIA and CoreWeave expanded collaboration/);
+  assert.match(dossiers, /Nebius Group/);
+  assert.match(dossiers, /Amazon Web Services/);
+  assert.match(dossiers, /Microsoft Azure/);
+  assert.match(dossiers, /Lambda/);
+  assert.match(dossiers, /Crusoe/);
+  assert.match(dossiers, /Second-quarter results · August 11/);
+  assert.match(featuredPage, /CoreWeave, Inc\./);
+});
+
 test("publishes the founder mission and RemarkAI host role", async () => {
   const [home, letter, header, footer] = await Promise.all([
     source("app/page.tsx"),
