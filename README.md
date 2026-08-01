@@ -1,98 +1,98 @@
-# vinext-starter
+# Learn What You Own
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Evidence-led company dossiers built with vinext and deployed on Cloudflare. Public research stays in Cloudflare D1; member identity, profiles, watchlists, portfolio positions, and community insights use Supabase.
 
-## Prerequisites
+## Operator documentation
 
-- Node.js `>=22.13.0`
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system boundaries, authoritative production identifiers, and data ownership
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — migrations, environment configuration, OAuth, email, cron, and deployment procedure
+- [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md) — preflight, release, smoke-test, audit, and rollback checklist
 
-## Quick Start
+The canonical public origin is `https://learnwhatyouown.com`. The Cloudflare D1 database named `site-creator-d1` in account `e5c3672efaf52cf5b417da2b09e687af` is the authoritative public-research database. Preview deployments must not be treated as production or populated independently.
+
+## Local development
+
+Requires Node.js `>=22.13.0`.
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+## Supabase member accounts
 
-## Included Shape
+1. Create a Supabase project.
+2. Open the Supabase SQL editor and run these migrations in order:
+   - `supabase/migrations/20260731000000_user_accounts.sql`
+   - `supabase/migrations/20260731010000_relationship_contributions.sql`
+   - `supabase/migrations/20260801000000_private_messages.sql`
+   - `supabase/migrations/20260801010000_member_following_public_messages.sql`
+   - `supabase/migrations/20260801020000_private_research_notebooks.sql`
+   - `supabase/migrations/20260801030000_member_notifications.sql`
+   - `supabase/migrations/20260801040000_admin_dashboard_analytics.sql`
+   - `supabase/migrations/20260801050000_company_dossier_proposals.sql`
+   - `supabase/migrations/20260801060000_company_research_demand.sql`
+   - `supabase/migrations/20260801070000_founder_administrator.sql`
+3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
+4. In **Authentication → URL Configuration**, set the production Site URL and allow:
+   - `http://localhost:3000/auth/callback`
+   - `https://learnwhatyouown.com/auth/callback`
+   - the current `workers.dev` origin followed by `/auth/callback`, if that origin remains public
+5. Copy the Project URL and publishable key from **Project Settings → API** into `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` locally and in the Cloudflare Worker environment.
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+The publishable key is designed for browser use; row-level security protects private records. Never put the Supabase `service_role` or secret key in browser code or a public environment variable.
 
-## Workspace Auth Headers
+### Google sign-in
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+1. Create a Web OAuth client in Google Cloud.
+2. Add Supabase's callback URL as an authorized redirect URI: `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`.
+3. Add the Google client ID and client secret under **Supabase → Authentication → Providers → Google**.
+4. Keep the application callback URLs listed above in Supabase's redirect allowlist.
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+Email users select a unique username during registration. Google users select one after their first verified sign-in. Emails are held in Supabase Auth and are never displayed with published insights.
 
-Treat the full name as optional and fall back to email when it is absent:
+Administrators can open `/admin` to review visitor/session metrics, account growth, invitations, roles, deletions, and the privileged-action audit log. Visitor analytics use a random first-party browser identifier, respect Do Not Track, and deliberately avoid IP addresses and user-agent fingerprinting.
 
-```tsx
-import { headers } from "next/headers";
+The founder-administrator migration promotes the existing `Yourhost` username to `admin`, then checks the legacy `founder` username. If neither has been claimed, it promotes the oldest existing account, matching the prototype's original first-account founder convention. Review the selected account immediately after applying the migration.
 
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
+## Filing facts and relationship graph
 
-  const displayName = fullName ?? email;
-  // ...
-}
-```
+Public research uses three deliberately separate D1 record types:
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+- `filing_facts` contains normalized numerical facts and the exact SEC filing provenance for every period.
+- `dossier_claims` labels each published statement as a verified fact, company statement, or editorial analysis.
+- `company_relationships` stores directional supplier-to-customer edges. Public tickers are clickable; private organizations can still appear as named nodes.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+Apply the D1 migrations in the order documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Do not apply them to a preview database under the production name. Editors can then open `/admin` and import a ticker's normalized SEC Company Facts. The importer uses the verified ticker-to-CIK mapping and does not import analyst estimates.
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+Members can submit a **Supplier / customer relationship** with primary evidence. The proposal stays private in Supabase until an editor approves it; approval promotes the structured edge to D1 while retaining the contributor username and disclosure trail.
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## Exchange and OTC catalogs
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+The public catalog has two deliberately separate lanes:
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+- `/companies` serves current NYSE and Nasdaq ticker/exchange associations from the SEC, cross-checked against Nasdaq Trader's symbol-directory files.
+- `/otc` serves FINRA's current OTC security master. OTC is not treated as synonymous with the Pink market, and each record keeps its issue type.
 
-## Useful Commands
+Run `npm run universe:update` to refresh the generated catalog metadata and batched `drizzle/seed-exchange-universe.sql`. Review the count changes, export production D1, apply `drizzle/0006_official-exchange-universe.sql` if it is not already present, and then execute the seed against the verified remote D1. Catalog import never publishes a dossier.
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+## Security model
 
-## Learn More
+- Supabase Auth validates email/password and Google sessions.
+- Email/password accounts must verify their email before member APIs accept them.
+- Row-level security restricts watchlists and portfolio positions to their owner.
+- A security-definer profile function lets a user change only their username and display name, never their role.
+- Contributions are private to the author until an editor approves them; approved insights are public and attributed only to the username.
+- Editor/admin roles must be assigned directly in the Supabase `profiles` table by a trusted administrator.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+## Useful commands
+
+- `npm run dev` — local development
+- `npm run build` — production build verification
+- `npm test` — project tests
+- `npm run db:generate` — generate D1/Drizzle migrations
+- `npm run db:seed:dossiers` — regenerate the ignored dossier seed SQL
+- `npm run db:seed:company-overlay` — regenerate the company-only index metadata overlay
+- `npm run sec:update` — refresh the SEC ticker-to-CIK directory
+- `npm run universe:update` — refresh SEC/Nasdaq-listed and FINRA OTC catalog seed data

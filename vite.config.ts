@@ -4,7 +4,7 @@ import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
+  "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557";
 
 const { d1, r2 } = hostingConfig;
 
@@ -14,6 +14,12 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Supabase's public runtime values are managed in the Cloudflare dashboard.
+  // Preserve them when the Git integration runs `wrangler deploy`.
+  keep_vars: true,
+  // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
+  // America/Los_Angeles local time before delivering, so only one run proceeds.
+  triggers: { crons: ["0 15,16 * * *"] },
   d1_databases: d1
     ? [
         {

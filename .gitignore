@@ -30,13 +30,18 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
 # typescript
 next-env.d.ts
+*.tsbuildinfo
 /dist/
 /.wrangler/
 /outputs/
 /work/
+/drizzle/seed-dossiers.sql
+/drizzle/seed-company-index-overlay.sql
+/drizzle/seed-exchange-universe.sql

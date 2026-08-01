@@ -8,12 +8,13 @@ type MarketDataPanelProps = {
 };
 
 const ranges = [
-  { label: "1D", name: "1 day", range: "1D", interval: "5" },
-  { label: "5D", name: "5 days", range: "5D", interval: "30" },
-  { label: "1M", name: "1 month", range: "1M", interval: "60" },
+  { label: "1D", name: "1 day", range: "1D", interval: "15" },
   { label: "3M", name: "3 months", range: "3M", interval: "D" },
-  { label: "1Y", name: "1 year", range: "12M", interval: "D" },
+  { label: "6M", name: "6 months", range: "6M", interval: "D" },
+  { label: "YTD", name: "year to date", range: "YTD", interval: "D" },
+  { label: "1Y", name: "1 year", range: "12M", interval: "W" },
   { label: "5Y", name: "5 years", range: "60M", interval: "W" },
+  { label: "MAX", name: "maximum history", range: "ALL", interval: "M" },
 ] as const;
 
 function tradingViewExchange(exchange: string) {
@@ -48,7 +49,7 @@ export function MarketDataPanel({ ticker, exchange }: MarketDataPanelProps) {
     if (!quoteRef.current) return;
     addWidget(
       quoteRef.current,
-      "https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js",
+      "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js",
       {
         symbol,
         width: "100%",
@@ -74,6 +75,11 @@ export function MarketDataPanel({ ticker, exchange }: MarketDataPanelProps) {
         style: "2",
         locale: "en",
         allow_symbol_change: false,
+        hide_top_toolbar: true,
+        hide_side_toolbar: true,
+        hide_legend: true,
+        hide_volume: true,
+        withdateranges: false,
         save_image: false,
         calendar: false,
         support_host: "https://www.tradingview.com",

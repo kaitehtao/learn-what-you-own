@@ -1,14 +1,8 @@
 import Link from "next/link";
-import { canModerate, requireMemberProfile } from "../member";
 import { Header } from "../ui";
+import { AdminDashboard } from "./AdminDashboard";
 import { ModerationClient } from "./ModerationClient";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminPage() {
-  const profile = await requireMemberProfile("/admin");
-  if (!canModerate(profile)) {
-    return <main><Header/><section className="simple-page"><div className="container"><span className="kicker">EDITORIAL DESK</span><h1>Editor access required.</h1><p>Your account can submit research and track its review status, but only approved editors can moderate community contributions.</p><Link className="button dark-button" href="/contribute">View my contributions</Link></div></section></main>;
-  }
-  return <main><Header/><section className="admin-shell"><aside className="admin-nav"><span className="kicker">EDITORIAL DESK</span><strong>Learn What You Own</strong>{["Review queue","Companies","Documents","Claims","Research reports","Interviews","Corrections","Users"].map((x,i)=><button className={i===0?"active":""} key={x}>{x}</button>)}<Link href="/account">← Member account</Link></aside><ModerationClient/></section></main>;
+export default function AdminPage() {
+  return <main><Header/><section className="admin-shell"><aside className="admin-nav"><span className="kicker">ADMINISTRATOR</span><strong>Learn What You Own</strong><a href="#overview">Overview</a><a href="#accounts">Accounts</a><a href="#moderation">Review queue</a><a href="#audit">Audit log</a><Link href="/companies">Companies</Link><Link href="/account">← Member account</Link></aside><div className="admin-content"><AdminDashboard/><div id="moderation"><ModerationClient/></div></div></section></main>;
 }

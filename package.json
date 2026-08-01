@@ -12,9 +12,14 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "sec:update": "node scripts/update-sec-companies.mjs"
+    "db:seed:dossiers": "node --import tsx scripts/generate-dossier-seed.ts",
+    "db:seed:company-overlay": "node --import tsx scripts/generate-company-index-overlay.ts",
+    "db:seed:sec-facts": "node --import tsx scripts/generate-sec-facts-seed.ts",
+    "sec:update": "node scripts/update-sec-companies.mjs",
+    "universe:update": "node scripts/update-exchange-universe.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "drizzle-orm": "0.45.2",
     "next": "16.2.6",
     "react": "19.2.6",
@@ -22,6 +27,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

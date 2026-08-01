@@ -5,6 +5,10 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  SUPABASE_URL: string;
+  SUPABASE_PUBLISHABLE_KEY: string;
+  NOTIFICATION_CRON_SECRET: string;
+  NOTIFICATION_SITE_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -12,6 +16,46 @@ interface Env {
       };
     };
   };
+}
+
+const DIGEST_TIME_ZONE = "America/Los_Angeles";
+const DIGEST_HOUR = "08";
+
+export function isPacificDigestHour(scheduledTime: number) {
+  const localHour = new Intl.DateTimeFormat("en-US", {
+    timeZone: DIGEST_TIME_ZONE,
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(scheduledTime)).find((part) => part.type === "hour")?.value;
+
+  return localHour === DIGEST_HOUR;
+}
+
+async function deliverScheduledDigest(env: Env) {
+  if (!env.NOTIFICATION_CRON_SECRET) throw new Error("NOTIFICATION_CRON_SECRET is not configured");
+  const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
+  const response = await fetch(`${siteUrl}/api/notifications/email-digest`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
+      "user-agent": "learn-what-you-own-daily-digest/1.0",
+    },
+  });
+
+  if (!response.ok) throw new Error(`Daily digest endpoint returned ${response.status}`);
+}
+
+async function refreshScheduledSecFacts(env: Env) {
+  if (!env.NOTIFICATION_CRON_SECRET) throw new Error("A scheduled-task secret is not configured");
+  const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
+  const response = await fetch(`${siteUrl}/api/internal/sec-facts-refresh`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
+      "user-agent": "learn-what-you-own-sec-refresh/1.0",
+    },
+  });
+  if (!response.ok) throw new Error(`SEC facts refresh endpoint returned ${response.status}`);
 }
 
 interface ExecutionContext {
@@ -41,6 +85,17 @@ const worker = {
     }
 
     return handler.fetch(request, env, ctx);
+  },
+
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // The trigger runs at both possible 08:00 Pacific UTC offsets. Only the
+    // invocation that is actually 08:00 in Los Angeles proceeds, keeping the
+    // delivery time stable across daylight-saving changes.
+    if (!isPacificDigestHour(controller.scheduledTime)) return;
+    ctx.waitUntil(Promise.all([
+      deliverScheduledDigest(env),
+      refreshScheduledSecFacts(env),
+    ]));
   },
 };
 

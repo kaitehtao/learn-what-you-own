@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { companySlug } from "../data/universe";
+import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 type Position = { id: number; ticker: string; companyName: string; accountLabel: string; shares: number | null; notes: string };
 
@@ -13,17 +14,17 @@ export function PortfolioClient() {
   const [form, setForm] = useState({ ticker: "", shares: "", accountLabel: "Primary portfolio", notes: "" });
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/portfolio");
+    const response = await authenticatedFetch("/api/portfolio");
     const data = await response.json() as { positions?: Position[]; error?: string };
     if (response.ok) setPositions(data.positions ?? []); else setError(data.error ?? "Unable to load portfolio.");
     setLoading(false);
   }, []);
   useEffect(() => {
     let active = true;
-    fetch("/api/portfolio").then(async (response) => {
+    authenticatedFetch("/api/portfolio").then(async (response) => {
       const data = await response.json() as { positions?: Position[]; error?: string };
       if (!active) return;
-      if (response.ok) setPositions(data.positions ?? []); else setError(data.error ?? "Unable to load portfolio.");
+      if (response.ok) setPositions(data.positions ?? []); else if (response.status === 401) window.location.href = loginPath("/portfolio"); else setError(data.error ?? "Unable to load portfolio.");
       setLoading(false);
     });
     return () => { active = false; };
@@ -32,14 +33,14 @@ export function PortfolioClient() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const response = await fetch("/api/portfolio", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
+    const response = await authenticatedFetch("/api/portfolio", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
     const data = await response.json() as { error?: string };
     if (!response.ok) return setError(data.error ?? "Unable to add holding.");
     setForm({ ticker: "", shares: "", accountLabel: form.accountLabel, notes: "" });
     await load();
   }
   async function remove(id: number) {
-    await fetch("/api/portfolio", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) });
+    await authenticatedFetch("/api/portfolio", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) });
     await load();
   }
 

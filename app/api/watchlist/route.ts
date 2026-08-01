@@ -1,8 +1,5 @@
-import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "../../../db";
-import { watchlistItems } from "../../../db/schema";
 import { researchUniverse } from "../../data/universe";
-import { ensureMemberProfile } from "../../member";
+import { apiError, requireSupabaseUser } from "../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,33 +8,45 @@ function findCompany(value: unknown) {
   return researchUniverse.find((company) => company.ticker === ticker);
 }
 
-export async function GET() {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const rows = await getDb().select().from(watchlistItems).where(eq(watchlistItems.userEmail, profile.email)).orderBy(asc(watchlistItems.ticker));
-  return Response.json({
-    items: rows.map((row) => {
-      const company = findCompany(row.ticker);
-      return { ...row, name: company?.name ?? row.ticker, sector: company?.sector ?? "Company", memberships: company?.memberships ?? [] };
-    }),
-  });
+export async function GET(request: Request) {
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const { data, error } = await supabase.from("watchlist_items").select("id,ticker,created_at").eq("user_id", profile.user_id).order("ticker");
+    if (error) throw error;
+    return Response.json({
+      items: (data ?? []).map((row) => {
+        const company = findCompany(row.ticker);
+        return { id: row.id, ticker: row.ticker, createdAt: row.created_at, name: company?.name ?? row.ticker, sector: company?.sector ?? "Company", memberships: company?.memberships ?? [] };
+      }),
+    });
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 export async function POST(request: Request) {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const payload = await request.json() as { ticker?: string };
-  const company = findCompany(payload.ticker);
-  if (!company) return Response.json({ error: "Choose a ticker from the research universe." }, { status: 400 });
-  await getDb().insert(watchlistItems).values({ userEmail: profile.email, ticker: company.ticker }).onConflictDoNothing();
-  return Response.json({ ok: true, ticker: company.ticker }, { status: 201 });
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const payload = await request.json() as { ticker?: string };
+    const company = findCompany(payload.ticker);
+    if (!company) return Response.json({ error: "Choose a ticker from the research universe." }, { status: 400 });
+    const { error } = await supabase.from("watchlist_items").upsert({ user_id: profile.user_id, ticker: company.ticker }, { onConflict: "user_id,ticker", ignoreDuplicates: true });
+    if (error) throw error;
+    return Response.json({ ok: true, ticker: company.ticker }, { status: 201 });
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 export async function DELETE(request: Request) {
-  const profile = await ensureMemberProfile();
-  if (!profile) return Response.json({ error: "Authentication required" }, { status: 401 });
-  const payload = await request.json() as { ticker?: string };
-  const ticker = payload.ticker?.trim().toUpperCase() ?? "";
-  await getDb().delete(watchlistItems).where(and(eq(watchlistItems.userEmail, profile.email), eq(watchlistItems.ticker, ticker)));
-  return Response.json({ ok: true });
+  try {
+    const { profile, supabase } = await requireSupabaseUser(request);
+    const payload = await request.json() as { ticker?: string };
+    const ticker = payload.ticker?.trim().toUpperCase() ?? "";
+    const { error } = await supabase.from("watchlist_items").delete().eq("user_id", profile.user_id).eq("ticker", ticker);
+    if (error) throw error;
+    return Response.json({ ok: true });
+  } catch (error) {
+    return apiError(error);
+  }
 }
