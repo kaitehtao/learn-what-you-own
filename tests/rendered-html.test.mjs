@@ -206,3 +206,34 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(header, /NotificationBell/);
   assert.match(header, /href="\/notifications"/);
 });
+
+test("provides an admin-only audience and account control center", async () => {
+  const [migration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
+    source("supabase/migrations/20260801040000_admin_dashboard_analytics.sql"),
+    source("app/api/admin/dashboard/route.ts"),
+    source("app/admin/AdminDashboard.tsx"),
+    source("app/VisitorTracker.tsx"),
+    source("app/layout.tsx"),
+    source("app/admin/page.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.site_visits/);
+  assert.match(migration, /create table if not exists public\.admin_account_audit/);
+  assert.match(migration, /revoke all on public\.site_visits from anon, authenticated/);
+  assert.match(migration, /admin_dashboard_visitor_metrics/);
+  assert.doesNotMatch(migration, /ip_address|user_agent/);
+  assert.match(route, /requireAdmin/);
+  assert.match(route, /inviteUserByEmail/);
+  assert.match(route, /deleteUser\(userId, false\)/);
+  assert.match(route, /You cannot delete the account you are currently using/);
+  assert.match(route, /The final administrator cannot be deleted/);
+  assert.match(route, /admin_account_audit/);
+  assert.match(dashboard, /Audience and accounts/);
+  assert.match(dashboard, /Invite member/);
+  assert.match(dashboard, /DELETE @/);
+  assert.match(dashboard, /Visitor counts use a random first-party browser identifier/);
+  assert.match(tracker, /navigator\.doNotTrack/);
+  assert.match(tracker, /crypto\.randomUUID/);
+  assert.match(layout, /<VisitorTracker/);
+  assert.match(adminPage, /<AdminDashboard/);
+});

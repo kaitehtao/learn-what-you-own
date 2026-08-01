@@ -46,6 +46,7 @@ Supabase owns member identity and private/community state:
 - private/public messages and following relationships;
 - private research notebooks and notes;
 - in-app notification preferences and email outbox records.
+- privacy-conscious visitor sessions and administrator account-action audits.
 
 Row-level security is the primary authorization boundary. The service-role key is server-only and must never be returned from an API route or added to a browser bundle.
 
@@ -70,6 +71,7 @@ Resend sends opt-in notification email. It does not store private-message bodies
 ## Code map
 
 - `app/` — pages, API routes, member workflows, and dossier presentation
+- `app/admin/` and `app/api/admin/dashboard/` — admin-only adoption metrics and account operations
 - `db/schema.ts` and `db/index.ts` — D1/Drizzle schema and binding access
 - `drizzle/` — ordered D1 schema migrations and controlled seed material
 - `supabase/migrations/` — ordered Postgres/RLS migrations

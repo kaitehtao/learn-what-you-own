@@ -50,6 +50,7 @@ Apply each file once, in this order, using the production project's SQL editor o
 4. `supabase/migrations/20260801010000_member_following_public_messages.sql`
 5. `supabase/migrations/20260801020000_private_research_notebooks.sql`
 6. `supabase/migrations/20260801030000_member_notifications.sql`
+7. `supabase/migrations/20260801040000_admin_dashboard_analytics.sql`
 
 These migrations are designed to preserve member data and establish RLS policies. Never apply them to an unverified project merely because its display name looks similar. Confirm the project reference from `SUPABASE_URL` first.
 

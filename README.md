@@ -30,6 +30,7 @@ npm run dev
    - `supabase/migrations/20260801010000_member_following_public_messages.sql`
    - `supabase/migrations/20260801020000_private_research_notebooks.sql`
    - `supabase/migrations/20260801030000_member_notifications.sql`
+   - `supabase/migrations/20260801040000_admin_dashboard_analytics.sql`
 3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
 4. In **Authentication → URL Configuration**, set the production Site URL and allow:
    - `http://localhost:3000/auth/callback`
@@ -47,6 +48,8 @@ The publishable key is designed for browser use; row-level security protects pri
 4. Keep the application callback URLs listed above in Supabase's redirect allowlist.
 
 Email users select a unique username during registration. Google users select one after their first verified sign-in. Emails are held in Supabase Auth and are never displayed with published insights.
+
+Administrators can open `/admin` to review visitor/session metrics, account growth, invitations, roles, deletions, and the privileged-action audit log. Visitor analytics use a random first-party browser identifier, respect Do Not Track, and deliberately avoid IP addresses and user-agent fingerprinting.
 
 ## Filing facts and relationship graph
 

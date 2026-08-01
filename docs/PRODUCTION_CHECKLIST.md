@@ -48,6 +48,10 @@ Complete this checklist before and after every production release. A coding agen
 - [ ] Follow/follower counts update correctly.
 - [ ] A contribution remains private until editorial approval.
 - [ ] A member cannot assign an editor/admin role to themselves.
+- [ ] `/admin` rejects non-admin members and shows visitor/account metrics to an administrator.
+- [ ] Administrator invitations create an auditable pending account without exposing credentials.
+- [ ] Role changes and account deletion require an administrator and preserve an audit record.
+- [ ] The active administrator cannot delete themselves or remove the final administrator.
 
 ## Notification and email tests
 
