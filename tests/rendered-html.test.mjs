@@ -334,11 +334,24 @@ test("keeps NYSE and Nasdaq separate from the official FINRA OTC catalog", async
   assert.match(updater, /nasdaqlisted\.txt/);
   assert.match(overlay, /memberships_json = excluded\.memberships_json/);
   assert.doesNotMatch(overlay, /exchange = excluded\.exchange/);
+  assert.doesNotMatch(overlay, /name = excluded\.name/);
   assert.doesNotMatch(overlay, /company_dossiers/);
   assert.match(metadata, /listedSecurityCount = \d+/);
   assert.match(metadata, /otcSecurityCount = \d+/);
   assert.match(header, /href="\/otc"/);
   assert.match(footer, /OTC \/ Pink Market/);
+});
+
+test("keeps long starter-company names clear of account actions", async () => {
+  const [starter, styles] = await Promise.all([
+    source("app/company/[ticker]/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(starter, /name: catalogCompany\?\.name \|\| universeCompany\.name/);
+  assert.match(styles, /@media\(max-width:1100px\)\{\.starter-company-hero>\.container\{grid-template-columns:1fr/);
+  assert.match(styles, /\.starter-company-title h1\{max-width:24ch/);
+  assert.match(styles, /\.starter-company-actions\{max-width:540px[^}]*flex-wrap:wrap/);
 });
 
 test("ranks twelve homepage dossiers by verified community research demand", async () => {

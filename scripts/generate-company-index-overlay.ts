@@ -35,7 +35,6 @@ for (let start = 0; start < researchUniverse.length; start += 100) {
 ) VALUES
 ${batch.map(values).join(",\n")}
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,

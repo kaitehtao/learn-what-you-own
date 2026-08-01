@@ -105,7 +105,6 @@ INSERT INTO companies (
 ('SYK', 'STRYKER CORP', 'Health Care', 'NYSE', 133424879606, '["S&P 500","Russell 3000"]', '{"S&P 500":0.18,"Russell 3000":0.17}', NULL, 'other', 'Index-tracked compatibility security', 'STRYKER CORP', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('HWM', 'HOWMET AEROSPACE INC', 'Industrials', 'NYSE', 110941802886, '["S&P 500","Russell 3000"]', '{"S&P 500":0.18,"Russell 3000":0.17}', NULL, 'other', 'Index-tracked compatibility security', 'HOWMET AEROSPACE INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -217,7 +216,6 @@ INSERT INTO companies (
 ('COR', 'CENCORA INC', 'Health Care', 'NYSE', 60747799764, '["S&P 500","Russell 3000"]', '{"S&P 500":0.09,"Russell 3000":0.08}', NULL, 'other', 'Index-tracked compatibility security', 'CENCORA INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('HCA', 'HCA HEALTHCARE INC', 'Health Care', 'NYSE', 85689128685, '["S&P 500","Russell 3000"]', '{"S&P 500":0.09,"Russell 3000":0.08}', NULL, 'other', 'Index-tracked compatibility security', 'HCA HEALTHCARE INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -329,7 +327,6 @@ INSERT INTO companies (
 ('CASY', 'CASEYS GENERAL STORES INC', 'Consumer Staples', 'NASDAQ', 32101762895, '["S&P 500","Russell 3000"]', '{"S&P 500":0.05,"Russell 3000":0.05}', NULL, 'other', 'Index-tracked compatibility security', 'CASEYS GENERAL STORES INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('EXR', 'EXTRA SPACE STORAGE REIT INC', 'Real Estate', 'NYSE', 31310983325, '["S&P 500","Russell 3000"]', '{"S&P 500":0.05,"Russell 3000":0.05}', NULL, 'other', 'Index-tracked compatibility security', 'EXTRA SPACE STORAGE REIT INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -441,7 +438,6 @@ INSERT INTO companies (
 ('ESS', 'ESSEX PROPERTY TRUST REIT INC', 'Real Estate', 'NYSE', 18113131411, '["S&P 500","Russell 3000"]', '{"S&P 500":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'ESSEX PROPERTY TRUST REIT INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('CF', 'CF INDUSTRIES HOLDINGS INC', 'Materials', 'NYSE', 19321953791, '["S&P 500","Russell 3000"]', '{"S&P 500":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'CF INDUSTRIES HOLDINGS INC', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -553,7 +549,6 @@ INSERT INTO companies (
 ('TAP', 'MOLSON COORS BREWING CLASS B', 'Consumer Staples', 'NYSE', 7792759008, '["S&P 500","Russell 3000"]', '{"S&P 500":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'MOLSON COORS BREWING CLASS B', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('ERIE', 'ERIE INDEMNITY CLASS A', 'Financials', 'NASDAQ', 10793593509, '["S&P 500"]', '{"S&P 500":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'ERIE INDEMNITY CLASS A', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -665,7 +660,6 @@ INSERT INTO companies (
 ('SUI', 'SUN COMMUNITIES REIT INC', 'Real Estate', 'NYSE', 15155693080, '["Russell 3000"]', '{"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'SUN COMMUNITIES REIT INC', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('FLUT', 'FLUTTER ENTERTAINMENT PLC', 'Consumer Discretionary', 'NYSE', 17891247173, '["Russell 3000"]', '{"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'FLUTTER ENTERTAINMENT PLC', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -777,7 +771,6 @@ INSERT INTO companies (
 ('OGE', 'OGE ENERGY CORP', 'Utilities', 'NYSE', 9753250410, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'OGE ENERGY CORP', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('BMNR', 'BITMINE IMMERSION TECHNOLOGIES INC', 'Information Technology', 'NYSE', 10906333204, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'BITMINE IMMERSION TECHNOLOGIES INC', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -889,7 +882,6 @@ INSERT INTO companies (
 ('RGEN', 'REPLIGEN CORP', 'Health Care', 'NASDAQ', 8100151464, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'REPLIGEN CORP', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('CLF', 'CLEVELAND CLIFFS INC', 'Materials', 'NYSE', 6635380747, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'CLEVELAND CLIFFS INC', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1001,7 +993,6 @@ INSERT INTO companies (
 ('LLYVK', 'LIBERTY LIVE HOLDINGS INC SERIES C', 'Consumer Discretionary', 'NASDAQ', 9720267924, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'LIBERTY LIVE HOLDINGS INC SERIES C', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('WSC', 'WILLSCOT HOLDINGS CORP CLASS A', 'Industrials', 'NASDAQ', 4349302136, '["Russell 3000"]', '{"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'WILLSCOT HOLDINGS CORP CLASS A', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1113,7 +1104,6 @@ INSERT INTO companies (
 ('WHR', 'WHIRLPOOL CORP', 'Consumer Discretionary', 'NYSE', 2467816216, '["Russell 3000"]', '{"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'WHIRLPOOL CORP', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('CAI', 'CARIS LIFE SCIENCES INC', 'Health Care', 'NASDAQ', 4548332383, '["Russell 3000"]', '{"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'CARIS LIFE SCIENCES INC', 'https://www.ishares.com/us/products/239707/ishares-russell-1000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1225,7 +1215,6 @@ INSERT INTO companies (
 ('NJR', 'NEW JERSEY RESOURCES CORP', 'Utilities', 'NYSE', 5911985746, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.2,"Russell 3000":0.2}', NULL, 'other', 'Index-tracked compatibility security', 'NEW JERSEY RESOURCES CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('AUB', 'ATLANTIC UNION BANKSHARES CORP', 'Financials', 'NYSE', 6050930612, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.2,"Russell 3000":0.2}', NULL, 'other', 'Index-tracked compatibility security', 'ATLANTIC UNION BANKSHARES CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1337,7 +1326,6 @@ INSERT INTO companies (
 ('ASB', 'ASSOCIATED BANCORP', 'Financials', 'NYSE', 5801594230, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.14,"Russell 3000":0.14}', NULL, 'other', 'Index-tracked compatibility security', 'ASSOCIATED BANCORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('BGC', 'BGC GROUP INC CLASS A', 'Financials', 'NASDAQ', 5595381520, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.14,"Russell 3000":0.14}', NULL, 'other', 'Index-tracked compatibility security', 'BGC GROUP INC CLASS A', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1449,7 +1437,6 @@ INSERT INTO companies (
 ('POWI', 'POWER INTEGRATIONS INC', 'Information Technology', 'NASDAQ', 3391675426, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.11,"Russell 3000":0.11}', NULL, 'other', 'Index-tracked compatibility security', 'POWER INTEGRATIONS INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('AAP', 'ADVANCE AUTO PARTS INC', 'Consumer Discretionary', 'NYSE', 3393016799, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.11,"Russell 3000":0.11}', NULL, 'other', 'Index-tracked compatibility security', 'ADVANCE AUTO PARTS INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1561,7 +1548,6 @@ INSERT INTO companies (
 ('DBRG', 'DIGITALBRIDGE GROUP INC CLASS A', 'Financials', 'NYSE', 2890602255, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.09,"Russell 3000":0.09}', NULL, 'other', 'Index-tracked compatibility security', 'DIGITALBRIDGE GROUP INC CLASS A', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('FRME', 'FIRST MERCHANTS CORP', 'Financials', 'NASDAQ', 2725103321, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.09,"Russell 3000":0.09}', NULL, 'other', 'Index-tracked compatibility security', 'FIRST MERCHANTS CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1673,7 +1659,6 @@ INSERT INTO companies (
 ('RUN', 'SUNRUN INC', 'Industrials', 'NASDAQ', 2270989212, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.08,"Russell 3000":0.08}', NULL, 'other', 'Index-tracked compatibility security', 'SUNRUN INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('AAMI', 'ACADIAN ASSET MANAGEMENT INC', 'Financials', 'NYSE', 2991053543, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.08,"Russell 3000":0.08}', NULL, 'other', 'Index-tracked compatibility security', 'ACADIAN ASSET MANAGEMENT INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1785,7 +1770,6 @@ INSERT INTO companies (
 ('MBX', 'MBX BIOSCIENCES INC', 'Health Care', 'NASDAQ', 3163332243, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.06,"Russell 3000":0.06}', NULL, 'other', 'Index-tracked compatibility security', 'MBX BIOSCIENCES INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('CDNA', 'CAREDX INC', 'Health Care', 'NASDAQ', 1968226226, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.06,"Russell 3000":0.06}', NULL, 'other', 'Index-tracked compatibility security', 'CAREDX INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -1897,7 +1881,6 @@ INSERT INTO companies (
 ('DJT', 'TRUMP MEDIA TECHNOLOGY GROUP CORP', 'Communication', 'NASDAQ', 2874780735, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.05,"Russell 3000":0.05}', NULL, 'other', 'Index-tracked compatibility security', 'TRUMP MEDIA TECHNOLOGY GROUP CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('BFC', 'BANK FIRST CORP', 'Financials', 'NASDAQ', 1676481405, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.05,"Russell 3000":0.05}', NULL, 'other', 'Index-tracked compatibility security', 'BANK FIRST CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2009,7 +1992,6 @@ INSERT INTO companies (
 ('VPG', 'VISHAY PRECISION GROUP INC', 'Information Technology', 'NYSE', 1169423920, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.04,"Russell 3000":0.04}', NULL, 'other', 'Index-tracked compatibility security', 'VISHAY PRECISION GROUP INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('LGIH', 'LGI HOMES INC', 'Consumer Discretionary', 'NASDAQ', 1327027776, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.04,"Russell 3000":0.04}', NULL, 'other', 'Index-tracked compatibility security', 'LGI HOMES INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2121,7 +2103,6 @@ INSERT INTO companies (
 ('CNXN', 'PC CONNECTION INC', 'Information Technology', 'NASDAQ', 2080896617, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'PC CONNECTION INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('PGEN', 'PRECIGEN INC', 'Health Care', 'NASDAQ', 2117675221, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'PRECIGEN INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2233,7 +2214,6 @@ INSERT INTO companies (
 ('SVRA', 'SAVARA INC', 'Health Care', 'NASDAQ', 1135296754, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'SAVARA INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('GOLD', 'GOLD INC', 'Consumer Discretionary', 'NYSE', 1220504058, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.03,"Russell 3000":0.03}', NULL, 'other', 'Index-tracked compatibility security', 'GOLD INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2345,7 +2325,6 @@ INSERT INTO companies (
 ('EVC', 'ENTRAVISION COMMUNICATIONS CORP CL', 'Communication', 'NYSE', 1069495272, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'ENTRAVISION COMMUNICATIONS CORP CL', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('SPFI', 'SOUTH PLAINS FINANCIAL INC', 'Financials', 'NASDAQ', 855432289, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'SOUTH PLAINS FINANCIAL INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2457,7 +2436,6 @@ INSERT INTO companies (
 ('FBIZ', 'FIRST BUSINESS FINANCIAL SERVICES', 'Financials', 'NASDAQ', 562439285, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'FIRST BUSINESS FINANCIAL SERVICES', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('SBGI', 'SINCLAIR INC CLASS A', 'Communication', 'NASDAQ', 993720050, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'SINCLAIR INC CLASS A', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2569,7 +2547,6 @@ INSERT INTO companies (
 ('CLMB', 'CLIMB GLOBAL SOLUTIONS INC', 'Information Technology', 'NASDAQ', 497289128, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'CLIMB GLOBAL SOLUTIONS INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('OFIX', 'ORTHOFIX MEDICAL INC', 'Health Care', 'NASDAQ', 476571277, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.02,"Russell 3000":0.02}', NULL, 'other', 'Index-tracked compatibility security', 'ORTHOFIX MEDICAL INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2681,7 +2658,6 @@ INSERT INTO companies (
 ('DDD', '3D SYSTEMS CORP', 'Industrials', 'NYSE', 396757043, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', '3D SYSTEMS CORP', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('PACB', 'PACIFIC BIOSCIENCES OF CALIFORNIA', 'Health Care', 'NASDAQ', 459690498, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'PACIFIC BIOSCIENCES OF CALIFORNIA', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2793,7 +2769,6 @@ INSERT INTO companies (
 ('NRDS', 'NERDWALLET INC CLASS A', 'Financials', 'NASDAQ', 592189047, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'NERDWALLET INC CLASS A', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('OSS', 'ONE STOP SYSTEMS INC', 'Information Technology', 'NASDAQ', 297228204, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'ONE STOP SYSTEMS INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -2905,7 +2880,6 @@ INSERT INTO companies (
 ('USNA', 'USANA HEALTH SCIENCES INC', 'Consumer Staples', 'NYSE', 409324954, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'USANA HEALTH SCIENCES INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('PSFE', 'PAYSAFE LTD', 'Financials', 'NYSE', 539338964, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'PAYSAFE LTD', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -3017,7 +2991,6 @@ INSERT INTO companies (
 ('ATOM', 'ATOMERA INC', 'Information Technology', 'NASDAQ', 197066985, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'ATOMERA INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('CMTG', 'CLAROS MORTGAGE TRUST INC', 'Financials', 'NYSE', 255198150, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0.01,"Russell 3000":0.01}', NULL, 'other', 'Index-tracked compatibility security', 'CLAROS MORTGAGE TRUST INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -3129,7 +3102,6 @@ INSERT INTO companies (
 ('LFMD', 'LIFEMD INC', 'Health Care', 'NASDAQ', 176039536, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0,"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'LIFEMD INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('AIRO', 'AIRO GROUP HOLDINGS INC', 'Industrials', 'NASDAQ', 205968968, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0,"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'AIRO GROUP HOLDINGS INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -3241,7 +3213,6 @@ INSERT INTO companies (
 ('VERI', 'VERITONE INC', 'Information Technology', 'NASDAQ', 97606913, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0,"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'VERITONE INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0),
 ('AIRS', 'AIRSCULPT TECHNOLOGIES INC', 'Health Care', 'NASDAQ', 342146553, '["Russell 2000","Russell 3000"]', '{"Russell 2000":0,"Russell 3000":0}', NULL, 'other', 'Index-tracked compatibility security', 'AIRSCULPT TECHNOLOGIES INC', 'https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,
@@ -3347,7 +3318,6 @@ INSERT INTO companies (
 ('FER', 'Ferrovial N.V. Ordinary Shares', 'Industrials', 'NASDAQ', 46851088810, '["Nasdaq-100 (QQQ)"]', '{"Nasdaq-100 (QQQ)":0}', NULL, 'other', 'Index-tracked compatibility security', 'Ferrovial N.V. Ordinary Shares', 'https://api.nasdaq.com/api/quote/list-type/nasdaq100', 'July 27, 2026–July 28, 2026', 0),
 ('BB', 'BLACKBERRY LIMITED', 'Information Technology', 'NYSE', 4946358275, '["Extended Coverage"]', '{"Extended Coverage":0}', NULL, 'other', 'Index-tracked compatibility security', 'BLACKBERRY LIMITED', 'https://www.ishares.com/us/products/239726/ishares-core-s-p-500-etf/latest-holdings.csv', 'July 27, 2026–July 28, 2026', 0)
 ON CONFLICT(ticker) DO UPDATE SET
-  name = excluded.name,
   sector = excluded.sector,
   market_cap = excluded.market_cap,
   memberships_json = excluded.memberships_json,

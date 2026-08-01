@@ -35,8 +35,16 @@ export default async function CompanyStarterPage({
   const suppliedName = (await searchParams).name;
   const earningsName = Array.isArray(suppliedName) ? suppliedName[0] : suppliedName;
   const universeCompany = researchUniverse.find((item) => item.ticker === ticker);
-  const catalogCompany = universeCompany ? null : await findCatalogCompany(ticker);
-  const company: ResearchCompany = universeCompany ?? (catalogCompany ? {
+  const catalogCompany = await findCatalogCompany(ticker);
+  const company: ResearchCompany = universeCompany ? {
+    ...universeCompany,
+    name: catalogCompany?.name || universeCompany.name,
+    exchange: catalogCompany?.exchange || universeCompany.exchange,
+    cik: catalogCompany?.cik,
+    listingScope: catalogCompany?.listing_scope,
+    securityType: catalogCompany?.security_type,
+    securityDescription: catalogCompany?.security_description,
+  } : (catalogCompany ? {
     ticker: catalogCompany.ticker,
     name: catalogCompany.name,
     sector: catalogCompany.sector,
