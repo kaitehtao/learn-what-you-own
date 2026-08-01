@@ -4,8 +4,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const { profile, user } = await requireSupabaseUser(request);
-    return Response.json({ profile, email: user.email });
+    const { profile, user, supabase } = await requireSupabaseUser(request);
+    const [followers, following] = await Promise.all([
+      supabase.from("member_follows").select("follower_id", { count: "exact", head: true }).eq("followed_id", profile.user_id),
+      supabase.from("member_follows").select("followed_id", { count: "exact", head: true }).eq("follower_id", profile.user_id),
+    ]);
+    if (followers.error) throw followers.error;
+    if (following.error) throw following.error;
+    return Response.json({ profile, email: user.email, followerCount: followers.count ?? 0, followingCount: following.count ?? 0 });
   } catch (error) {
     return apiError(error);
   }

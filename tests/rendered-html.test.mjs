@@ -100,12 +100,39 @@ test("keeps private messages between verified sender and recipient accounts", as
   assert.match(migration, /revoke all on public\.private_messages from anon, authenticated/);
   assert.match(migration, /grant execute on function public\.send_private_message/);
   assert.match(route, /requireSupabaseUser/);
-  assert.match(route, /send_private_message/);
+  assert.match(route, /send_member_message/);
   assert.match(route, /mark_private_message_read/);
   assert.match(route, /delete_private_message/);
   assert.doesNotMatch(route, /user\.email|profile\.email/);
-  assert.match(client, /Private correspondence/);
+  assert.match(client, /Member correspondence/);
   assert.match(client, /Send private message/);
   assert.match(client, /Reply/);
   assert.match(header, /href="\/messages"/);
+});
+
+test("supports public member profiles, follows, and per-message visibility", async () => {
+  const [migration, memberRoute, followRoute, memberClient, messageClient] = await Promise.all([
+    source("supabase/migrations/20260801010000_member_following_public_messages.sql"),
+    source("app/api/members/[username]/route.ts"),
+    source("app/api/follows/route.ts"),
+    source("app/members/[username]/MemberProfileClient.tsx"),
+    source("app/messages/MessagesClient.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.member_follows/);
+  assert.match(migration, /follower_id <> followed_id/);
+  assert.match(migration, /auth\.uid\(\) = follower_id/);
+  assert.match(migration, /visibility in \('private', 'public'\)/);
+  assert.match(migration, /visibility = 'public'/);
+  assert.match(migration, /send_member_message/);
+  assert.match(memberRoute, /followerCount/);
+  assert.match(memberRoute, /followingCount/);
+  assert.match(memberRoute, /publicMessages/);
+  assert.match(followRoute, /You cannot follow yourself/);
+  assert.match(memberClient, /Followers/);
+  assert.match(memberClient, /Following/);
+  assert.match(memberClient, /Public note/);
+  assert.match(messageClient, /WHO CAN SEE THIS/);
+  assert.match(messageClient, /Only you and the recipient/);
+  assert.match(messageClient, /Also appears on their profile/);
 });

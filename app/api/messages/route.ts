@@ -16,6 +16,7 @@ function publicMessage(row: MessageRow, currentUserId: string) {
     id: row.id,
     subject: row.subject,
     body: row.body,
+    visibility: row.visibility === "public" ? "public" : "private",
     readAt: row.read_at,
     createdAt: row.created_at,
     direction: row.sender_id === currentUserId ? "sent" : "received",
@@ -24,7 +25,7 @@ function publicMessage(row: MessageRow, currentUserId: string) {
   };
 }
 
-const messageSelection = "id,sender_id,recipient_id,subject,body,read_at,created_at,sender:profiles!private_messages_sender_id_fkey(username,display_name),recipient:profiles!private_messages_recipient_id_fkey(username,display_name)";
+const messageSelection = "id,sender_id,recipient_id,subject,body,visibility,read_at,created_at,sender:profiles!private_messages_sender_id_fkey(username,display_name),recipient:profiles!private_messages_recipient_id_fkey(username,display_name)";
 
 export async function GET(request: Request) {
   try {
@@ -72,18 +73,20 @@ export async function POST(request: Request) {
   try {
     const { profile, supabase } = await requireSupabaseUser(request);
     if (!profile.onboarding_complete) return Response.json({ error: "Complete your username before sending messages." }, { status: 403 });
-    const payload = await request.json() as { recipientUsername?: string; subject?: string; body?: string };
+    const payload = await request.json() as { recipientUsername?: string; subject?: string; body?: string; visibility?: string };
     const recipientUsername = String(payload.recipientUsername ?? "").trim();
     const subject = String(payload.subject ?? "").trim();
     const body = String(payload.body ?? "").trim();
+    const visibility = payload.visibility === "public" ? "public" : "private";
     if (!/^[A-Za-z0-9_]{3,24}$/.test(recipientUsername)) return Response.json({ error: "Enter a valid recipient username." }, { status: 400 });
     if (subject.length < 1 || subject.length > 120) return Response.json({ error: "Subject must be between 1 and 120 characters." }, { status: 400 });
     if (body.length < 1 || body.length > 5000) return Response.json({ error: "Message must be between 1 and 5,000 characters." }, { status: 400 });
 
-    const { data, error } = await supabase.rpc("send_private_message", {
+    const { data, error } = await supabase.rpc("send_member_message", {
       recipient_username: recipientUsername,
       message_subject: subject,
       message_body: body,
+      message_visibility: visibility,
     });
     if (error) return Response.json({ error: error.message }, { status: error.message.includes("not found") ? 404 : 400 });
     return Response.json({ message: data }, { status: 201 });
