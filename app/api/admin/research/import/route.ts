@@ -9,6 +9,10 @@ import { apiError, requireEditor } from "../../../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
+// Each filing fact binds 17 values. Five rows stay below D1's per-statement
+// bound-parameter ceiling while preserving efficient, idempotent upserts.
+const D1_FACT_BATCH_SIZE = 5;
+
 export async function POST(request: Request) {
   try {
     const { profile } = await requireEditor(request);
@@ -53,8 +57,8 @@ export async function POST(request: Request) {
       },
     });
 
-    for (let index = 0; index < normalized.length; index += 20) {
-      const values = normalized.slice(index, index + 20).map((fact) => ({ ticker, ...fact }));
+    for (let index = 0; index < normalized.length; index += D1_FACT_BATCH_SIZE) {
+      const values = normalized.slice(index, index + D1_FACT_BATCH_SIZE).map((fact) => ({ ticker, ...fact }));
       if (!values.length) continue;
       await db.insert(filingFacts).values(values).onConflictDoUpdate({
         target: [filingFacts.ticker, filingFacts.metricKey, filingFacts.periodEnd, filingFacts.fiscalPeriod],

@@ -77,6 +77,7 @@ test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async 
   assert.equal((claims.match(/sourceExcerpt:/g) ?? []).length, 51);
 
   assert.match(importRoute, /sourceHostname !== "sec\.gov"/);
+  assert.match(importRoute, /const D1_FACT_BATCH_SIZE = 5/);
   assert.match(importRoute, /db\.insert\(companyDossiers\)/);
   assert.match(importRoute, /db\.insert\(dossierSources\)/);
   assert.match(importRoute, /db\.insert\(dossierClaims\)/);
