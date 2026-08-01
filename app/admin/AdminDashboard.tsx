@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 type Role = "member" | "contributor" | "editor" | "admin";
-type Member = { id:string; username:string; displayName:string; role:Role; onboardingComplete:boolean; email:string; verified:boolean; createdAt:string; lastSignInAt:string|null };
+type Member = { id:string; username:string; displayName:string; role:Role; onboardingComplete:boolean; email:string; verified:boolean; confirmationSentAt:string|null; createdAt:string; lastSignInAt:string|null };
 type DailyMetric = { date:string; visitors:number; pageViews:number };
 type TopPage = { path:string; visitors:number; pageViews:number };
 type Audit = { id:number; action:string; detail:Record<string,unknown>; created_at:string };
@@ -75,6 +75,27 @@ export function AdminDashboard() {
     setBusy("");
   }
 
+  async function resendVerification(member:Member) {
+    if (!window.confirm(`Resend the verification email to ${member.email}?`)) return;
+    setBusy(`resend:${member.id}`); setError(""); setNotice("");
+    const response = await authenticatedFetch("/api/admin/dashboard",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"resend_verification",userId:member.id})});
+    const result = await response.json() as {error?:string};
+    if (!response.ok) setError(result.error ?? "Unable to resend the verification email.");
+    else { setNotice(`Verification email resent to ${member.email}.`); await load(); }
+    setBusy("");
+  }
+
+  async function manuallyVerify(member:Member) {
+    const confirmation = window.prompt(`Manual verification bypasses the user's email confirmation link. Type ${member.email} exactly to verify this account.`);
+    if (!confirmation) return;
+    setBusy(`verify:${member.id}`); setError(""); setNotice("");
+    const response = await authenticatedFetch("/api/admin/dashboard",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"confirm_email",userId:member.id,confirmation})});
+    const result = await response.json() as {error?:string};
+    if (!response.ok) setError(result.error ?? "Unable to verify the account.");
+    else { setNotice(`${member.email} is now verified.`); await load(); }
+    setBusy("");
+  }
+
   async function deleteMember(member:Member) {
     const confirmation = window.prompt(`This permanently deletes @${member.username} and their private member data. Type DELETE @${member.username} to continue.`);
     if (!confirmation) return;
@@ -101,12 +122,15 @@ export function AdminDashboard() {
       <article className="admin-activity-chart"><header><div><small>14-DAY ACTIVITY</small><h2>Visitors and registrations</h2></div><div className="admin-chart-legend"><span>Visitors</span><span>Signups</span></div></header><div className="admin-bars">{chart.map(day=><div key={day.date} title={`${day.date}: ${day.visitors} visitors, ${day.signups} signups`}><div className="admin-bar-pair"><i style={{height:`${Math.max(day.visitors?8:0,day.visitors/day.max*100)}%`}}/><i style={{height:`${Math.max(day.signups?8:0,day.signups/day.max*100)}%`}}/></div><time>{new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined,{month:"numeric",day:"numeric",timeZone:"UTC"})}</time></div>)}</div></article>
       <article className="admin-top-pages"><header><small>LAST 7 DAYS</small><h2>Most visited pages</h2></header>{data.visitors.topPages.length?data.visitors.topPages.map(page=><div key={page.path}><code>{page.path}</code><span><strong>{page.pageViews}</strong> views · {page.visitors} visitors</span></div>):<p>Visitor tracking starts with this release; no historical browser sessions are backfilled.</p>}</article>
     </div>
-    <section className="admin-account-section" id="accounts"><header><div><span className="kicker">ACCOUNT OPERATIONS</span><h2>Members</h2><p>Invite by email, update roles, or permanently remove an account.</p></div><label>SEARCH<input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Username, name, or email"/></label></header>
+    <section className="admin-account-section" id="accounts"><header><div><span className="kicker">ACCOUNT OPERATIONS</span><h2>Members</h2><p>Invite by email, verify pending accounts, update roles, or permanently remove an account.</p></div><label>SEARCH<input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Username, name, or email"/></label></header>
       <form className="admin-invite-form" onSubmit={inviteMember}><label>EMAIL<input required type="email" value={invite.email} onChange={event=>setInvite({...invite,email:event.target.value})} placeholder="new.member@example.com"/></label><label>USERNAME <em>optional</em><input minLength={3} maxLength={24} pattern="[A-Za-z0-9_]+" value={invite.username} onChange={event=>setInvite({...invite,username:event.target.value})} placeholder="owner_researcher"/></label><label>DISPLAY NAME <em>optional</em><input maxLength={80} value={invite.displayName} onChange={event=>setInvite({...invite,displayName:event.target.value})} placeholder="Member name"/></label><button disabled={busy==="invite"}>{busy==="invite"?"Sending…":"Invite member →"}</button></form>
-      <div className="admin-member-table"><div className="admin-member-labels"><span>MEMBER</span><span>STATUS</span><span>JOINED / LAST ACTIVE</span><span>ROLE</span><span>ACTION</span></div>{filtered.map(member=><div className="admin-member-row" key={member.id}><span><strong>@{member.username}</strong><small>{member.displayName||"No display name"}</small><em>{member.email}</em></span><span><b className={member.verified?"verified":"pending"}>{member.verified?"Verified":"Pending"}</b><small>{member.onboardingComplete?"Onboarded":"Needs onboarding"}</small></span><span><strong>{shortDate(member.createdAt)}</strong><small>{shortDate(member.lastSignInAt)}</small></span><span><select aria-label={`Role for ${member.username}`} disabled={busy===member.id} value={member.role} onChange={event=>void changeRole(member,event.target.value as Role)}>{roles.map(role=><option key={role}>{role}</option>)}</select></span><span><button className="admin-delete-account" disabled={busy===member.id} onClick={()=>void deleteMember(member)}>Delete</button></span></div>)}</div>
+      <div className="admin-member-table"><div className="admin-member-labels"><span>MEMBER</span><span>STATUS &amp; VERIFICATION</span><span>JOINED / LAST ACTIVE</span><span>ROLE</span><span>ACTION</span></div>{filtered.map(member=>{
+        const memberBusy = busy.includes(member.id);
+        return <div className="admin-member-row" key={member.id}><span><strong>@{member.username}</strong><small>{member.displayName||"No display name"}</small><em>{member.email}</em></span><span><b className={member.verified?"verified":"pending"}>{member.verified?"Verified":"Pending"}</b><small>{member.onboardingComplete?"Onboarded":"Needs onboarding"}</small>{!member.verified&&<div className="admin-verification-actions"><button disabled={memberBusy} onClick={()=>void resendVerification(member)}>{busy===`resend:${member.id}`?"Sending…":"Resend email"}</button><button disabled={memberBusy} onClick={()=>void manuallyVerify(member)}>{busy===`verify:${member.id}`?"Verifying…":"Verify manually"}</button><small>Last sent: {shortDate(member.confirmationSentAt)}</small></div>}</span><span><strong>{shortDate(member.createdAt)}</strong><small>{shortDate(member.lastSignInAt)}</small></span><span><select aria-label={`Role for ${member.username}`} disabled={memberBusy} value={member.role} onChange={event=>void changeRole(member,event.target.value as Role)}>{roles.map(role=><option key={role}>{role}</option>)}</select></span><span><button className="admin-delete-account" disabled={memberBusy} onClick={()=>void deleteMember(member)}>Delete</button></span></div>;
+      })}</div>
       {!filtered.length&&<div className="queue-empty">No accounts match that search.</div>}
     </section>
-    <section className="admin-audit" id="audit"><header><span className="kicker">PRIVILEGED ACTIONS</span><h2>Account audit log</h2></header>{data.audit.length?data.audit.map(entry=><div key={entry.id}><strong>{entry.action.replace("_"," ")}</strong><span>{String(entry.detail.username??entry.detail.email??"Member account")}</span><time>{shortDate(entry.created_at)}</time></div>):<p>No administrator account actions have been recorded yet.</p>}</section>
+    <section className="admin-audit" id="audit"><header><span className="kicker">PRIVILEGED ACTIONS</span><h2>Account audit log</h2></header>{data.audit.length?data.audit.map(entry=><div key={entry.id}><strong>{entry.action.replaceAll("_"," ")}</strong><span>{String(entry.detail.username??entry.detail.email??"Member account")}</span><time>{shortDate(entry.created_at)}</time></div>):<p>No administrator account actions have been recorded yet.</p>}</section>
     <p className="admin-privacy-note">Visitor counts use a random first-party browser identifier, respect Do Not Track, and store no IP address or user-agent fingerprint. Counts represent browsers, not identified people.</p>
   </section>;
 }
