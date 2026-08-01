@@ -40,6 +40,8 @@ export type FeaturedDossier = {
   sources: { title: string; meta: string; href: string; excerpt: string }[];
 };
 
+import { flagshipDossierUpgrades } from "./featuredDossierUpgrades";
+
 export const featuredDossiers: Record<string, FeaturedDossier> = {
   AMZN: {
     ticker: "AMZN",
@@ -457,3 +459,8 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     ],
   },
 };
+
+for (const [ticker, upgrade] of Object.entries(flagshipDossierUpgrades)) {
+  const existing = featuredDossiers[ticker];
+  if (existing) featuredDossiers[ticker] = { ...existing, ...upgrade };
+}
