@@ -42,6 +42,7 @@ export function Header() {
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
           {signedIn && <Link href="/portfolio">Portfolio</Link>}
+          {signedIn && <Link href="/messages">Messages</Link>}
           <div className="mobile-nav-actions">
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false

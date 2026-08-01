@@ -83,3 +83,29 @@ test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async 
   assert.match(importRoute, /db\.insert\(dossierClaims\)/);
   assert.match(importRoute, /dossierStatus: dossier \? "published" : "facts-only"/);
 });
+
+test("keeps private messages between verified sender and recipient accounts", async () => {
+  const [migration, route, client, header] = await Promise.all([
+    source("supabase/migrations/20260801000000_private_messages.sql"),
+    source("app/api/messages/route.ts"),
+    source("app/messages/MessagesClient.tsx"),
+    source("app/ui.tsx"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.private_messages/);
+  assert.match(migration, /auth\.uid\(\) = sender_id/);
+  assert.match(migration, /auth\.uid\(\) = recipient_id/);
+  assert.match(migration, /sender_id <> recipient_id/);
+  assert.match(migration, /security definer set search_path = public/);
+  assert.match(migration, /revoke all on public\.private_messages from anon, authenticated/);
+  assert.match(migration, /grant execute on function public\.send_private_message/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /send_private_message/);
+  assert.match(route, /mark_private_message_read/);
+  assert.match(route, /delete_private_message/);
+  assert.doesNotMatch(route, /user\.email|profile\.email/);
+  assert.match(client, /Private correspondence/);
+  assert.match(client, /Send private message/);
+  assert.match(client, /Reply/);
+  assert.match(header, /href="\/messages"/);
+});
