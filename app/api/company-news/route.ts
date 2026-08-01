@@ -7,6 +7,9 @@ type NewsItem = {
   url: string;
   publishedAt: string;
   source: string;
+  summary?: string;
+  category?: string;
+  readingMinutes?: number;
 };
 
 function decodeXml(value: string): string {
@@ -16,7 +19,9 @@ function decodeXml(value: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(Number.parseInt(code, 16)));
 }
 
 function tag(item: string, name: string): string {
@@ -29,7 +34,8 @@ function parseRss(xml: string): NewsItem[] {
     const source = tag(item, "source") || "Public news source";
     const url = tag(item, "link");
     const publishedAt = tag(item, "pubDate");
-    return { title, source, url, publishedAt };
+    const summary = stripHtml(tag(item, "description"));
+    return { title, source, url, publishedAt, summary };
   }).filter((item) => item.title && /^https?:\/\//.test(item.url));
 }
 
@@ -49,6 +55,32 @@ function parseNewsroomHtml(html: string, newsroomUrl: string): NewsItem[] {
       publishedAt: stripHtml(date),
       source,
     }];
+  }).filter((item) => item.title && /^https:\/\//.test(item.url));
+}
+
+function htmlAttribute(attributes: string, name: string): string {
+  return decodeXml(attributes.match(new RegExp(`\\b${name}=["']([^"']*)["']`, "i"))?.[1]?.trim() ?? "");
+}
+
+function titleCase(value: string): string {
+  const normalized = value.toLowerCase();
+  if (normalized === "ai-ml") return "AI / ML";
+  if (normalized === "ai-infrastructure") return "AI Infrastructure";
+  return value.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function parseCoreWeaveNewsroom(html: string, newsroomUrl: string): NewsItem[] {
+  return [...html.matchAll(/<div\s+([^>]*\bdata-content-type=["']press-release["'][^>]*)><\/div>[\s\S]{0,3500}?<a[^>]+\bhref=["']([^"']+)["'][^>]*\bclass=["'][^"']*\bresource__data-link\b[^"']*["'][^>]*>/gi)].map(([, attributes, href]) => {
+    const readingMinutes = Number.parseInt(htmlAttribute(attributes, "data-time-to-read"), 10);
+    return {
+      title: htmlAttribute(attributes, "data-title"),
+      url: new URL(decodeXml(href), newsroomUrl).toString(),
+      publishedAt: htmlAttribute(attributes, "data-date-start"),
+      source: "CoreWeave official newsroom",
+      summary: htmlAttribute(attributes, "data-excerpt"),
+      category: titleCase(htmlAttribute(attributes, "data-topic") || "Company update"),
+      readingMinutes: Number.isFinite(readingMinutes) && readingMinutes > 0 ? readingMinutes : undefined,
+    };
   }).filter((item) => item.title && /^https:\/\//.test(item.url));
 }
 
@@ -79,7 +111,9 @@ async function bingNews(query: string): Promise<NewsItem[]> {
 async function officialNews(newsroomUrl: string | null, feedUrl: string | null): Promise<NewsItem[]> {
   if (feedUrl) return parseRss(await fetchText(feedUrl));
   if (!newsroomUrl) return [];
-  return parseNewsroomHtml(await fetchText(newsroomUrl), newsroomUrl);
+  const html = await fetchText(newsroomUrl);
+  if (new URL(newsroomUrl).hostname.replace(/^www\./, "") === "coreweave.com") return parseCoreWeaveNewsroom(html, newsroomUrl);
+  return parseNewsroomHtml(html, newsroomUrl);
 }
 
 function unique(items: NewsItem[], limit: number): NewsItem[] {
@@ -110,7 +144,7 @@ export async function GET(request: Request) {
     officialNews(newsroomUrl, newsroomFeedUrl),
     bingNews(displayQuery),
   ]);
-  const official = officialResult.status === "fulfilled" ? unique(officialResult.value, 5) : [];
+  const official = officialResult.status === "fulfilled" ? unique(officialResult.value, 100) : [];
   const officialTitles = new Set(official.map((item) => item.title.toLowerCase()));
   const publicNews = publicResult.status === "fulfilled"
     ? unique(publicResult.value.filter((item) => !officialTitles.has(item.title.toLowerCase())), 8)
