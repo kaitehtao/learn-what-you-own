@@ -16,6 +16,8 @@ import { findCatalogCompany } from "../../../db/companyCatalog";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 
 function displayName(name: string, ticker: string) {
+  if (ticker.toUpperCase() === "SPCX") return "SpaceX (Space Exploration Technologies Corp.)";
+  if (ticker.toUpperCase() === "TSLA") return "Tesla, Inc.";
   const formatted = name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
     .replace("3m", "3M").replace("At&t", "AT&T").replace("Cvs", "CVS")
     .replace("Ibm", "IBM").replace("Hp Inc", "HP Inc");
