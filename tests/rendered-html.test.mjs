@@ -195,6 +195,8 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(emailDelivery, /The private message body is never included/);
   assert.match(emailDelivery, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(emailDelivery, /RESEND_API_KEY/);
+  assert.match(emailDelivery, /if \(!due\?\.length\) return \{ recipients: 0, notifications: 0 \}/);
+  assert.match(emailDelivery, /if \(!notifications\?\.length\)[\s\S]*status: "skipped"[\s\S]*No notification content available/);
   assert.doesNotMatch(emailDelivery, /messageBody|message_body/);
   assert.match(digestRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /America\/Los_Angeles/);

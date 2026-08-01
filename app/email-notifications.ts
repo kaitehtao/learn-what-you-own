@@ -78,8 +78,9 @@ export async function deliverDueDailyDigests() {
   const { data: due, error } = await supabase.from("email_notification_outbox").select("id,notification_id,user_id")
     .eq("status", "queued").eq("frequency", "daily").lte("next_attempt_at", new Date().toISOString()).order("next_attempt_at").limit(200);
   if (error) throw error;
+  if (!due?.length) return { recipients: 0, notifications: 0 };
   const grouped = new Map<string, Array<{ id: number; notification_id: number }>>();
-  for (const row of due ?? []) grouped.set(row.user_id, [...(grouped.get(row.user_id) ?? []), row]);
+  for (const row of due) grouped.set(row.user_id, [...(grouped.get(row.user_id) ?? []), row]);
   let delivered = 0;
   for (const [userId, rows] of grouped) {
     const ids = rows.map((row) => row.notification_id);
@@ -87,7 +88,14 @@ export async function deliverDueDailyDigests() {
       supabase.auth.admin.getUserById(userId),
       supabase.from("notifications").select("title,detail,href,created_at").in("id", ids).order("created_at", { ascending: false }),
     ]);
-    if (!userData.user?.email || !notifications?.length) continue;
+    if (!notifications?.length) {
+      await supabase.from("email_notification_outbox").update({ status: "skipped", attempts: 1, last_error: "No notification content available" }).in("id", rows.map((row) => row.id));
+      continue;
+    }
+    if (!userData.user?.email) {
+      await supabase.from("email_notification_outbox").update({ status: "skipped", attempts: 1, last_error: "Recipient email is unavailable" }).in("id", rows.map((row) => row.id));
+      continue;
+    }
     const items = notifications.map((item) => `<li style="margin-bottom:12px"><strong>${escapeHtml(item.title)}</strong><br><span>${escapeHtml(item.detail)}</span><br><a href="${config.siteUrl}${item.href}">Open message</a></li>`).join("");
     try {
       await sendEmail(userData.user.email, `${notifications.length} new Learn What You Own notification${notifications.length === 1 ? "" : "s"}`, `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#18372d"><p style="font-size:12px;letter-spacing:.08em;color:#287052">LEARN WHAT YOU OWN</p><h1 style="font-family:Georgia,serif;font-weight:400">Your daily message digest</h1><ul>${items}</ul><p style="font-size:12px;color:#64736d">Message bodies are not included. Manage delivery in <a href="${config.siteUrl}/notifications">notification settings</a>.</p></div>`);
