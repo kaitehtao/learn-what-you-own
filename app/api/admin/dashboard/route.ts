@@ -16,6 +16,8 @@ type ProfileRow = {
 const USERNAME = /^[A-Za-z0-9_]{3,24}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES = new Set(["member", "contributor", "editor", "admin"]);
+const ACCOUNT_REDIRECT = "https://learnwhatyouown.com/auth/callback?returnTo=%2Faccount";
+const VERIFICATION_RESEND_COOLDOWN_MS = 60_000;
 
 async function allAuthUsers(admin: SupabaseClient) {
   const users: User[] = [];
@@ -56,6 +58,13 @@ async function targetProfile(admin: SupabaseClient, userId: string) {
   return data as ProfileRow | null;
 }
 
+async function targetAuthUser(admin: SupabaseClient, userId: string) {
+  const { data: { user }, error } = await admin.auth.admin.getUserById(userId);
+  if (error) throw error;
+  if (!user) return null;
+  return user;
+}
+
 export async function GET(request: Request) {
   try {
     await requireAdmin(request);
@@ -82,6 +91,7 @@ export async function GET(request: Request) {
         onboardingComplete: profile.onboarding_complete,
         email: auth?.email ?? "",
         verified: Boolean(auth?.email_confirmed_at),
+        confirmationSentAt: auth?.confirmation_sent_at ?? auth?.invited_at ?? null,
         createdAt: profile.created_at,
         lastSignInAt: auth?.last_sign_in_at ?? null,
       };
@@ -102,19 +112,54 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { profile: actor } = await requireAdmin(request);
-    const payload = await request.json() as { email?: string; username?: string; displayName?: string };
+    const payload = await request.json() as { action?: string; userId?: string; email?: string; username?: string; displayName?: string };
+    const admin = getSupabaseAdminClient();
+
+    if (payload.action === "resend_verification") {
+      const userId = String(payload.userId ?? "");
+      if (!userId) return Response.json({ error: "Account is required." }, { status: 400 });
+      const [profile, authUser] = await Promise.all([targetProfile(admin, userId), targetAuthUser(admin, userId)]);
+      if (!profile || !authUser) return Response.json({ error: "Account not found." }, { status: 404 });
+      if (authUser.email_confirmed_at) return Response.json({ error: "This email address is already verified." }, { status: 409 });
+      const email = String(authUser.email ?? "").trim().toLowerCase();
+      if (!EMAIL.test(email)) return Response.json({ error: "This account does not have a valid email address." }, { status: 409 });
+      const lastSentAt = authUser.confirmation_sent_at ?? authUser.invited_at;
+      if (lastSentAt && Date.now() - new Date(lastSentAt).getTime() < VERIFICATION_RESEND_COOLDOWN_MS) {
+        return Response.json({ error: "Wait at least one minute before resending another verification email." }, { status: 429 });
+      }
+      let resendError = null;
+      if (authUser.invited_at) {
+        const result = await admin.auth.admin.inviteUserByEmail(email, {
+          redirectTo: ACCOUNT_REDIRECT,
+          data: authUser.user_metadata,
+        });
+        resendError = result.error;
+      } else {
+        const result = await admin.auth.resend({ type: "signup", email, options: { emailRedirectTo: ACCOUNT_REDIRECT } });
+        resendError = result.error;
+      }
+      if (resendError) throw resendError;
+      const { error: auditError } = await admin.from("admin_account_audit").insert({
+        actor_id: actor.user_id,
+        target_user_id: userId,
+        action: "verification_resend",
+        detail: { username: profile.username, email },
+      });
+      if (auditError) throw auditError;
+      return Response.json({ sent: true });
+    }
+
     const email = String(payload.email ?? "").trim().toLowerCase();
     const username = String(payload.username ?? "").trim();
     const displayName = String(payload.displayName ?? "").trim().slice(0, 80);
     if (!EMAIL.test(email)) return Response.json({ error: "Enter a valid email address." }, { status: 400 });
     if (username && !USERNAME.test(username)) return Response.json({ error: "Username must be 3–24 letters, numbers, or underscores." }, { status: 400 });
-    const admin = getSupabaseAdminClient();
     if (username) {
       const { data: existing } = await admin.from("profiles").select("user_id").ilike("username", username).maybeSingle();
       if (existing) return Response.json({ error: "That username is already in use." }, { status: 409 });
     }
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: "https://learnwhatyouown.com/auth/callback?returnTo=%2Faccount",
+      redirectTo: ACCOUNT_REDIRECT,
       data: username ? { username, name: displayName || username } : { name: displayName },
     });
     if (error) throw error;
@@ -128,12 +173,35 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const { profile: actor } = await requireAdmin(request);
-    const payload = await request.json() as { userId?: string; role?: string };
+    const payload = await request.json() as { action?: string; userId?: string; role?: string; confirmation?: string };
     const userId = String(payload.userId ?? "");
+    const admin = getSupabaseAdminClient();
+
+    if (payload.action === "confirm_email") {
+      if (!userId) return Response.json({ error: "Account is required." }, { status: 400 });
+      const [profile, authUser] = await Promise.all([targetProfile(admin, userId), targetAuthUser(admin, userId)]);
+      if (!profile || !authUser) return Response.json({ error: "Account not found." }, { status: 404 });
+      if (authUser.email_confirmed_at) return Response.json({ error: "This email address is already verified." }, { status: 409 });
+      const email = String(authUser.email ?? "").trim().toLowerCase();
+      if (!EMAIL.test(email)) return Response.json({ error: "This account does not have a valid email address." }, { status: 409 });
+      if (String(payload.confirmation ?? "").trim().toLowerCase() !== email) {
+        return Response.json({ error: `Type ${email} to confirm manual verification.` }, { status: 400 });
+      }
+      const { error } = await admin.auth.admin.updateUserById(userId, { email_confirm: true });
+      if (error) throw error;
+      const { error: auditError } = await admin.from("admin_account_audit").insert({
+        actor_id: actor.user_id,
+        target_user_id: userId,
+        action: "email_confirm",
+        detail: { username: profile.username, email, method: "manual_admin" },
+      });
+      if (auditError) throw auditError;
+      return Response.json({ verified: true });
+    }
+
     const role = String(payload.role ?? "");
     if (!userId || !ROLES.has(role)) return Response.json({ error: "A valid user and role are required." }, { status: 400 });
     if (userId === actor.user_id) return Response.json({ error: "Use a separate administrator to change your own role." }, { status: 409 });
-    const admin = getSupabaseAdminClient();
     const target = await targetProfile(admin, userId);
     if (!target) return Response.json({ error: "Account not found." }, { status: 404 });
     if (target.role === "admin" && role !== "admin" && await adminCount(admin) <= 1) return Response.json({ error: "The final administrator cannot be demoted." }, { status: 409 });
