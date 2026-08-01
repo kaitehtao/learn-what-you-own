@@ -284,8 +284,46 @@ test("opens homepage sample cards and changelog rows as company dossiers", async
   const home = await source("app/page.tsx");
 
   assert.match(home, /const dossierHref = \(ticker: string\) => `\/company\/\$\{companySlug\(ticker\)\}`/);
-  assert.match(home, /className="company-card" href=\{dossierHref\(company\.ticker\)\}/);
+  assert.match(home, /className="company-card-link" href=\{dossierHref\(company\.ticker\)\}/);
   assert.match(home, /href=\{dossierHref\(update\.ticker\)\} className="change-row"/);
   assert.match(home, /href=\{dossierHref\("NVDA"\)\}>NVDA/);
   assert.doesNotMatch(home, /company\.ticker === "ONDS" \? "\/company\/onds" : "\/companies"/);
+});
+
+test("ranks twelve homepage dossiers by verified community research demand", async () => {
+  const [home, route, migration] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/api/research-demand/route.ts"),
+    source("supabase/migrations/20260801060000_company_research_demand.sql"),
+  ]);
+
+  for (const ticker of ["ONDS", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
+  assert.match(home, /Hot companies, ranked by owners/);
+  assert.match(home, /toggleDemand/);
+  assert.match(home, /viewerVotes/);
+  assert.match(home, /NEXT IN THE RESEARCH QUEUE/);
+  assert.match(route, /company_research_demand/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(migration, /create table if not exists public\.company_research_votes/);
+  assert.match(migration, /count\(distinct s\.visitor_id\)/);
+  assert.match(migration, /vote_count \* 10 \+ c\.page_views/);
+  assert.match(migration, /auth\.uid\(\) = user_id/);
+});
+
+test("provides full primary-source dossiers for all twelve homepage companies", async () => {
+  const [dossiers, featuredPage, starterPage, ondas] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+  ]);
+  for (const ticker of ["NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV"]) assert.match(dossiers, new RegExp(`\\n  ${ticker}: \\{`));
+  assert.match(dossiers, /BlackBerry 2026 Form 10-K/);
+  assert.match(dossiers, /Bloom Energy 2025 Form 10-K/);
+  assert.match(dossiers, /Rocket Lab 2025 Form 10-K/);
+  assert.match(dossiers, /Palantir 2025 Form 10-K/);
+  assert.match(dossiers, /Tesla 2025 Form 10-K/);
+  assert.match(featuredPage, /ResearchDemandButton/);
+  assert.match(starterPage, /ResearchDemandButton/);
+  assert.match(ondas, /ResearchDemandButton/);
 });

@@ -1,18 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "./ui";
 import { companySlug, researchUniverse } from "./data/universe";
 import { rankedCompanyMatches } from "./data/companySearch";
+import { authenticatedFetch, loginPath } from "./supabase-browser";
 
 const companies = [
-  { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", sources: 84, score: 82, note: "New defense program award" },
-  { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", sources: 312, score: 96, note: "Supply chain map refreshed" },
-  { ticker: "BB", name: "BlackBerry", sector: "Infrastructure Software", updated: "Yesterday", sources: 146, score: 91, note: "QNX backlog analysis" },
-  { ticker: "BE", name: "Bloom Energy", sector: "Clean Energy", updated: "Yesterday", sources: 109, score: 88, note: "Margin thesis revised" },
-  { ticker: "RKLB", name: "Rocket Lab", sector: "Space Systems", updated: "2d ago", sources: 167, score: 93, note: "Neutron milestone added" },
-  { ticker: "PLTR", name: "Palantir", sector: "Enterprise AI", updated: "3d ago", sources: 221, score: 95, note: "Commercial cohort review" },
+  { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", sources: 2, score: 82, note: "New defense program award" },
+  { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", sources: 2, score: 96, note: "Supply chain map refreshed" },
+  { ticker: "AAPL", name: "Apple", sector: "Consumer Technology", updated: "Today", sources: 2, score: 96, note: "Supplier evidence map added" },
+  { ticker: "AMZN", name: "Amazon", sector: "Commerce & Cloud", updated: "Today", sources: 2, score: 95, note: "AWS capital intensity reviewed" },
+  { ticker: "TSLA", name: "Tesla", sector: "Automotive & Energy", updated: "Today", sources: 2, score: 94, note: "AI and energy thesis refreshed" },
+  { ticker: "PLTR", name: "Palantir", sector: "Enterprise AI", updated: "3d ago", sources: 2, score: 95, note: "Commercial cohort review" },
+  { ticker: "RKLB", name: "Rocket Lab", sector: "Space Systems", updated: "2d ago", sources: 2, score: 93, note: "Neutron milestone added" },
+  { ticker: "BB", name: "BlackBerry", sector: "Infrastructure Software", updated: "Yesterday", sources: 2, score: 91, note: "QNX backlog analysis" },
+  { ticker: "BE", name: "Bloom Energy", sector: "Clean Energy", updated: "Yesterday", sources: 2, score: 88, note: "Margin thesis revised" },
+  { ticker: "BA", name: "Boeing", sector: "Aerospace & Defense", updated: "3d ago", sources: 2, score: 92, note: "Production recovery evidence reviewed" },
+  { ticker: "CAT", name: "Caterpillar", sector: "Industrial Equipment", updated: "4d ago", sources: 2, score: 92, note: "Dealer inventory signals updated" },
+  { ticker: "CRWV", name: "CoreWeave", sector: "AI Infrastructure", updated: "4d ago", sources: 2, score: 90, note: "Backlog and financing review" },
 ];
 
 const updates = [
@@ -22,13 +29,48 @@ const updates = [
 ];
 
 const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
+type Demand = { ticker: string; vote_count: number; page_views: number; demand_score: number };
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [demand, setDemand] = useState<Record<string, Demand>>({});
+  const [viewerVotes, setViewerVotes] = useState<Set<string>>(new Set());
+  const [demandBusy, setDemandBusy] = useState("");
   const matches = useMemo(
     () => rankedCompanyMatches(researchUniverse, query).slice(0, 8),
     [query]
   );
+  useEffect(() => {
+    authenticatedFetch("/api/research-demand", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { companies?: Demand[]; viewerVotes?: string[] };
+      setDemand(Object.fromEntries((payload.companies ?? []).map((item) => [item.ticker, item])));
+      setViewerVotes(new Set(payload.viewerVotes ?? []));
+    }).catch(() => undefined);
+  }, []);
+  const rankedCompanies = useMemo(() => [...companies].sort((a, b) => {
+    const demandDifference = (demand[b.ticker]?.demand_score ?? 0) - (demand[a.ticker]?.demand_score ?? 0);
+    return demandDifference || companies.indexOf(a) - companies.indexOf(b);
+  }), [demand]);
+  const nextRequested = useMemo(() => Object.values(demand)
+    .filter((item) => !companies.some((company) => company.ticker === item.ticker) && researchUniverse.some((company) => company.ticker === item.ticker))
+    .sort((a, b) => b.demand_score - a.demand_score || a.ticker.localeCompare(b.ticker)).slice(0, 6), [demand]);
+
+  async function toggleDemand(ticker: string) {
+    const voted = viewerVotes.has(ticker);
+    setDemandBusy(ticker);
+    const response = await authenticatedFetch("/api/research-demand", {
+      method: voted ? "DELETE" : "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ticker }),
+    });
+    if (response.status === 401) { window.location.href = loginPath("/"); return; }
+    if (response.ok) {
+      setViewerVotes((current) => { const next = new Set(current); voted ? next.delete(ticker) : next.add(ticker); return next; });
+      setDemand((current) => ({ ...current, [ticker]: { ticker, vote_count: Math.max(0, (current[ticker]?.vote_count ?? 0) + (voted ? -1 : 1)), page_views: current[ticker]?.page_views ?? 0, demand_score: Math.max(0, (current[ticker]?.demand_score ?? 0) + (voted ? -10 : 10)) } }));
+    }
+    setDemandBusy("");
+  }
 
   return (
     <main>
@@ -77,12 +119,13 @@ export default function Home() {
 
       <section className="container content-section">
         <div className="section-heading">
-          <div><span className="kicker">RESEARCH, NOT NOISE</span><h2>Start with the businesses being studied.</h2></div>
+          <div><span className="kicker">COMMUNITY RESEARCH DEMAND</span><h2>Hot companies, ranked by owners.</h2><p className="section-intro">Verified member requests and privacy-preserving 30-day readership determine which twelve dossiers rise to the top.</p></div>
           <Link className="text-link" href="/companies">Explore all dossiers <span>→</span></Link>
         </div>
         <div className="company-grid">
-          {companies.map((company, index) => (
-            <Link className="company-card" href={dossierHref(company.ticker)} key={company.ticker} aria-label={`Open the ${company.name} dossier`}>
+          {rankedCompanies.map((company, index) => (
+            <article className="company-card" key={company.ticker}>
+            <Link className="company-card-link" href={dossierHref(company.ticker)} aria-label={`Open the ${company.name} dossier`}>
               <div className="card-top">
                 <div className={`ticker-icon tint-${index + 1}`}>{company.ticker}</div>
                 <div className="score-ring" style={{"--score": `${company.score * 3.6}deg`} as React.CSSProperties}><span>{company.score}</span></div>
@@ -92,8 +135,11 @@ export default function Home() {
               <div className="card-update"><span>↗</span><div><small>LATEST UPDATE</small><p>{company.note}</p></div></div>
               <div className="card-meta"><span>{company.sources} sources</span><span>Updated {company.updated}</span></div>
             </Link>
+            <div className="company-demand"><span>{index < 3 && (demand[company.ticker]?.demand_score ?? 0) > 0 ? "HOT COMPANY" : "RESEARCH DEMAND"}<small>{demand[company.ticker]?.vote_count ?? 0} member requests · {demand[company.ticker]?.page_views ?? 0} readers</small></span><button className={viewerVotes.has(company.ticker) ? "voted" : ""} disabled={demandBusy === company.ticker} onClick={() => toggleDemand(company.ticker)}>{demandBusy === company.ticker ? "Saving…" : viewerVotes.has(company.ticker) ? "✓ Requested" : "▲ Upvote"}</button></div>
+            </article>
           ))}
         </div>
+        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured twelve</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
       </section>
 
       <section className="dark-section">

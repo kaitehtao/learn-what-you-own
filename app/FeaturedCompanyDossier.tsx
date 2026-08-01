@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ResearchCompany } from "./data/universe";
 import type { FeaturedDossier } from "./data/featuredDossiers";
+import { ResearchDemandButton } from "./ResearchDemandButton";
 import { Header } from "./ui";
 import { MarketDataPanel } from "./MarketDataPanel";
 import { SecFilingsPanel } from "./SecFilingsPanel";
@@ -27,7 +28,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <section className="company-hero">
       <div className="container dossier-head">
         <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name)}</h1><p>{dossier.description}</p></div></div>
-        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
+        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
       </div>
       <div className="container metrics-bar featured-metrics">
         <div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ")}</strong></div>
