@@ -11,6 +11,7 @@ import { CommunityInsights } from "../../CommunityInsights";
 import { ResearchFoundationPanel } from "../../ResearchFoundationPanel";
 import { SaveToNotebookButton } from "../../SaveToNotebookButton";
 import { ResearchDemandButton } from "../../ResearchDemandButton";
+import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -55,7 +56,7 @@ export default function OndasDossier() {
         </div>
       </section>
 
-      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
+      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
 
       <div className="container market-data-wide">
         <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
@@ -65,6 +66,9 @@ export default function OndasDossier() {
       </div>
       <div className="container earnings-calls-wide">
         <EarningsCallsPanel ticker="ONDS" />
+      </div>
+      <div className="container company-news-wide">
+        <CompanyNewsPanel ticker="ONDS" companyName="Ondas Holdings" />
       </div>
       <div className="container dossier-layout">
         <article>

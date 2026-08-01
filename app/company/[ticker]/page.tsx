@@ -11,6 +11,7 @@ import { CommunityInsights } from "../../CommunityInsights";
 import { ResearchFoundationPanel } from "../../ResearchFoundationPanel";
 import { SaveToNotebookButton } from "../../SaveToNotebookButton";
 import { ResearchDemandButton } from "../../ResearchDemandButton";
+import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 
 function displayName(name: string, ticker: string) {
@@ -81,6 +82,7 @@ export default async function CompanyStarterPage({
       {universeCompany && company.exchange !== "OTC" && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
       <EarningsCallsPanel ticker={company.ticker} />
+      <CompanyNewsPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
       <div className="starter-sections">
         {["Owner’s summary","Business model","Why own it","Why not own it","Financial dashboard","What changed","Earnings & filings","Competitive landscape"].map((section, index) => <div key={section}><span>{String(index + 1).padStart(2,"0")}</span><strong>{section}</strong><em>{section === "Earnings & filings" ? "SEC links available" : "Awaiting research"}</em></div>)}
       </div>

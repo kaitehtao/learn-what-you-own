@@ -414,3 +414,29 @@ test("publishes complete primary-source owner dossiers for AMC and RCL", async (
   assert.match(generator, /INSERT INTO dossier_claims/);
   assert.match(generator, /DELETE FROM dossier_sources WHERE ticker/);
 });
+
+test("separates company releases from external news on every dossier", async () => {
+  const [panel, route, dossiers, featuredPage, starterPage, ondas, styles] = await Promise.all([
+    source("app/CompanyNewsPanel.tsx"),
+    source("app/api/company-news/route.ts"),
+    source("app/data/featuredDossiers.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(panel, /Headline monitor, not verified research/);
+  assert.match(panel, /Company releases/);
+  assert.match(panel, /Public &amp; industry coverage/);
+  assert.match(route, /site:\$\{newsroomHost\}/);
+  assert.match(route, /when:120d/);
+  assert.match(route, /when:30d/);
+  assert.match(route, /stale-while-revalidate=900/);
+  assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases/);
+  assert.match(dossiers, /rclinvestor\.com\/press-releases/);
+  assert.match(featuredPage, /href="#news"/);
+  assert.match(starterPage, /CompanyNewsPanel/);
+  assert.match(ondas, /CompanyNewsPanel/);
+  assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:1fr 1fr/);
+});

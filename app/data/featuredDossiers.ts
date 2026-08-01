@@ -2,6 +2,7 @@ export type FeaturedDossier = {
   ticker: string;
   reviewed?: string;
   completeness?: number;
+  newsroomUrl?: string;
   description: string;
   lede: string;
   sells: string;
@@ -258,6 +259,7 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     ticker: "AMC",
     reviewed: "August 1, 2026",
     completeness: 100,
+    newsroomUrl: "https://investor.amctheatres.com/news-events/press-releases",
     description: "Theatrical exhibition across the United States and Europe, with admissions, food and beverage, premium formats, loyalty, advertising, and other theatre revenue.",
     lede: "AMC is a high-fixed-cost theatrical exhibition network whose owner economics depend on the film slate, attendance, per-patron spending, studio film-rental terms, theatre productivity, interest expense, and the number of shares over which any recovery is spread.",
     sells: "Movie admissions; premium large-format, recliner, dine-in, and subscription experiences; food and beverage; ticketing; advertising; theatre rentals; gift products; and selected alternative programming across U.S. and European theatres.",
@@ -311,6 +313,7 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     ticker: "RCL",
     reviewed: "August 1, 2026",
     completeness: 100,
+    newsroomUrl: "https://www.rclinvestor.com/press-releases/",
     description: "A global cruise and vacation platform spanning Royal Caribbean International, Celebrity Cruises, Silversea, partner brands, ships, private destinations, loyalty, and onboard experiences.",
     lede: "Royal Caribbean Group combines differentiated ships and brands with advance bookings, passenger tickets, onboard spending, private destinations, loyalty, and a multi-year newbuild pipeline; owner value depends on sustaining pricing and guest spend while earning attractive returns on a very capital-intensive fleet.",
     sells: "Cruise vacations under Royal Caribbean International, Celebrity Cruises, and Silversea; onboard dining, beverage, casino, retail, internet, shore-excursion, spa, and other experiences; destination products; and vacation offerings through its TUI Cruises joint venture.",
