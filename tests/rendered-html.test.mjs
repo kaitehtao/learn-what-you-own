@@ -128,12 +128,12 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(migration, /match_confidence/);
 });
 
-test("keeps the canonical public domain attached to the production Worker", async () => {
+test("keeps the public domains attached to the production Worker", async () => {
   const [config, architecture] = await Promise.all([
     source("vite.config.ts"),
     source("docs/ARCHITECTURE.md"),
   ]);
-  assert.match(config, /pattern: "learnwhatyouown\.com\/\*"/);
+  assert.match(config, /pattern: "learnwhatyouown\.com", custom_domain: true/);
   assert.match(config, /pattern: "www\.learnwhatyouown\.com\/\*"/);
   assert.match(config, /zone_name: "learnwhatyouown\.com"/);
   assert.match(config, /workers_dev: true/);

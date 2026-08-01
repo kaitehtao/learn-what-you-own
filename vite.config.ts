@@ -23,7 +23,7 @@ const localBindingConfig = {
   // explicit route, a successful workers.dev deploy can leave the apex domain
   // serving an older Sites deployment.
   routes: [
-    { pattern: "learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
+    { pattern: "learnwhatyouown.com", custom_domain: true },
     { pattern: "www.learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
   ],
   // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
