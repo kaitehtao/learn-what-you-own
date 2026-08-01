@@ -20,6 +20,18 @@ interface Env {
 
 const DIGEST_TIME_ZONE = "America/Los_Angeles";
 const DIGEST_HOUR = "08";
+const CANONICAL_ORIGIN = "https://learnwhatyouown.com";
+const PUBLIC_ALIAS_HOSTS = new Set([
+  "www.learnwhatyouown.com",
+  "learn-what-you-own.julianspencer.chatgpt.site",
+]);
+
+export function canonicalPublicUrl(requestUrl: string) {
+  const url = new URL(requestUrl);
+  if (!PUBLIC_ALIAS_HOSTS.has(url.hostname.toLowerCase())) return null;
+  const canonical = new URL(`${url.pathname}${url.search}`, CANONICAL_ORIGIN);
+  return canonical.toString();
+}
 
 export function isPacificDigestHour(scheduledTime: number) {
   const localHour = new Intl.DateTimeFormat("en-US", {
@@ -72,6 +84,8 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    const canonicalUrl = canonicalPublicUrl(request.url);
+    if (canonicalUrl) return Response.redirect(canonicalUrl, 308);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

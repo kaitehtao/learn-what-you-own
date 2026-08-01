@@ -634,6 +634,9 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(scheduledRoute, /DAILY_REFRESH_LIMIT = 5/);
   assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
   assert.match(worker, /refreshScheduledSecFacts/);
+  assert.match(worker, /learn-what-you-own\.julianspencer\.chatgpt\.site/);
+  assert.match(worker, /www\.learnwhatyouown\.com/);
+  assert.match(worker, /Response\.redirect\(canonicalUrl, 308\)/);
   assert.match(schema, /filingFactImports/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `filing_fact_imports`/);
   assert.match(amcSeed, /VALUES \('AMC', 'revenue'/);
