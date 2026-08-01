@@ -97,6 +97,37 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
   assert.match(ondas, /<ResearchFoundationPanel/);
 });
 
+test("adds sector-aware external intelligence with moderated public evidence", async () => {
+  const [registry, panel, featured, starter, ondas, contributionClient, contributionRoute, schema, migration] = await Promise.all([
+    source("app/data/externalIntelligence.ts"),
+    source("app/ExternalIntelligencePanel.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+    source("app/contribute/ContributionClient.tsx"),
+    source("app/api/contributions/route.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0009_external_intelligence.sql"),
+  ]);
+
+  for (const sourceName of ["USAspending.gov", "USPTO Open Data", "EPA ECHO", "NHTSA Safety Data", "EIA Open Data", "ClinicalTrials.gov", "openFDA", "NIH RePORTER", "BLS Public Data", "Census Data API", "BEA Data API", "CFTC Commitments of Traders", "OpenAlex", "Wikidata"]) {
+    assert.match(registry, new RegExp(sourceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(panel, /FREE EXTERNAL DATA · BEYOND SEC FILINGS/);
+  assert.match(panel, /research paths—not claims/);
+  assert.match(panel, /VERIFY BEFORE PUBLISHING/);
+  assert.match(featured, /<ExternalIntelligencePanel/);
+  assert.match(starter, /<ExternalIntelligencePanel/);
+  assert.match(ondas, /<ExternalIntelligencePanel/);
+  assert.match(contributionClient, /External dataset observation/);
+  assert.match(contributionRoute, /External dataset observation/);
+  assert.match(schema, /export const externalDataSources/);
+  assert.match(schema, /export const externalObservations/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `external_observations`/);
+  assert.match(migration, /company_match_method/);
+  assert.match(migration, /match_confidence/);
+});
+
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
   const [claims, importRoute, factRepository] = await Promise.all([
     source("app/data/curatedDossierClaims.ts"),

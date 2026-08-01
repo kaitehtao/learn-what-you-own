@@ -176,6 +176,48 @@ export const emergingCompanyDossiers = sqliteTable("emerging_company_dossiers", 
   uniqueIndex("emerging_company_contribution_idx").on(table.supabaseContributionId),
 ]);
 
+// External observations remain separate from SEC facts and editorial claims so
+// every record retains its license, retrieval time, entity match, and caveats.
+export const externalDataSources = sqliteTable("external_data_sources", {
+  sourceKey: text("source_key").primaryKey(),
+  name: text("name").notNull(),
+  publisher: text("publisher").notNull(),
+  category: text("category").notNull(),
+  baseUrl: text("base_url").notNull(),
+  apiUrl: text("api_url"),
+  accessClass: text("access_class", { enum: ["us_government_open_data", "cc0_open_data"] }).notNull(),
+  attribution: text("attribution").notNull().default(""),
+  refreshCadence: text("refresh_cadence").notNull().default("source dependent"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const externalObservations = sqliteTable("external_observations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  sourceKey: text("source_key").notNull().references(() => externalDataSources.sourceKey),
+  externalRecordId: text("external_record_id").notNull(),
+  observationType: text("observation_type").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  observedAt: text("observed_at"),
+  retrievedAt: text("retrieved_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  sourceUrl: text("source_url").notNull(),
+  companyMatchMethod: text("company_match_method", { enum: ["direct_identifier", "verified_alias", "manual_review"] }).notNull(),
+  matchConfidence: text("match_confidence", { enum: ["high", "medium", "low"] }).notNull(),
+  limitations: text("limitations").notNull().default(""),
+  rawJson: text("raw_json").notNull().default("{}"),
+  status: text("status", { enum: ["draft", "verified", "published", "rejected"] }).notNull().default("draft"),
+  verifiedBy: text("verified_by"),
+  verifiedAt: text("verified_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("external_observation_record_idx").on(table.ticker, table.sourceKey, table.externalRecordId),
+  index("external_observation_public_idx").on(table.ticker, table.status, table.observedAt),
+]);
+
 export const profiles = sqliteTable("profiles", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull(),

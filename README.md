@@ -68,6 +68,14 @@ Apply the D1 migrations in the order documented in [`docs/DEPLOYMENT.md`](docs/D
 
 Members can submit a **Supplier / customer relationship** with primary evidence. The proposal stays private in Supabase until an editor approves it; approval promotes the structured edge to D1 while retaining the contributor username and disclosure trail.
 
+## External intelligence
+
+Every public-company dossier maps sector-relevant, free external research sources alongside SEC evidence. The initial registry covers USAspending, USPTO, EPA ECHO, NHTSA, EIA, ClinicalTrials.gov, openFDA, NIH RePORTER, BLS, Census, BEA, CFTC, OpenAlex, and Wikidata.
+
+Apply `drizzle/0009_external_intelligence.sql` before importing observations. `external_data_sources` retains access, attribution, and refresh metadata; `external_observations` keeps the original record identifier, retrieval date, company-match method, confidence, limitations, and moderation status. A listed source is only a research path. It must not be presented as evidence about an issuer until the specific record and company identity are verified.
+
+Members can submit an **External dataset observation** for editorial review directly from a dossier source card. Approved generic contributions appear through the existing community-intelligence workflow; future automated connectors should write external observations as drafts and require moderation before publication.
+
 ## Exchange and OTC catalogs
 
 The public catalog has two deliberately separate lanes:

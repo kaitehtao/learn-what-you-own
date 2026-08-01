@@ -13,6 +13,7 @@ import { EarningsCallsPanel } from "./EarningsCallsPanel";
 import { CommunityInsights } from "./CommunityInsights";
 import { ResearchFoundationPanel } from "./ResearchFoundationPanel";
 import { CompanyNewsPanel } from "./CompanyNewsPanel";
+import { ExternalIntelligencePanel } from "./ExternalIntelligencePanel";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -47,12 +48,15 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>LAST REVIEWED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
     </div>
     <div className="container research-foundation-wide">
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
+    </div>
+    <div className="container external-intelligence-wide">
+      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
     </div>
     <div className="container earnings-calls-wide">
       <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />

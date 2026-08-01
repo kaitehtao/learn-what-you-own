@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
 
-const contributionTypes = ["Factual correction","Thesis update","Industry observation","Competitive analysis","Financial model","Question for management","Supplier / customer relationship","Upcoming IPO dossier","Private company dossier"];
+const contributionTypes = ["Factual correction","Thesis update","Industry observation","External dataset observation","Competitive analysis","Financial model","Question for management","Supplier / customer relationship","Upcoming IPO dossier","Private company dossier"];
 const companyProposalTypes = ["Upcoming IPO dossier", "Private company dossier"];
 type Submission = { id:number; ticker:string; contributionType:string; claim:string; status:string; moderationNote:string; createdAt:string };
 
@@ -122,7 +122,7 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
   const isIpoProposal = form.contributionType === "Upcoming IPO dossier";
 
   return <section className="container contribute-layout">
-    <aside><span className="kicker">CONTRIBUTION TYPES</span>{contributionTypes.map((item,index)=><button type="button" className={form.contributionType===item?"active":""} onClick={()=>setForm({...form,contributionType:item})} key={item}><span>0{index+1}</span>{item}</button>)}<div className="contributor-standard"><strong>Submitting as @{username}</strong><p>Be specific. Cite primary evidence. Separate fact from interpretation. Disclose your position and conflicts.</p></div></aside>
+    <aside><span className="kicker">CONTRIBUTION TYPES</span>{contributionTypes.map((item,index)=><button type="button" className={form.contributionType===item?"active":""} onClick={()=>setForm({...form,contributionType:item})} key={item}><span>{String(index+1).padStart(2,"0")}</span>{item}</button>)}<div className="contributor-standard"><strong>Submitting as @{username}</strong><p>Be specific. Cite primary evidence. Separate fact from interpretation. Disclose your position and conflicts.</p></div></aside>
     <article>
       {submitted&&<div className="submission-banner">✓ Submitted for editorial review. It will remain unpublished until an editor approves it.</div>}
       <form onSubmit={submit}>

@@ -3,7 +3,7 @@ import { apiError, getSupabaseForRequest, requireSupabaseUser } from "../../supa
 
 export const dynamic = "force-dynamic";
 
-const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "Competitive analysis", "Financial model", "Question for management", "Supplier / customer relationship", "Upcoming IPO dossier", "Private company dossier"];
+const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "External dataset observation", "Competitive analysis", "Financial model", "Question for management", "Supplier / customer relationship", "Upcoming IPO dossier", "Private company dossier"];
 const relationshipDirections = ["supplier_to_company", "company_to_customer"];
 const relationshipMaterialities = ["named", "material", "strategic", "unknown"];
 const relationshipEvidenceClasses = ["direct_disclosure", "corroborated", "inferred"];

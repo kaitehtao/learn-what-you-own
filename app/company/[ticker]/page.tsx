@@ -13,6 +13,7 @@ import { SaveToNotebookButton } from "../../SaveToNotebookButton";
 import { ResearchDemandButton } from "../../ResearchDemandButton";
 import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { findCatalogCompany } from "../../../db/companyCatalog";
+import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 
 function displayName(name: string, ticker: string) {
   const formatted = name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -81,6 +82,7 @@ export default async function CompanyStarterPage({
       <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ") || "No tracked membership"}</strong></div><div><small>{company.exchange === "OTC" ? "ISSUE TYPE" : "SECTOR"}</small><strong>{company.exchange === "OTC" ? company.securityType : company.sector}</strong></div><div><small>MARKET</small><strong>{company.exchange}</strong></div><div><small>DOSSIER STATUS</small><strong className="amber-text">Not yet researched</strong></div></div>
       {universeCompany && company.exchange !== "OTC" && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
+      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
       <EarningsCallsPanel ticker={company.ticker} />
       <CompanyNewsPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
       <div className="starter-sections">
