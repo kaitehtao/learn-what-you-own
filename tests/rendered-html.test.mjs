@@ -611,7 +611,7 @@ test("separates company releases from external news on every dossier", async () 
 });
 
 test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
-  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, publisher, styles] = await Promise.all([
+  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, amcSeed, publisher, styles] = await Promise.all([
     source("app/ResearchFoundationPanel.tsx"),
     source("app/api/research/route.ts"),
     source("app/data/secFactsRepository.ts"),
@@ -619,6 +619,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
     source("worker/index.ts"),
     source("db/schema.ts"),
     source("drizzle/0007_sec-fact-import-status.sql"),
+    source("drizzle/0010_seed-amc-sec-facts.sql"),
     source("scripts/generate-normalized-dossier-publish.ts"),
     source("app/globals.css"),
   ]);
@@ -635,6 +636,8 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(worker, /refreshScheduledSecFacts/);
   assert.match(schema, /filingFactImports/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `filing_fact_imports`/);
+  assert.match(amcSeed, /VALUES \('AMC', 'revenue'/);
+  assert.match(amcSeed, /CIK0001411579\.json', 240, 12/);
   assert.match(publisher, /generateSecFactSql/);
   assert.match(styles, /\.filing-history\{display:flex/);
 });
