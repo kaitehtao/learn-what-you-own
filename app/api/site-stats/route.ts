@@ -7,8 +7,8 @@ WITH raw(ticker, url) AS (
   SELECT ds.ticker, ds.url FROM dossier_sources ds
   JOIN company_dossiers cd ON cd.ticker = ds.ticker AND cd.status = 'published'
   UNION SELECT ticker, source_url FROM filing_facts
-  UNION SELECT supplier_ticker, source_url FROM company_relationships WHERE supplier_ticker IS NOT NULL
-  UNION SELECT customer_ticker, source_url FROM company_relationships WHERE customer_ticker IS NOT NULL
+  UNION SELECT coalesce(customer_ticker, supplier_ticker), source_url FROM company_relationships
+    WHERE customer_ticker IS NOT NULL OR supplier_ticker IS NOT NULL
   UNION SELECT slug, primary_source_url FROM emerging_company_dossiers
   UNION SELECT slug, roadshow_source_url FROM emerging_company_dossiers WHERE roadshow_source_url IS NOT NULL AND roadshow_source_url <> ''
 ), prepared AS (
