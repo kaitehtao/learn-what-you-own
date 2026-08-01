@@ -279,3 +279,13 @@ test("shows an evidence-classified Apple supply-chain research document", async 
   assert.match(migration, /Taiwan Semiconductor Manufacturing Company Limited/);
   assert.match(migration, /exact role in the cited list/);
 });
+
+test("opens homepage sample cards and changelog rows as company dossiers", async () => {
+  const home = await source("app/page.tsx");
+
+  assert.match(home, /const dossierHref = \(ticker: string\) => `\/company\/\$\{companySlug\(ticker\)\}`/);
+  assert.match(home, /className="company-card" href=\{dossierHref\(company\.ticker\)\}/);
+  assert.match(home, /href=\{dossierHref\(update\.ticker\)\} className="change-row"/);
+  assert.match(home, /href=\{dossierHref\("NVDA"\)\}>NVDA/);
+  assert.doesNotMatch(home, /company\.ticker === "ONDS" \? "\/company\/onds" : "\/companies"/);
+});

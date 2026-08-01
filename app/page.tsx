@@ -21,6 +21,8 @@ const updates = [
   { date: "Yesterday", ticker: "BB", title: "QNX royalty backlog reached a new high", impact: "Thesis unchanged", type: "Company filing" },
 ];
 
+const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const matches = useMemo(
@@ -60,7 +62,7 @@ export default function Home() {
               </div>
             )}
           </div>
-          <div className="popular">Popular <Link href="/company/onds">ONDS</Link><Link href="/companies">NVDA</Link><Link href="/companies">AI infrastructure</Link><Link href="/companies">QNX</Link></div>
+          <div className="popular">Popular <Link href={dossierHref("ONDS")}>ONDS</Link><Link href={dossierHref("NVDA")}>NVDA</Link><Link href="/companies">AI infrastructure</Link><Link href={dossierHref("BB")}>QNX</Link></div>
         </div>
       </section>
 
@@ -80,7 +82,7 @@ export default function Home() {
         </div>
         <div className="company-grid">
           {companies.map((company, index) => (
-            <Link className="company-card" href={company.ticker === "ONDS" ? "/company/onds" : "/companies"} key={company.ticker}>
+            <Link className="company-card" href={dossierHref(company.ticker)} key={company.ticker} aria-label={`Open the ${company.name} dossier`}>
               <div className="card-top">
                 <div className={`ticker-icon tint-${index + 1}`}>{company.ticker}</div>
                 <div className="score-ring" style={{"--score": `${company.score * 3.6}deg`} as React.CSSProperties}><span>{company.score}</span></div>
@@ -102,7 +104,7 @@ export default function Home() {
           </div>
           <div className="change-table">
             {updates.map((update) => (
-              <Link href={update.ticker === "ONDS" ? "/company/onds" : "/companies"} className="change-row" key={update.ticker}>
+              <Link href={dossierHref(update.ticker)} className="change-row" key={update.ticker} aria-label={`Open the ${update.ticker} dossier`}>
                 <span className="change-date">{update.date}</span>
                 <span className="mini-ticker">{update.ticker}</span>
                 <strong>{update.title}</strong>
