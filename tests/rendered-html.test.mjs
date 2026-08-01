@@ -306,6 +306,37 @@ test("opens homepage sample cards and changelog rows as company dossiers", async
   assert.doesNotMatch(home, /company\.ticker === "ONDS" \? "\/company\/onds" : "\/companies"/);
 });
 
+test("keeps NYSE and Nasdaq separate from the official FINRA OTC catalog", async () => {
+  const [directory, api, schema, migration, updater, metadata, header, footer] = await Promise.all([
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/api/universe/route.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0006_official-exchange-universe.sql"),
+    source("scripts/update-exchange-universe.mjs"),
+    source("app/data/exchangeUniverseMeta.generated.ts"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+  ]);
+
+  assert.match(directory, /OTC does not mean “Pink Sheet” in every case/);
+  assert.match(directory, /Catalog coverage is separate from dossier completion/);
+  assert.match(directory, /SEC \+ Nasdaq Trader sources/);
+  assert.match(api, /c\.listing_scope = \?/);
+  assert.match(api, /LEFT JOIN company_dossiers/);
+  assert.match(api, /LIMIT \? OFFSET \?/);
+  assert.match(schema, /listingScope/);
+  assert.match(schema, /securityType/);
+  assert.match(schema, /universeSourceUrl/);
+  assert.match(migration, /companies_listing_scope_ticker_idx/);
+  assert.match(updater, /company_tickers_exchange\.json/);
+  assert.match(updater, /otcSecurityMaster/);
+  assert.match(updater, /nasdaqlisted\.txt/);
+  assert.match(metadata, /listedSecurityCount = \d+/);
+  assert.match(metadata, /otcSecurityCount = \d+/);
+  assert.match(header, /href="\/otc"/);
+  assert.match(footer, /OTC \/ Pink Market/);
+});
+
 test("ranks twelve homepage dossiers by verified community research demand", async () => {
   const [home, route, migration] = await Promise.all([
     source("app/page.tsx"),

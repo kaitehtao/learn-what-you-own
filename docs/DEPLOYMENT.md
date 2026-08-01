@@ -74,6 +74,8 @@ The migration lineage is:
 3. `drizzle/0002_polite_betty_brant.sql` — filing facts, evidence claims, and relationship graph
 4. `drizzle/0003_legacy-companies-compat.sql` — idempotent compatibility parent table
 5. `drizzle/0004_seed-onds-sec-facts.sql` — controlled ONDS filing-fact seed
+6. `drizzle/0005_emerging-companies-and-aapl-supply-chain.sql` — emerging-company records and initial relationship evidence
+7. `drizzle/0006_official-exchange-universe.sql` — official catalog metadata and lookup indexes
 
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 
@@ -84,6 +86,18 @@ npx wrangler d1 execute site-creator-d1 --remote --file=drizzle/0002_polite_bett
 ```
 
 Repeat only for a migration proven missing. Query table counts and duplicate keys after each mutation.
+
+### Refreshing the exchange universe
+
+`npm run universe:update` reads the SEC ticker/exchange association file, validates NYSE/Nasdaq symbols against Nasdaq Trader, and reads the latest FINRA `otcSecurityMaster` partition. It generates small UI metadata plus a batched D1 upsert file.
+
+```bash
+npm run universe:update
+npx wrangler d1 export site-creator-d1 --remote --output /tmp/site-creator-d1-before-universe.sql
+npx wrangler d1 execute site-creator-d1 --remote --file drizzle/seed-exchange-universe.sql
+```
+
+After import, audit `companies` grouped by `listing_scope` and `exchange`, require official source/as-of metadata on every active row, and confirm `company_dossiers`, `dossier_sources`, filing facts, claims, and relationships were not deleted or promoted. The seed updates catalog identity fields only and does not create a published dossier.
 
 ## Google authentication
 

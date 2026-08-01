@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const companies = sqliteTable("companies", {
   ticker: text("ticker").primaryKey(),
@@ -9,9 +9,20 @@ export const companies = sqliteTable("companies", {
   marketCap: real("market_cap"),
   membershipsJson: text("memberships_json").notNull().default("[]"),
   indexWeightsJson: text("index_weights_json").notNull().default("{}"),
+  cik: text("cik"),
+  listingScope: text("listing_scope", { enum: ["listed", "otc", "other"] }).notNull().default("other"),
+  securityType: text("security_type").notNull().default("Listed issuer security"),
+  securityDescription: text("security_description").notNull().default(""),
+  universeSourceUrl: text("universe_source_url").notNull().default(""),
+  universeSourceAsOf: text("universe_source_as_of").notNull().default(""),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("companies_listing_scope_ticker_idx").on(table.listingScope, table.ticker),
+  index("companies_exchange_ticker_idx").on(table.exchange, table.ticker),
+  index("companies_name_idx").on(table.name),
+]);
 
 export const companyDossiers = sqliteTable("company_dossiers", {
   ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),

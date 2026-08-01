@@ -14,6 +14,10 @@ export type ResearchCompany = {
   marketCap: number | null;
   memberships: IndexMembership[];
   indexWeights: Partial<Record<IndexMembership, number>>;
+  cik?: string | null;
+  listingScope?: "listed" | "otc" | "other";
+  securityType?: string;
+  securityDescription?: string;
 };
 
 const companies = new Map<string, ResearchCompany>();

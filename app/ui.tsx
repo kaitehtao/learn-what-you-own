@@ -46,6 +46,7 @@ export function Header() {
           }}
         >
           <Link href="/companies">Companies</Link>
+          <Link href="/otc">OTC</Link>
           <Link href="/earnings">Earnings</Link>
           <Link href="/company/onds">Research</Link>
           <Link href="/interviews">Interviews</Link>

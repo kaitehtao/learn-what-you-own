@@ -63,6 +63,15 @@ Apply the D1 migrations in the order documented in [`docs/DEPLOYMENT.md`](docs/D
 
 Members can submit a **Supplier / customer relationship** with primary evidence. The proposal stays private in Supabase until an editor approves it; approval promotes the structured edge to D1 while retaining the contributor username and disclosure trail.
 
+## Exchange and OTC catalogs
+
+The public catalog has two deliberately separate lanes:
+
+- `/companies` serves current NYSE and Nasdaq ticker/exchange associations from the SEC, cross-checked against Nasdaq Trader's symbol-directory files.
+- `/otc` serves FINRA's current OTC security master. OTC is not treated as synonymous with the Pink market, and each record keeps its issue type.
+
+Run `npm run universe:update` to refresh the generated catalog metadata and batched `drizzle/seed-exchange-universe.sql`. Review the count changes, export production D1, apply `drizzle/0006_official-exchange-universe.sql` if it is not already present, and then execute the seed against the verified remote D1. Catalog import never publishes a dossier.
+
 ## Security model
 
 - Supabase Auth validates email/password and Google sessions.
@@ -80,3 +89,4 @@ Members can submit a **Supplier / customer relationship** with primary evidence.
 - `npm run db:generate` — generate D1/Drizzle migrations
 - `npm run db:seed:dossiers` — regenerate the ignored dossier seed SQL
 - `npm run sec:update` — refresh the SEC ticker-to-CIK directory
+- `npm run universe:update` — refresh SEC/Nasdaq-listed and FINRA OTC catalog seed data
