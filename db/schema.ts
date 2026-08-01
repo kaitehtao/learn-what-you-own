@@ -80,6 +80,21 @@ export const filingFacts = sqliteTable("filing_facts", {
   ),
 ]);
 
+// Import state distinguishes a queued refresh from an SEC issuer whose XBRL
+// filing does not expose any of the normalized metrics we currently support.
+export const filingFactImports = sqliteTable("filing_fact_imports", {
+  ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
+  status: text("status", { enum: ["success", "no_compatible_facts", "error"] }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+  importedCount: integer("imported_count").notNull().default(0),
+  metricCount: integer("metric_count").notNull().default(0),
+  lastAttemptedAt: text("last_attempted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastSuccessAt: text("last_success_at"),
+  errorMessage: text("error_message"),
+}, (table) => [
+  index("filing_fact_import_status_attempted_idx").on(table.status, table.lastAttemptedAt),
+]);
+
 // A claim is the smallest publishable unit in a dossier. The classification
 // prevents an editorial interpretation from being presented as a filed fact.
 export const dossierClaims = sqliteTable("dossier_claims", {

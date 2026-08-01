@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { featuredDossiers, type FeaturedDossier } from "../app/data/featuredDossiers";
+import { generateSecFactSql } from "./lib/sec-fact-sql";
 
 const outputPath = resolve(process.argv[2] ?? "/tmp/publish-normalized-dossiers.sql");
 const tickers = process.argv.slice(3).map((ticker) => ticker.trim().toUpperCase()).filter(Boolean);
@@ -76,6 +77,7 @@ for (const ticker of tickers) {
   const dossier = featuredDossiers[ticker];
   if (!dossier) throw new Error(`No featured dossier exists for ${ticker}.`);
   const evidenceDate = isoDate(dossier.reviewed, "2026-08-01");
+  const factImport = await generateSecFactSql(ticker);
 
   statements.push(
     `INSERT INTO company_dossiers (ticker, status, description, lede, sells, revenue_model, opportunity, must_go_right, editor_note, bull_title, bull_json, bear_title, bear_json, thesis_breaker, financial_drivers_json, risks_json, monitor_json, questions_json, competitors, evidence_date, validated_at, published_at, updated_at)
@@ -96,6 +98,7 @@ ON CONFLICT(ticker) DO UPDATE SET
     `DELETE FROM dossier_sources WHERE ticker = ${sql(dossier.ticker)};`,
     `DELETE FROM dossier_claims WHERE ticker = ${sql(dossier.ticker)};`,
   );
+  statements.push(...factImport.statements);
 
   for (const source of dossier.sources) {
     statements.push(
@@ -112,4 +115,4 @@ ON CONFLICT(ticker, url) DO UPDATE SET
 
 mkdirSync(dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, `${statements.join("\n\n")}\n`);
-console.log(`Generated ${outputPath}: ${tickers.length} normalized dossier publication records.`);
+console.log(`Generated ${outputPath}: ${tickers.length} dossier publication records with automatic SEC Company Facts imports.`);

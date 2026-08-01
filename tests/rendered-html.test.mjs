@@ -77,9 +77,10 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
 });
 
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
-  const [claims, importRoute] = await Promise.all([
+  const [claims, importRoute, factRepository] = await Promise.all([
     source("app/data/curatedDossierClaims.ts"),
     source("app/api/admin/research/import/route.ts"),
+    source("app/data/secFactsRepository.ts"),
   ]);
 
   assert.match(claims, /firstAlphabeticalABatch = \["A", "AA", "AAL", "AAMI", "AAOI", "AAON", "AAP", "AAPL", "AAT", "ABAT"\]/);
@@ -94,7 +95,7 @@ test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async 
   assert.equal((claims.match(/sourceExcerpt:/g) ?? []).length, 51);
 
   assert.match(importRoute, /sourceHostname !== "sec\.gov"/);
-  assert.match(importRoute, /const D1_FACT_BATCH_SIZE = 5/);
+  assert.match(factRepository, /const D1_FACT_BATCH_SIZE = 5/);
   assert.match(importRoute, /db\.insert\(companyDossiers\)/);
   assert.match(importRoute, /db\.insert\(dossierSources\)/);
   assert.match(importRoute, /db\.insert\(dossierClaims\)/);
@@ -441,4 +442,33 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(starterPage, /CompanyNewsPanel/);
   assert.match(ondas, /CompanyNewsPanel/);
   assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:1fr 1fr/);
+});
+
+test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
+  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, publisher, styles] = await Promise.all([
+    source("app/ResearchFoundationPanel.tsx"),
+    source("app/api/research/route.ts"),
+    source("app/data/secFactsRepository.ts"),
+    source("app/api/internal/sec-facts-refresh/route.ts"),
+    source("worker/index.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0007_sec-fact-import-status.sql"),
+    source("scripts/generate-normalized-dossier-publish.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(panel, /Filed financial history/);
+  assert.match(panel, /Comparable-period changes/);
+  assert.match(panel, /No estimates were substituted/);
+  assert.match(panel, /Open machine-readable source/);
+  assert.match(researchApi, /factsImport/);
+  assert.match(importer, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
+  assert.match(importer, /filingFactImports/);
+  assert.match(scheduledRoute, /DAILY_REFRESH_LIMIT = 5/);
+  assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
+  assert.match(worker, /refreshScheduledSecFacts/);
+  assert.match(schema, /filingFactImports/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `filing_fact_imports`/);
+  assert.match(publisher, /generateSecFactSql/);
+  assert.match(styles, /\.filing-history\{display:flex/);
 });

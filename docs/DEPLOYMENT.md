@@ -76,6 +76,7 @@ The migration lineage is:
 5. `drizzle/0004_seed-onds-sec-facts.sql` — controlled ONDS filing-fact seed
 6. `drizzle/0005_emerging-companies-and-aapl-supply-chain.sql` — emerging-company records and initial relationship evidence
 7. `drizzle/0006_official-exchange-universe.sql` — official catalog metadata and lookup indexes
+8. `drizzle/0007_sec-fact-import-status.sql` — SEC Company Facts refresh state and audit metadata
 
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 
@@ -126,9 +127,9 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled daily digest
 
-`vite.config.ts` declares `0 15,16 * * *`. These are the two UTC hours that can correspond to 08:00 Pacific across daylight-saving changes. `worker/index.ts` checks `America/Los_Angeles` and only delivers during the invocation that is actually 08:00.
+`vite.config.ts` declares `0 15,16 * * *`. These are the two UTC hours that can correspond to 08:00 Pacific across daylight-saving changes. `worker/index.ts` checks `America/Los_Angeles` and only proceeds during the invocation that is actually 08:00.
 
-The Worker posts to `/api/notifications/email-digest` using `NOTIFICATION_CRON_SECRET`. The endpoint processes only queued daily notifications and leaves the no-message case empty.
+The Worker posts to `/api/notifications/email-digest` and `/api/internal/sec-facts-refresh` using `NOTIFICATION_CRON_SECRET`. The digest endpoint processes only queued daily notifications and leaves the no-message case empty. The SEC refresh endpoint selects the five least-recently attempted published dossiers, imports only normalized SEC Company Facts, and records success, unsupported-XBRL, or error status. This bounded rotation avoids aggressive SEC traffic while keeping published financial evidence fresh.
 
 After deployment, verify both cron triggers exist on the `learn-what-you-own` Worker and inspect at least one scheduled invocation. Never point the digest to a preview origin.
 

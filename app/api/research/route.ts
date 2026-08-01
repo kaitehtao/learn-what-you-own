@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { companyRelationships, dossierClaims, filingFacts } from "../../../db/schema";
+import { companyRelationships, dossierClaims, filingFactImports, filingFacts } from "../../../db/schema";
 import { researchUniverse } from "../../data/universe";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   try {
     const db = getDb();
-    const [facts, claims, relationships] = await Promise.all([
+    const [facts, claims, relationships, importRows] = await Promise.all([
       db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
         .orderBy(asc(filingFacts.metricKey), desc(filingFacts.periodEnd)).limit(300),
       db.select().from(dossierClaims).where(and(eq(dossierClaims.ticker, ticker), eq(dossierClaims.status, "published")))
@@ -47,6 +47,7 @@ export async function GET(request: Request) {
         eq(companyRelationships.supplierTicker, ticker),
         eq(companyRelationships.customerTicker, ticker),
       )).orderBy(desc(companyRelationships.evidenceDate)).limit(100),
+      db.select().from(filingFactImports).where(eq(filingFactImports.ticker, ticker)).limit(1),
     ]);
 
     return Response.json({
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
         form: fact.form,
         filedAt: fact.filedAt,
         sourceUrl: fact.sourceUrl,
+        updatedAt: fact.updatedAt,
       })),
       claims: claims.map((claim) => ({
         id: claim.id,
@@ -77,6 +79,14 @@ export async function GET(request: Request) {
         evidenceDate: claim.evidenceDate,
       })),
       relationships: relationships.map((relationship) => relatedEndpoint(ticker, relationship)),
+      factsImport: importRows[0] ? {
+        status: importRows[0].status,
+        sourceUrl: importRows[0].sourceUrl,
+        importedCount: importRows[0].importedCount,
+        metricCount: importRows[0].metricCount,
+        lastAttemptedAt: importRows[0].lastAttemptedAt,
+        lastSuccessAt: importRows[0].lastSuccessAt,
+      } : null,
     }, { headers: { "cache-control": "public, max-age=300, s-maxage=900" } });
   } catch (error) {
     console.error(error);
