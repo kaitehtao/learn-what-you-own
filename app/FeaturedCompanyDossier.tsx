@@ -19,6 +19,8 @@ function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
   if (ticker.toUpperCase() === "CRWV") return "CoreWeave, Inc.";
   if (ticker.toUpperCase() === "ORCL") return "Oracle Corporation";
+  if (ticker.toUpperCase() === "SPCX") return "SpaceX (Space Exploration Technologies Corp.)";
+  if (ticker.toUpperCase() === "TSLA") return "Tesla, Inc.";
   const formatted = name.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
     .replace("Nvidia", "NVIDIA").replace("Amazon.Com", "Amazon.com");
   const firstWord = formatted.split(/\s/, 1)[0];
