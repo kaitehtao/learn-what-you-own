@@ -50,6 +50,8 @@ Complete this checklist before and after every production release. A coding agen
 - [ ] A member cannot assign an editor/admin role to themselves.
 - [ ] `/admin` rejects non-admin members and shows visitor/account metrics to an administrator.
 - [ ] Administrator invitations create an auditable pending account without exposing credentials.
+- [ ] An administrator can resend a pending user's verification email, subject to the one-minute cooldown.
+- [ ] Manual email verification requires typing the exact pending email and creates an audit entry.
 - [ ] Role changes and account deletion require an administrator and preserve an audit record.
 - [ ] The active administrator cannot delete themselves or remove the final administrator.
 
