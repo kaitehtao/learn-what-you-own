@@ -337,8 +337,9 @@ test("creates private member notifications and opt-in email delivery", async () 
 });
 
 test("provides an admin-only audience and account control center", async () => {
-  const [migration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
+  const [migration, verificationMigration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
     source("supabase/migrations/20260801040000_admin_dashboard_analytics.sql"),
+    source("supabase/migrations/20260801080000_admin_email_verification.sql"),
     source("app/api/admin/dashboard/route.ts"),
     source("app/admin/AdminDashboard.tsx"),
     source("app/VisitorTracker.tsx"),
@@ -351,14 +352,23 @@ test("provides an admin-only audience and account control center", async () => {
   assert.match(migration, /revoke all on public\.site_visits from anon, authenticated/);
   assert.match(migration, /admin_dashboard_visitor_metrics/);
   assert.doesNotMatch(migration, /ip_address|user_agent/);
+  assert.match(verificationMigration, /verification_resend/);
+  assert.match(verificationMigration, /email_confirm/);
   assert.match(route, /requireAdmin/);
   assert.match(route, /inviteUserByEmail/);
+  assert.match(route, /auth\.resend\(\{ type: "signup"/);
+  assert.match(route, /updateUserById\(userId, \{ email_confirm: true \}\)/);
+  assert.match(route, /Wait at least one minute before resending/);
+  assert.match(route, /Type \$\{email\} to confirm manual verification/);
   assert.match(route, /deleteUser\(userId, false\)/);
   assert.match(route, /You cannot delete the account you are currently using/);
   assert.match(route, /The final administrator cannot be deleted/);
   assert.match(route, /admin_account_audit/);
   assert.match(dashboard, /Audience and accounts/);
   assert.match(dashboard, /Invite member/);
+  assert.match(dashboard, /Resend email/);
+  assert.match(dashboard, /Verify manually/);
+  assert.match(dashboard, /Manual verification bypasses the user's email confirmation link/);
   assert.match(dashboard, /DELETE @/);
   assert.match(dashboard, /Visitor counts use a random first-party browser identifier/);
   assert.match(tracker, /navigator\.doNotTrack/);
