@@ -47,6 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/emerging-companies">IPOs &amp; private companies</Link>
                 <Link href="/interviews">Interviews</Link>
                 <Link href="/founders-letter">Founder’s Letter</Link>
+                <Link href="/feedback">Product feedback</Link>
                 <Link href="/company/amc">Featured AMC dossier</Link>
               </div>
               <div>
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/notebook">Notebook</Link>
                 <Link href="/messages">Messages</Link>
                 <Link href="/contribute">Contribute research</Link>
+                <Link href="/login?mode=signup">Create free account</Link>
                 <Link href="/account">Account</Link>
               </div>
             </nav>
