@@ -54,6 +54,7 @@ Apply each file once, in this order, using the production project's SQL editor o
 8. `supabase/migrations/20260801050000_company_dossier_proposals.sql`
 9. `supabase/migrations/20260801060000_company_research_demand.sql`
 10. `supabase/migrations/20260801070000_founder_administrator.sql`
+11. `supabase/migrations/20260801080000_admin_email_verification.sql`
 
 These migrations are designed to preserve member data and establish RLS policies. Never apply them to an unverified project merely because its display name looks similar. Confirm the project reference from `SUPABASE_URL` first.
 
