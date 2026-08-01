@@ -29,7 +29,7 @@ function tag(item: string, name: string): string {
 }
 
 function parseRss(xml: string): NewsItem[] {
-  return [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(([item]) => {
+  const rssItems = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(([item]) => {
     const title = tag(item, "title").replace(/\s+-\s+[^-]+$/, "").trim();
     const source = tag(item, "source") || "Public news source";
     const url = tag(item, "link");
@@ -37,6 +37,26 @@ function parseRss(xml: string): NewsItem[] {
     const summary = stripHtml(tag(item, "description"));
     return { title, source, url, publishedAt, summary };
   }).filter((item) => item.title && /^https?:\/\//.test(item.url));
+
+  const atomItems = [...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi)].map(([entry]) => {
+    const linkAttributes = entry.match(/<link\b([^>]*\brel=["']alternate["'][^>]*)\/?\s*>/i)?.[1]
+      ?? entry.match(/<link\b([^>]*)\/?\s*>/i)?.[1]
+      ?? "";
+    const filingType = stripHtml(tag(entry, "filing-type")) || htmlAttribute(entry.match(/<category\b([^>]*)\/?\s*>/i)?.[1] ?? "", "term") || "SEC filing";
+    const formName = stripHtml(tag(entry, "form-name"));
+    const itemDescription = stripHtml(tag(entry, "items-desc"));
+    const summary = stripHtml(tag(entry, "summary"));
+    return {
+      title: [filingType, formName, itemDescription].filter(Boolean).join(" · "),
+      url: htmlAttribute(linkAttributes, "href"),
+      publishedAt: stripHtml(tag(entry, "updated")) || stripHtml(tag(entry, "filing-date")),
+      source: "SEC EDGAR official filing",
+      summary,
+      category: filingType,
+    };
+  }).filter((item) => item.title && /^https?:\/\//.test(item.url));
+
+  return [...rssItems, ...atomItems];
 }
 
 function stripHtml(value: string): string {
@@ -89,7 +109,10 @@ async function fetchText(url: string): Promise<string> {
   const timeout = setTimeout(() => controller.abort(), 8_000);
   try {
     const response = await fetch(url, {
-      headers: { "user-agent": "LearnWhatYouOwn/1.0 company-news reader" },
+      headers: {
+        "accept": "application/atom+xml, application/rss+xml, application/xml, text/html;q=0.9, */*;q=0.8",
+        "user-agent": "LearnWhatYouOwn/1.0 research@learnwhatyouown.com",
+      },
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`News feed returned ${response.status}.`);
@@ -119,7 +142,8 @@ async function officialNews(newsroomUrl: string | null, feedUrl: string | null):
 function unique(items: NewsItem[], limit: number): NewsItem[] {
   const seen = new Set<string>();
   return items.filter((item) => {
-    const key = item.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const titleKey = item.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const key = item.source === "SEC EDGAR official filing" ? item.url : titleKey;
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
