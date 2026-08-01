@@ -45,6 +45,36 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
 
   const selectedNotebook = typeof selectedNotebookId === "number" ? notebooks.find((item) => item.id === selectedNotebookId) ?? null : null;
 
+  function selectNotebook(id: number | "inbox" | "all") {
+    const notebook = typeof id === "number" ? notebooks.find((item) => item.id === id) ?? null : null;
+    setSelectedNotebookId(id);
+    setSelectedNoteId(null);
+    setDraft(null);
+    setDraftDirty(false);
+    setThesisDraft(notebook?.thesis ?? "");
+    setThesisDirty(false);
+    setSaveState("Saved");
+  }
+
+  function selectNote(note: Note | null) {
+    setSelectedNoteId(note?.id ?? null);
+    setDraft(note ? noteDraft(note) : null);
+    setDraftDirty(false);
+    setSaveState("Saved");
+  }
+
+  function editDraft(patch: Partial<ReturnType<typeof noteDraft>>) {
+    setDraft((current) => current ? { ...current, ...patch } : current);
+    setDraftDirty(true);
+    setSaveState("Saving…");
+  }
+
+  function editThesis(value: string) {
+    setThesisDraft(value);
+    setThesisDirty(true);
+    setSaveState("Saving…");
+  }
+
   const load = useCallback(async () => {
     const response = await authenticatedFetch("/api/notebook");
     if (response.status === 401) return void (window.location.href = loginPath(`/notebook${initialTicker ? `?ticker=${encodeURIComponent(initialTicker)}` : ""}`));
@@ -55,37 +85,33 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     setOwner(data.owner.username);
     if (initialTicker) {
       const existing = data.notebooks.find((item) => item.ticker === initialTicker);
-      if (existing) setSelectedNotebookId(existing.id);
+      if (existing) {
+        setSelectedNotebookId(existing.id);
+        setThesisDraft(existing.thesis);
+      }
       else {
         const createdResponse = await authenticatedFetch("/api/notebook", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "create_notebook", ticker: initialTicker }) });
         const created = await createdResponse.json() as { notebook?: Notebook; error?: string };
         if (!createdResponse.ok || !created.notebook) throw new Error(created.error ?? "Unable to create the company notebook.");
         setNotebooks((current) => [...current, created.notebook!].sort((a, b) => a.ticker.localeCompare(b.ticker)));
         setSelectedNotebookId(created.notebook.id);
+        setThesisDraft(created.notebook.thesis);
       }
     }
   }, [initialTicker]);
 
   useEffect(() => {
     let active = true;
-    load().catch((caught) => active && setError(caught instanceof Error ? caught.message : "Unable to load your notebook.")).finally(() => active && setLoading(false));
-    return () => { active = false; };
+    const initialLoad = window.setTimeout(() => {
+      void load()
+        .catch((caught) => active && setError(caught instanceof Error ? caught.message : "Unable to load your notebook."))
+        .finally(() => active && setLoading(false));
+    }, 0);
+    return () => { active = false; window.clearTimeout(initialLoad); };
   }, [load]);
 
   useEffect(() => {
-    const selected = notes.find((item) => item.id === selectedNoteId);
-    setDraft(selected ? noteDraft(selected) : null);
-    setDraftDirty(false);
-  }, [selectedNoteId, notes]);
-
-  useEffect(() => {
-    setThesisDraft(selectedNotebook?.thesis ?? "");
-    setThesisDirty(false);
-  }, [selectedNotebook?.id, selectedNotebook?.thesis]);
-
-  useEffect(() => {
     if (!draft || !draftDirty) return;
-    setSaveState("Saving…");
     const timer = window.setTimeout(async () => {
       const response = await authenticatedFetch("/api/notebook", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({
         entity: "note", id: draft.id, noteType: draft.noteType, title: draft.title || "Untitled research note", body: draft.body,
@@ -103,7 +129,6 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
 
   useEffect(() => {
     if (!selectedNotebook || !thesisDirty) return;
-    setSaveState("Saving…");
     const timer = window.setTimeout(async () => {
       const response = await authenticatedFetch("/api/notebook", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ entity: "notebook", id: selectedNotebook.id, thesis: thesisDraft }) });
       const data = await response.json() as { notebook?: Notebook; error?: string };
@@ -132,7 +157,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     setBusy(false);
     if (!response.ok || !data.notebook) return setError(data.error ?? "Unable to create that notebook.");
     setNotebooks((current) => [...current.filter((item) => item.id !== data.notebook!.id), data.notebook!].sort((a, b) => a.ticker.localeCompare(b.ticker)));
-    setSelectedNotebookId(data.notebook.id); setNewTicker(""); setSelectedNoteId(null);
+    setSelectedNotebookId(data.notebook.id); setNewTicker(""); setSelectedNoteId(null); setDraft(null); setThesisDraft(data.notebook.thesis); setThesisDirty(false);
   }
 
   async function createNote(type = "general") {
@@ -144,7 +169,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     const data = await response.json() as { note?: Note; error?: string };
     setBusy(false);
     if (!response.ok || !data.note) return setError(data.error ?? "Unable to create a note.");
-    setNotes((current) => [data.note!, ...current]); setSelectedNoteId(data.note.id);
+    setNotes((current) => [data.note!, ...current]); selectNote(data.note);
   }
 
   async function updateConviction(conviction: string) {
@@ -159,7 +184,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     if (!draft || !window.confirm("Delete this private note? This cannot be undone.")) return;
     const response = await authenticatedFetch("/api/notebook", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ entity: "note", id: draft.id }) });
     if (!response.ok) return setError("Unable to delete this note.");
-    setNotes((current) => current.filter((item) => item.id !== draft.id)); setSelectedNoteId(null);
+    setNotes((current) => current.filter((item) => item.id !== draft.id)); selectNote(null);
   }
 
   const publishHref = draft && selectedNotebook ? `/contribute?${new URLSearchParams({ ticker: selectedNotebook.ticker, type: "Thesis update", claim: draft.title.slice(0, 1000), why: (draft.body || draft.sourceExcerpt).slice(0, 1200), source: draft.sourceUrl }).toString()}` : "/contribute";
@@ -175,28 +200,28 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     <section className="container notebook-workspace">
       <aside className="notebook-sidebar">
         <div className="notebook-sidebar-heading"><span>RESEARCH LIBRARY</span><button onClick={() => createNote("general")} disabled={busy}>＋ Note</button></div>
-        <button className={selectedNotebookId === "all" ? "active" : ""} onClick={() => { setSelectedNotebookId("all"); setSelectedNoteId(null); }}><span>⌕</span><div><strong>All research</strong><small>{notes.length} notes</small></div></button>
-        <button className={selectedNotebookId === "inbox" ? "active" : ""} onClick={() => { setSelectedNotebookId("inbox"); setSelectedNoteId(null); }}><span>↓</span><div><strong>Research inbox</strong><small>{notes.filter((note) => note.notebookId === null).length} uncategorized</small></div></button>
+        <button className={selectedNotebookId === "all" ? "active" : ""} onClick={() => selectNotebook("all")}><span>⌕</span><div><strong>All research</strong><small>{notes.length} notes</small></div></button>
+        <button className={selectedNotebookId === "inbox" ? "active" : ""} onClick={() => selectNotebook("inbox")}><span>↓</span><div><strong>Research inbox</strong><small>{notes.filter((note) => note.notebookId === null).length} uncategorized</small></div></button>
         <div className="notebook-company-label">COMPANY NOTEBOOKS</div>
-        <div className="notebook-company-list">{notebooks.map((book) => <button key={book.id} className={selectedNotebookId === book.id ? "active" : ""} onClick={() => { setSelectedNotebookId(book.id); setSelectedNoteId(null); }}><span>{book.ticker.slice(0, 4)}</span><div><strong>{book.ticker}</strong><small>{notes.filter((note) => note.notebookId === book.id).length} notes · {book.conviction}</small></div></button>)}</div>
+        <div className="notebook-company-list">{notebooks.map((book) => <button key={book.id} className={selectedNotebookId === book.id ? "active" : ""} onClick={() => selectNotebook(book.id)}><span>{book.ticker.slice(0, 4)}</span><div><strong>{book.ticker}</strong><small>{notes.filter((note) => note.notebookId === book.id).length} notes · {book.conviction}</small></div></button>)}</div>
         <form className="new-notebook-form" onSubmit={createNotebook}><label>NEW COMPANY NOTEBOOK<input value={newTicker} onChange={(event) => setNewTicker(event.target.value.toUpperCase())} maxLength={12} placeholder="Ticker, e.g. NVDA" /></label><button disabled={busy || !newTicker.trim()}>{busy ? "Adding…" : "Add company →"}</button></form>
       </aside>
 
       <div className="notebook-index">
         <header>{selectedNotebook ? <div className="notebook-company-header"><Link href={`/company/${selectedNotebook.ticker.toLowerCase()}`}>{selectedNotebook.ticker}</Link><div><small>PRIVATE COMPANY NOTEBOOK</small><h2>{selectedNotebook.companyName}</h2></div><label>CONVICTION<select value={selectedNotebook.conviction} onChange={(event) => updateConviction(event.target.value)}><option value="unranked">Unranked</option><option value="watching">Watching</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label></div> : <div><span className="kicker">{selectedNotebookId === "inbox" ? "RESEARCH INBOX" : "COMPLETE LIBRARY"}</span><h2>{selectedNotebookId === "inbox" ? "Ideas waiting to be filed" : "All private research"}</h2></div>}</header>
-        {selectedNotebook && <label className="notebook-thesis"><span>ONE-SENTENCE WORKING THESIS <em>{thesisDirty ? saveState : "Autosaved"}</em></span><textarea value={thesisDraft} onChange={(event) => { setThesisDraft(event.target.value); setThesisDirty(true); }} placeholder={`What must be true for ${selectedNotebook.ticker} to become a good long-term investment?`} /></label>}
+        {selectedNotebook && <label className="notebook-thesis"><span>ONE-SENTENCE WORKING THESIS <em>{thesisDirty ? saveState : "Autosaved"}</em></span><textarea value={thesisDraft} onChange={(event) => editThesis(event.target.value)} placeholder={`What must be true for ${selectedNotebook.ticker} to become a good long-term investment?`} /></label>}
         <div className="notebook-tools"><label>⌕<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes, sources, and tags" /></label><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">All note types</option>{noteTypes.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><button onClick={() => createNote("general")} disabled={busy}>New note ＋</button></div>
         <div className="notebook-quick-add"><span>QUICK ADD</span>{[["source", "Source"], ["risk", "Risk"], ["catalyst", "Catalyst"], ["question", "Question"], ["task", "Task"]].map(([type, label]) => <button key={type} onClick={() => createNote(type)} disabled={busy}>＋ {label}</button>)}</div>
-        <div className="notebook-note-list">{visibleNotes.length ? visibleNotes.map((note) => <button key={note.id} className={`${selectedNoteId === note.id ? "selected" : ""} ${note.status === "done" ? "done" : ""}`} onClick={() => setSelectedNoteId(note.id)}><span className={`note-type-icon ${note.noteType}`}>{note.pinned ? "★" : labelFor(note.noteType).slice(0, 1)}</span><div><header><small>{labelFor(note.noteType)}{note.status === "done" ? " · DONE" : ""}</small><time>{formatDate(note.updatedAt)}</time></header><strong>{note.title}</strong><p>{note.body || note.sourceExcerpt || note.sourceTitle || "Start writing…"}</p>{note.tags.length > 0 && <footer>{note.tags.slice(0, 4).map((tag) => <em key={tag}>#{tag}</em>)}</footer>}</div></button>) : <div className="notebook-empty"><span>✎</span><h3>No research here yet.</h3><p>Start with a question, save a source from a company dossier, or write down the claim you want to test.</p><button onClick={() => createNote("general")}>Create the first note →</button></div>}</div>
+        <div className="notebook-note-list">{visibleNotes.length ? visibleNotes.map((note) => <button key={note.id} className={`${selectedNoteId === note.id ? "selected" : ""} ${note.status === "done" ? "done" : ""}`} onClick={() => selectNote(note)}><span className={`note-type-icon ${note.noteType}`}>{note.pinned ? "★" : labelFor(note.noteType).slice(0, 1)}</span><div><header><small>{labelFor(note.noteType)}{note.status === "done" ? " · DONE" : ""}</small><time>{formatDate(note.updatedAt)}</time></header><strong>{note.title}</strong><p>{note.body || note.sourceExcerpt || note.sourceTitle || "Start writing…"}</p>{note.tags.length > 0 && <footer>{note.tags.slice(0, 4).map((tag) => <em key={tag}>#{tag}</em>)}</footer>}</div></button>) : <div className="notebook-empty"><span>✎</span><h3>No research here yet.</h3><p>Start with a question, save a source from a company dossier, or write down the claim you want to test.</p><button onClick={() => createNote("general")}>Create the first note →</button></div>}</div>
       </div>
 
       <aside className={`notebook-editor ${draft ? "open" : ""}`}>{draft ? <>
-        <header><button className="notebook-editor-back" onClick={() => setSelectedNoteId(null)}>← Notes</button><span>{saveState}</span><button onClick={deleteNote} aria-label="Delete note">Delete</button></header>
-        <div className="notebook-editor-fields"><div className="notebook-editor-meta"><label>TYPE<select value={draft.noteType} onChange={(event) => { setDraft({ ...draft, noteType: event.target.value }); setDraftDirty(true); }}>{noteTypes.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>STATUS<select value={draft.status} onChange={(event) => { setDraft({ ...draft, status: event.target.value }); setDraftDirty(true); }}><option value="active">Active</option><option value="done">Done</option><option value="archived">Archived</option></select></label><button className={draft.pinned ? "pinned" : ""} onClick={() => { setDraft({ ...draft, pinned: !draft.pinned }); setDraftDirty(true); }}>{draft.pinned ? "★ Pinned" : "☆ Pin"}</button></div>
-          <input className="notebook-note-title" value={draft.title} onChange={(event) => { setDraft({ ...draft, title: event.target.value }); setDraftDirty(true); }} placeholder="Note title" />
-          <textarea className="notebook-note-body" value={draft.body} onChange={(event) => { setDraft({ ...draft, body: event.target.value }); setDraftDirty(true); }} placeholder="Write what you know, what you infer, and what still needs verification…" />
-          <label className="notebook-field">TAGS<input value={draft.tagsText} onChange={(event) => { setDraft({ ...draft, tagsText: event.target.value }); setDraftDirty(true); }} placeholder="moat, margins, management" /></label>
-          <div className="notebook-source-fields"><div><span>SOURCE &amp; CITATION</span><small>Keep the evidence beside the interpretation.</small></div><label>SOURCE TITLE<input value={draft.sourceTitle} onChange={(event) => { setDraft({ ...draft, sourceTitle: event.target.value }); setDraftDirty(true); }} placeholder="10-K, earnings call, investor presentation…" /></label><label>SOURCE URL<input type="url" value={draft.sourceUrl} onChange={(event) => { setDraft({ ...draft, sourceUrl: event.target.value }); setDraftDirty(true); }} placeholder="https://www.sec.gov/…" /></label><label>DATE<input type="date" value={draft.sourceDate ?? ""} onChange={(event) => { setDraft({ ...draft, sourceDate: event.target.value }); setDraftDirty(true); }} /></label><label>IMPORTANT EXCERPT<textarea value={draft.sourceExcerpt} onChange={(event) => { setDraft({ ...draft, sourceExcerpt: event.target.value }); setDraftDirty(true); }} placeholder="Paste the exact passage or summarize the evidence you need to revisit." /></label>{draft.sourceUrl && <a href={draft.sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a>}</div>
+        <header><button className="notebook-editor-back" onClick={() => selectNote(null)}>← Notes</button><span>{saveState}</span><button onClick={deleteNote} aria-label="Delete note">Delete</button></header>
+        <div className="notebook-editor-fields"><div className="notebook-editor-meta"><label>TYPE<select value={draft.noteType} onChange={(event) => editDraft({ noteType: event.target.value })}>{noteTypes.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>STATUS<select value={draft.status} onChange={(event) => editDraft({ status: event.target.value })}><option value="active">Active</option><option value="done">Done</option><option value="archived">Archived</option></select></label><button className={draft.pinned ? "pinned" : ""} onClick={() => editDraft({ pinned: !draft.pinned })}>{draft.pinned ? "★ Pinned" : "☆ Pin"}</button></div>
+          <input className="notebook-note-title" value={draft.title} onChange={(event) => editDraft({ title: event.target.value })} placeholder="Note title" />
+          <textarea className="notebook-note-body" value={draft.body} onChange={(event) => editDraft({ body: event.target.value })} placeholder="Write what you know, what you infer, and what still needs verification…" />
+          <label className="notebook-field">TAGS<input value={draft.tagsText} onChange={(event) => editDraft({ tagsText: event.target.value })} placeholder="moat, margins, management" /></label>
+          <div className="notebook-source-fields"><div><span>SOURCE &amp; CITATION</span><small>Keep the evidence beside the interpretation.</small></div><label>SOURCE TITLE<input value={draft.sourceTitle} onChange={(event) => editDraft({ sourceTitle: event.target.value })} placeholder="10-K, earnings call, investor presentation…" /></label><label>SOURCE URL<input type="url" value={draft.sourceUrl} onChange={(event) => editDraft({ sourceUrl: event.target.value })} placeholder="https://www.sec.gov/…" /></label><label>DATE<input type="date" value={draft.sourceDate ?? ""} onChange={(event) => editDraft({ sourceDate: event.target.value })} /></label><label>IMPORTANT EXCERPT<textarea value={draft.sourceExcerpt} onChange={(event) => editDraft({ sourceExcerpt: event.target.value })} placeholder="Paste the exact passage or summarize the evidence you need to revisit." /></label>{draft.sourceUrl && <a href={draft.sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a>}</div>
         </div>
         <footer className="notebook-publish"><div><strong>Ready to share an insight?</strong><p>Only this note moves to the public editorial form. Your notebook stays private.</p></div>{selectedNotebook ? <Link href={publishHref}>Prepare public contribution →</Link> : <span>File this note under a company first.</span>}</footer>
       </> : <div className="notebook-editor-placeholder"><span>PRIVATE WORKSPACE</span><h3>Select a note to begin.</h3><p>Your sources, excerpts, questions, and unfinished ideas remain visible only to you.</p></div>}</aside>

@@ -26,10 +26,18 @@ export function NotificationsClient() {
     if (response.status === 401) return void (window.location.href = loginPath("/notifications"));
     const data = await response.json() as { notifications?: Notification[]; unread?: number; preferences?: Preferences; emailAvailable?: boolean; error?: string };
     if (!response.ok) throw new Error(data.error ?? "Unable to load notifications.");
-    setNotifications(data.notifications ?? []); setUnread(data.unread ?? 0); setPreferences(data.preferences ?? preferences); setEmailAvailable(Boolean(data.emailAvailable));
+    setNotifications(data.notifications ?? []); setUnread(data.unread ?? 0); setPreferences((current) => data.preferences ?? current); setEmailAvailable(Boolean(data.emailAvailable));
   }, []);
 
-  useEffect(() => { let active = true; load().catch((caught) => active && setError(caught instanceof Error ? caught.message : "Unable to load notifications.")).finally(() => active && setLoading(false)); return () => { active = false; }; }, [load]);
+  useEffect(() => {
+    let active = true;
+    const initialLoad = window.setTimeout(() => {
+      void load()
+        .catch((caught) => active && setError(caught instanceof Error ? caught.message : "Unable to load notifications."))
+        .finally(() => active && setLoading(false));
+    }, 0);
+    return () => { active = false; window.clearTimeout(initialLoad); };
+  }, [load]);
 
   async function markAllRead() {
     await authenticatedFetch("/api/notifications", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "read_all" }) });

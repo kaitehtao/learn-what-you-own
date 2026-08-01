@@ -21,7 +21,7 @@ function messageDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
-export function MessagesClient() {
+export function MessagesClient({ initialRecipientUsername = "", initialVisibility = "private" }: { initialRecipientUsername?: string; initialVisibility?: "private" | "public" }) {
   const [folder, setFolder] = useState<"inbox" | "sent">("inbox");
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -29,10 +29,10 @@ export function MessagesClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [composing, setComposing] = useState(false);
+  const [composing, setComposing] = useState(Boolean(initialRecipientUsername));
   const [sending, setSending] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ username: string; display_name: string }>>([]);
-  const [form, setForm] = useState<{ recipientUsername: string; subject: string; body: string; visibility: "private" | "public" }>({ recipientUsername: "", subject: "", body: "", visibility: "private" });
+  const [form, setForm] = useState<{ recipientUsername: string; subject: string; body: string; visibility: "private" | "public" }>({ recipientUsername: initialRecipientUsername, subject: "", body: "", visibility: initialVisibility });
 
   const selected = messages.find(message => message.id === selectedId) ?? null;
 
@@ -62,7 +62,10 @@ export function MessagesClient() {
     }
   }, [folder]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load]);
 
   useEffect(() => {
     const timer = window.setInterval(() => void load(true), 30000);
@@ -72,17 +75,8 @@ export function MessagesClient() {
   }, [load]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const recipientUsername = (params.get("to") ?? "").replace(/^@/, "").slice(0, 24);
-    if (!/^[A-Za-z0-9_]{3,24}$/.test(recipientUsername)) return;
-    const visibility = params.get("visibility") === "public" ? "public" : "private";
-    setForm({ recipientUsername, subject: "", body: "", visibility });
-    setComposing(true);
-  }, []);
-
-  useEffect(() => {
     const query = form.recipientUsername.trim();
-    if (query.length < 2) return void setSuggestions([]);
+    if (query.length < 2) return;
     const timer = window.setTimeout(() => {
       authenticatedFetch(`/api/messages?recipients=${encodeURIComponent(query)}`)
         .then(async response => {
@@ -166,6 +160,6 @@ export function MessagesClient() {
       {selected ? <><button className="reader-back" onClick={() => setSelectedId(null)}>← Back to messages</button><span className="kicker">{selected.visibility.toUpperCase()} · {selected.direction === "received" ? "FROM" : "TO"}</span><h2>{selected.subject}</h2><div className="message-party"><span className="mail-avatar">{(selected.direction === "received" ? selected.sender.username : selected.recipient.username).slice(0, 1).toUpperCase()}</span><div><Link href={`/members/${encodeURIComponent(selected.direction === "received" ? selected.sender.username : selected.recipient.username)}`}>@{selected.direction === "received" ? selected.sender.username : selected.recipient.username}</Link><time>{messageDate(selected.createdAt)}</time></div></div><p className="message-body">{selected.body}</p><div className="message-actions">{selected.direction === "received" && <button onClick={() => startCompose(selected.sender.username, selected.subject.startsWith("Re:") ? selected.subject : `Re: ${selected.subject}`, selected.visibility)}>Reply</button>}<button className="secondary" onClick={() => void removeMessage()}>Remove</button></div></> : <div className="reader-placeholder"><span>✉</span><h3>Select a message</h3><p>Open a member note to read it here.</p></div>}
     </article>
 
-    {composing && <div className="compose-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setComposing(false); }}><form className="compose-panel" onSubmit={send}><div className="compose-heading"><div><span className="kicker">NEW {form.visibility.toUpperCase()} MESSAGE</span><h2>Write to a member</h2></div><button type="button" aria-label="Close compose window" onClick={() => setComposing(false)}>×</button></div><fieldset className="message-visibility"><legend>WHO CAN SEE THIS?</legend><button type="button" className={form.visibility === "private" ? "active" : ""} onClick={() => setForm({ ...form, visibility: "private" })}><strong>Private</strong><span>Only you and the recipient</span></button><button type="button" className={form.visibility === "public" ? "active" : ""} onClick={() => setForm({ ...form, visibility: "public" })}><strong>Public</strong><span>Also appears on their profile</span></button></fieldset><label>TO USERNAME<div className="recipient-field"><span>@</span><input required minLength={3} maxLength={24} pattern="[A-Za-z0-9_]+" autoComplete="off" value={form.recipientUsername} onChange={event => setForm({ ...form, recipientUsername: event.target.value.replace(/^@/, "") })} placeholder="owner_researcher" /></div>{suggestions.length > 0 && <div className="recipient-suggestions">{suggestions.map(member => <button type="button" key={member.username} onClick={() => { setForm({ ...form, recipientUsername: member.username }); setSuggestions([]); }}><strong>@{member.username}</strong>{member.display_name && <span>{member.display_name}</span>}</button>)}</div>}</label><label>SUBJECT<input required maxLength={120} value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} placeholder="What would you like to discuss?" /></label><label>MESSAGE<textarea required maxLength={5000} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} placeholder={form.visibility === "public" ? "Share a public research note…" : "Share your private note…"} /><small>{form.body.length.toLocaleString()} / 5,000</small></label>{error && <p className="form-error">{error}</p>}<div className="compose-actions"><button type="button" className="secondary" onClick={() => setComposing(false)}>Cancel</button><button disabled={sending}>{sending ? "Sending…" : form.visibility === "public" ? "Post public message →" : "Send private message →"}</button></div></form></div>}
+    {composing && <div className="compose-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setComposing(false); }}><form className="compose-panel" onSubmit={send}><div className="compose-heading"><div><span className="kicker">NEW {form.visibility.toUpperCase()} MESSAGE</span><h2>Write to a member</h2></div><button type="button" aria-label="Close compose window" onClick={() => setComposing(false)}>×</button></div><fieldset className="message-visibility"><legend>WHO CAN SEE THIS?</legend><button type="button" className={form.visibility === "private" ? "active" : ""} onClick={() => setForm({ ...form, visibility: "private" })}><strong>Private</strong><span>Only you and the recipient</span></button><button type="button" className={form.visibility === "public" ? "active" : ""} onClick={() => setForm({ ...form, visibility: "public" })}><strong>Public</strong><span>Also appears on their profile</span></button></fieldset><label>TO USERNAME<div className="recipient-field"><span>@</span><input required minLength={3} maxLength={24} pattern="[A-Za-z0-9_]+" autoComplete="off" value={form.recipientUsername} onChange={event => { const recipientUsername = event.target.value.replace(/^@/, ""); if (recipientUsername.trim().length < 2) setSuggestions([]); setForm({ ...form, recipientUsername }); }} placeholder="owner_researcher" /></div>{form.recipientUsername.trim().length >= 2 && suggestions.length > 0 && <div className="recipient-suggestions">{suggestions.map(member => <button type="button" key={member.username} onClick={() => { setForm({ ...form, recipientUsername: member.username }); setSuggestions([]); }}><strong>@{member.username}</strong>{member.display_name && <span>{member.display_name}</span>}</button>)}</div>}</label><label>SUBJECT<input required maxLength={120} value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} placeholder="What would you like to discuss?" /></label><label>MESSAGE<textarea required maxLength={5000} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} placeholder={form.visibility === "public" ? "Share a public research note…" : "Share your private note…"} /><small>{form.body.length.toLocaleString()} / 5,000</small></label>{error && <p className="form-error">{error}</p>}<div className="compose-actions"><button type="button" className="secondary" onClick={() => setComposing(false)}>Cancel</button><button disabled={sending}>{sending ? "Sending…" : form.visibility === "public" ? "Post public message →" : "Send private message →"}</button></div></form></div>}
   </section>;
 }

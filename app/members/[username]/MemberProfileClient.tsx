@@ -43,7 +43,10 @@ export function MemberProfileClient({ username }: { username: string }) {
     }
   }, [username]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load]);
 
   async function toggleFollow() {
     if (!member) return;

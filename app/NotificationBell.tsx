@@ -29,12 +29,12 @@ export function NotificationBell({ signedIn }: { signedIn: boolean | null }) {
 
   useEffect(() => {
     if (!signedIn) return;
-    void load();
+    const initialLoad = window.setTimeout(() => void load(), 0);
     const timer = window.setInterval(() => void load(), 30000);
     const refresh = () => void load();
     window.addEventListener("focus", refresh);
     window.addEventListener("lwy:notifications-changed", refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("lwy:notifications-changed", refresh); };
+    return () => { window.clearTimeout(initialLoad); window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("lwy:notifications-changed", refresh); };
   }, [load, signedIn]);
 
   async function markRead(notification: Notification) {
