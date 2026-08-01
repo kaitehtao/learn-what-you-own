@@ -33,20 +33,52 @@ function parseRss(xml: string): NewsItem[] {
   }).filter((item) => item.title && /^https:\/\//.test(item.url));
 }
 
-async function googleNews(query: string): Promise<NewsItem[]> {
-  const params = new URLSearchParams({ q: query, hl: "en-US", gl: "US", ceid: "US:en" });
+function stripHtml(value: string): string {
+  return decodeXml(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+}
+
+function parseNewsroomHtml(html: string, newsroomUrl: string): NewsItem[] {
+  const source = new URL(newsroomUrl).hostname.replace(/^www\./, "");
+  return [...html.matchAll(/<div[^>]+class=["'][^"']*\brelease\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)].flatMap(([, block]) => {
+    const anchor = block.match(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (!anchor) return [];
+    const date = block.match(/<p[^>]+class=["'][^"']*\bdate\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? "";
+    return [{
+      title: stripHtml(anchor[2]),
+      url: new URL(decodeXml(anchor[1]), newsroomUrl).toString(),
+      publishedAt: stripHtml(date),
+      source,
+    }];
+  }).filter((item) => item.title && /^https:\/\//.test(item.url));
+}
+
+async function fetchText(url: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
   try {
-    const response = await fetch(`https://news.google.com/rss/search?${params}`, {
+    const response = await fetch(url, {
       headers: { "user-agent": "LearnWhatYouOwn/1.0 company-news reader" },
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`News feed returned ${response.status}.`);
-    return parseRss(await response.text());
+    return response.text();
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function bingNews(query: string): Promise<NewsItem[]> {
+  const params = new URLSearchParams({ q: query, format: "rss" });
+  return parseRss(await fetchText(`https://www.bing.com/news/search?${params}`)).map((item) => ({
+    ...item,
+    source: item.source === "Public news source" ? "Bing News index" : item.source,
+  }));
+}
+
+async function officialNews(newsroomUrl: string | null, feedUrl: string | null): Promise<NewsItem[]> {
+  if (feedUrl) return parseRss(await fetchText(feedUrl));
+  if (!newsroomUrl) return [];
+  return parseNewsroomHtml(await fetchText(newsroomUrl), newsroomUrl);
 }
 
 function unique(items: NewsItem[], limit: number): NewsItem[] {
@@ -70,12 +102,12 @@ export async function GET(request: Request) {
   const dossier = featuredDossiers[ticker];
   const companyName = catalogCompany?.name || universeCompany?.name || ticker;
   const newsroomUrl = dossier?.newsroomUrl ?? dossier?.sources.find((source) => source.meta.toLowerCase().includes("company"))?.href ?? null;
-  const newsroomHost = newsroomUrl ? new URL(newsroomUrl).hostname.replace(/^www\./, "") : null;
+  const newsroomFeedUrl = dossier?.newsroomFeedUrl ?? null;
   const displayQuery = `"${companyName.replace(/\b(INC|INCORPORATED|LTD|PLC|CORP|CORPORATION)\.?\b/gi, "").replace(/\s+/g, " ").trim()}" ${ticker}`;
 
   const [officialResult, publicResult] = await Promise.allSettled([
-    newsroomHost ? googleNews(`site:${newsroomHost} ${displayQuery} when:120d`) : Promise.resolve([]),
-    googleNews(`${displayQuery} when:30d`),
+    officialNews(newsroomUrl, newsroomFeedUrl),
+    bingNews(displayQuery),
   ]);
   const official = officialResult.status === "fulfilled" ? unique(officialResult.value, 5) : [];
   const officialTitles = new Set(official.map((item) => item.title.toLowerCase()));
