@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "./ui";
 import { companySlug, researchUniverse } from "./data/universe";
-import { rankedCompanyMatches } from "./data/companySearch";
+import { normalizedTicker, rankedCompanyMatches } from "./data/companySearch";
 import { authenticatedFetch, loginPath } from "./supabase-browser";
 
 const companies = [
-  { ticker: "ONDS", name: "Ondas Holdings", sector: "Autonomous Systems", updated: "2h ago", score: 82, note: "New defense program award" },
+  { ticker: "AMC", name: "AMC Entertainment", sector: "Theatrical Exhibition", updated: "Today", score: 100, note: "Q2 performance, debt actions, and comparables verified" },
   { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", score: 96, note: "Supply chain map refreshed" },
   { ticker: "AAPL", name: "Apple", sector: "Consumer Technology", updated: "Today", score: 96, note: "Supplier evidence map added" },
   { ticker: "AMZN", name: "Amazon", sector: "Commerce & Cloud", updated: "Today", score: 95, note: "AWS capital intensity reviewed" },
@@ -23,13 +23,13 @@ const companies = [
 ];
 
 const updates = [
-  { date: "Today", ticker: "ONDS", title: "Management expanded the defense opportunity", impact: "Bull case strengthened", type: "Management statement" },
+  { date: "Today", ticker: "AMC", title: "Record Q2 economics and premium-format footprint reviewed", impact: "Recovery evidence strengthened", type: "SEC filing" },
   { date: "Today", ticker: "NVDA", title: "A key supplier raised capacity guidance", impact: "Dependency updated", type: "Primary source" },
   { date: "Yesterday", ticker: "BB", title: "QNX royalty backlog reached a new high", impact: "Thesis unchanged", type: "Company filing" },
 ];
 
 const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
-const searchExamples = ["AAPL", "NVIDIA", "Semiconductors", "S&P 500"];
+const searchExamples = ["AMC", "NVIDIA", "Semiconductors", "S&P 500"];
 type Demand = { ticker: string; vote_count: number; page_views: number; demand_score: number };
 type SearchMatch = { ticker: string; name: string; sector: string };
 type SiteStats = {
@@ -55,6 +55,7 @@ export default function Home() {
   );
   const matches = useMemo(() => {
     if (!query.trim()) return [];
+    if (localMatches.length === 1 && normalizedTicker(localMatches[0].ticker) === normalizedTicker(query)) return localMatches;
     const seen = new Set<string>();
     const catalogMatches = catalogSearch.query === query.trim() ? catalogSearch.matches : [];
     return [...localMatches, ...catalogMatches].filter((company) => {
@@ -135,7 +136,7 @@ export default function Home() {
             {matches.length > 0 && (
               <div className="search-results">
                 {matches.map((company) => (
-                  <Link href={company.ticker === "ONDS" ? "/company/onds" : `/company/${companySlug(company.ticker)}`} key={company.ticker}>
+                  <Link href={`/company/${companySlug(company.ticker)}`} key={company.ticker}>
                     <strong>{company.ticker}</strong>
                     <span>{company.name}</span>
                     <small>{company.sector}</small>
@@ -149,6 +150,22 @@ export default function Home() {
             <div><strong>Try</strong>{searchExamples.map((example) => <button type="button" onClick={() => setQuery(example)} key={example}>{example}</button>)}</div>
           </div>
         </div>
+      </section>
+
+      <section className="container founder-section" id="mission">
+        <div className="founder-mission">
+          <span className="kicker">THE FOUNDER’S MISSION</span>
+          <h2>Ownership should come with understanding.</h2>
+          <p className="mission-lede">LearnWhatYouOwn is building the world’s most trusted Ownership Intelligence Network—a community where AI and human expertise work together to help people understand the assets they own, beginning with public equities.</p>
+          <p>Our mission is to combine high-quality data, artificial intelligence, practical education, and the collective expertise of the community so owners can ask better questions and make calmer, better-informed decisions.</p>
+          <Link className="text-link" href="/founders-letter">Read the Founder’s Letter <span>→</span></Link>
+        </div>
+        <aside className="founder-host">
+          <span>HOSTED &amp; MODERATED BY</span>
+          <strong>RemarkAI</strong>
+          <p>I welcome questions, guide visitors through the research, elevate credible contributions, challenge unsupported claims, and protect the quality of the community experience.</p>
+          <em>I am not here to tell anyone what to buy. I am here to help owners understand the evidence.</em>
+        </aside>
       </section>
 
       <section className="proof-strip">
@@ -211,14 +228,14 @@ export default function Home() {
           <span className="kicker">A DIFFERENT STANDARD</span>
           <h2>Every claim earns its place.</h2>
           <p>Opinions are cheap. Understanding is built claim by claim, source by source, with clear labels for what is known, asserted, inferred, and still unanswered.</p>
-          <Link className="button dark-button" href="/company/onds">Open the ONDS dossier</Link>
+          <Link className="button dark-button" href="/company/amc">Open the AMC dossier</Link>
         </div>
         <div className="claim-demo">
           <div className="claim-label"><span>✓</span> Independently verified</div>
-          <blockquote>“Ondas operates two distinct business segments: private wireless networks and autonomous drone platforms.”</blockquote>
+          <blockquote>“AMC operated 226 IMAX screens across its U.S. and international circuits at June 30, 2026.”</blockquote>
           <div className="claim-sources">
-            <span>01</span><div><strong>2024 Form 10-K</strong><small>SEC filing · p. 6</small></div>
-            <span>02</span><div><strong>Investor presentation</strong><small>Company primary source · May 2025</small></div>
+            <span>01</span><div><strong>Q2 2026 Form 10-Q</strong><small>SEC filing · Premium-format table</small></div>
+            <span>02</span><div><strong>2025 Form 10-K</strong><small>SEC filing · Theatre concepts and competition</small></div>
           </div>
           <button>View evidence <span>→</span></button>
         </div>
