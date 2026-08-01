@@ -21,6 +21,22 @@ export type FeaturedDossier = {
   monitor: { title: string; text: string; impact: "BULL CASE" | "BEAR CASE" | "NEUTRAL" }[];
   questions: string[];
   competitors: string;
+  performance?: {
+    label: string;
+    value: string;
+    asOf: string;
+    detail: string;
+    drivers: { title: string; detail: string; sourceUrl: string }[];
+  };
+  comparables?: {
+    name: string;
+    ticker: string;
+    ownership: "Public" | "Private";
+    relationship: string;
+    valuation: string;
+    financialStatus: string;
+    sourceUrl: string;
+  }[];
   sources: { title: string; meta: string; href: string; excerpt: string }[];
 };
 
@@ -268,7 +284,7 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     revenueModel: "Admissions revenue is shared with film distributors through film-exhibition costs. AMC retains food-and-beverage and other theatre revenue after related operating costs, while a large theatre, lease, labor, and interest-cost base creates substantial operating leverage in both directions.",
     opportunity: "A steadier theatrical release slate, premium-format mix, loyalty participation, higher food-and-beverage conversion, disciplined theatre pruning, and alternative content can raise revenue per patron and improve the productivity of AMC’s existing footprint.",
     mustGoRight: "Industry box office and AMC attendance must normalize, per-patron economics must remain resilient, theatre-level profit must cover rent and interest, and management must improve the balance sheet without transferring most of the recovery to new creditors or newly issued shares.",
-    editorNote: "AMC’s June 2026 quarter showed the operating leverage in the model: attendance rose 13.5%, total revenue rose 14.2% to $1.60 billion, and food and beverage per patron reached $8.08. The same filing also says historical cash burn is not sustainable long term and documents major equity issuance, so owners must analyze enterprise recovery and per-share recovery separately.",
+    editorNote: "AMC’s June 2026 quarter showed the operating leverage in the model: attendance rose 13.5%, total revenue rose 14.2% to $1.60 billion, adjusted EBITDA reached $321.4 million, and food and beverage per patron reached $8.08. AMC closed at $2.82 on July 31 versus $1.61 on January 2, a 75.2% YTD price gain. The same filing documents major equity issuance, so owners must analyze enterprise recovery and per-share recovery separately.",
     bullTitle: "A scarce global cinema platform with recovery leverage",
     bull: [
       "A large U.S. and European footprint gives AMC broad access to improving film supply and event programming without rebuilding the network.",
@@ -304,11 +320,33 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
       "Which theatres and premium formats earn attractive four-wall returns after required reinvestment?",
     ],
     competitors: "Cinemark, Regal and other cinema operators, independent theatres, premium home entertainment, streaming services, gaming, live events, and other out-of-home leisure spending.",
+    performance: {
+      label: "2026 YTD share-price return",
+      value: "+75.2%",
+      asOf: "January 2–July 31, 2026 · $1.61 to $2.82",
+      detail: "Price performance—not a recommendation. The July rally followed record second-quarter revenue and adjusted EBITDA, but the per-share outcome also reflects financing, dilution, sentiment, and market positioning.",
+      drivers: [
+        { title: "A stronger film slate converted into attendance", detail: "Second-quarter attendance increased 13.5% year over year and revenue increased 14.2% to $1.60 billion. AMC attributed the improvement primarily to more popular film releases.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000059/amc-20260630x10q.htm" },
+        { title: "Operating leverage finally showed through", detail: "Q2 adjusted EBITDA rose to a company-record $321.4 million from $189.5 million, while the company reported $190.1 million of free cash flow for the quarter.", sourceUrl: "https://investor.amctheatres.com/financial-information/financial-results" },
+        { title: "Premium experiences support visit economics", detail: "At June 30, AMC reported 226 IMAX screens, 182 Dolby Cinema screens, and 161 in-house premium large-format screens. Premium mix, pricing, loyalty, and food-and-beverage conversion can lift revenue per visit.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000059/amc-20260630x10q.htm" },
+        { title: "Near-term debt maturities were pushed out", detail: "AMC refinanced $400 million of Odeon debt to 2031 and used a June equity offering to redeem $125.5 million of 2027 notes, reducing annual cash interest by about $7.7 million. The trade-off was additional common-share dilution.", sourceUrl: "https://investor.amctheatres.com/sec-filings/all-sec-filings/content/0001104659-26-077513/tm2618471d2_ex99-1.htm" },
+      ],
+    },
+    comparables: [
+      { name: "Cinemark Holdings", ticker: "CNK", ownership: "Public", relationship: "Closest U.S. listed theatrical-exhibitor comparable", valuation: "Approx. $3.9B equity value / $6.6B enterprise value (late July 2026)", financialStatus: "Profitable and cash-generative with a materially stronger balance-sheet profile; the cleanest public benchmark for AMC’s theatre productivity and leverage.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/885975/000119312526056015/cnk-20251231.htm" },
+      { name: "Cineplex", ticker: "TSX: CGX", ownership: "Public", relationship: "Canadian exhibitor and location-based entertainment operator", valuation: "Approx. C$0.73B equity value / C$2.43B enterprise value (July 2026)", financialStatus: "A leveraged regional exhibitor; useful for comparing premium formats, concessions, loyalty, and the gap between equity and enterprise value.", sourceUrl: "https://www.cineplex.com/investors" },
+      { name: "The Marcus Corporation", ticker: "MCS", ownership: "Public", relationship: "Regional U.S. exhibitor with a separate hotel business", valuation: "Approx. $0.75B equity value / $1.06B enterprise value (July 2026)", financialStatus: "Smaller and more diversified than AMC; theatre comparisons require separating Marcus Hotels & Resorts from Marcus Theatres.", sourceUrl: "https://ir.marcuscorp.com/" },
+      { name: "IMAX Corporation", ticker: "IMAX", ownership: "Public", relationship: "Premium-format technology partner and adjacent economics benchmark", valuation: "Approx. $2.2B equity value / $2.3B enterprise value (July 2026)", financialStatus: "Asset-lighter than an exhibitor. AMC was the largest U.S. IMAX exhibitor in 2025, so IMAX is both a supplier/partner and a read-through on premium demand—not a direct like-for-like peer.", sourceUrl: "https://www.sec.gov/edgar/browse/?CIK=921582&owner=exclude" },
+      { name: "Regal Cineworld Group", ticker: "—", ownership: "Private", relationship: "Large direct competitor in the U.S. and Europe", valuation: "No current public equity valuation", financialStatus: "Privately controlled by former lenders after Chapter 11; post-restructuring disclosures are less complete than public-company filings.", sourceUrl: "https://www.regalcineworld.com/" },
+      { name: "Alamo Drafthouse", ticker: "—", ownership: "Private", relationship: "Premium dine-in theatrical competitor", valuation: "Private subsidiary; standalone valuation not disclosed", financialStatus: "Owned by Sony Pictures Entertainment. Strategically relevant for differentiated programming, dine-in service, and premium guest experience rather than scale.", sourceUrl: "https://drafthouse.com/" },
+    ],
     sources: [
       { title: "AMC Entertainment 2025 Form 10-K", meta: "SEC filing · Filed February 23, 2026", href: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000016/amc-20251231x10k.htm", excerpt: "The annual filing describes AMC’s U.S. and International theatrical exhibition segments, admissions and food-and-beverage model, film exhibition costs, theatre concepts, debt, leases, competition, liquidity, and risk factors." },
       { title: "AMC 2026 Financial Results", meta: "Company primary materials · Q2 2026 release, webcast, and filing links", href: "https://investor.amctheatres.com/financial-information/financial-results", excerpt: "AMC’s official results page links the June 2026 earnings release, webcast audio, Form 10-Q, and XBRL package, alongside prior quarterly and annual materials." },
       { title: "AMC Second-Quarter 2026 Form 10-Q", meta: "SEC filing · Filed July 23, 2026", href: "https://www.sec.gov/Archives/edgar/data/1411579/000141157926000059/amc-20260630x10q.htm", excerpt: "The filing reports June-quarter attendance, admissions, food and beverage, other theatre revenue, cash, financing activity, segment results, liquidity language, debt, leases, and share issuance." },
       { title: "AMC Investor Relations", meta: "Company primary materials", href: "https://investor.amctheatres.com/", excerpt: "Official earnings materials, SEC filings, presentations, events, governance information, and shareholder communications published by AMC." },
+      { title: "AMC historical stock prices", meta: "Market data · Through July 31, 2026", href: "https://stockanalysis.com/stocks/amc/history/", excerpt: "AMC closed at $1.61 on January 2, 2026 and $2.82 on July 31, 2026, a 75.2% price increase. Market prices can change rapidly and do not establish intrinsic value." },
+      { title: "AMC June 2026 financing announcement", meta: "Company primary material · June 25, 2026", href: "https://investor.amctheatres.com/sec-filings/all-sec-filings/content/0001104659-26-077513/tm2618471d2_ex99-1.htm", excerpt: "AMC said the equity offering would fund redemption of $125.5 million of 2027 notes, lower annual cash interest by about $7.7 million, strengthen cash reserves, and fund selected theatre investments." },
     ],
   },
   RCL: {
