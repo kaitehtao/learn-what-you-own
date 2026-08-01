@@ -30,7 +30,7 @@ function parseRss(xml: string): NewsItem[] {
     const url = tag(item, "link");
     const publishedAt = tag(item, "pubDate");
     return { title, source, url, publishedAt };
-  }).filter((item) => item.title && /^https:\/\//.test(item.url));
+  }).filter((item) => item.title && /^https?:\/\//.test(item.url));
 }
 
 function stripHtml(value: string): string {
@@ -71,6 +71,7 @@ async function bingNews(query: string): Promise<NewsItem[]> {
   const params = new URLSearchParams({ q: query, format: "rss" });
   return parseRss(await fetchText(`https://www.bing.com/news/search?${params}`)).map((item) => ({
     ...item,
+    url: item.url.replace(/^http:\/\/www\.bing\.com/i, "https://www.bing.com"),
     source: item.source === "Public news source" ? "Bing News index" : item.source,
   }));
 }

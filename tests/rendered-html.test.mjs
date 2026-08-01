@@ -431,6 +431,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Public &amp; industry coverage/);
   assert.match(route, /officialNews\(newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /www\.bing\.com\/news\/search/);
+  assert.match(route, /replace\(\/\^http:/);
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /stale-while-revalidate=900/);
   assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases/);
