@@ -110,7 +110,7 @@ export const featuredDossiers: Record<string, FeaturedDossier> = {
     ticker: "CRWV",
     reviewed: "August 1, 2026",
     completeness: 100,
-    newsroomUrl: "https://investors.coreweave.com/news/default.aspx",
+    newsroomUrl: "https://www.coreweave.com/newsroom",
     description: "Purpose-built AI cloud infrastructure spanning accelerated compute, storage, networking, orchestration, and managed software.",
     lede: "CoreWeave is an AI-native cloud operator that finances, deploys, and manages dense NVIDIA-based infrastructure for AI laboratories, hyperscalers, and enterprises. The company is growing extraordinarily quickly, but owners are underwriting both a cloud platform and a highly leveraged infrastructure buildout.",
     sells: "Contracted and on-demand GPU compute, CPU compute, high-performance storage and networking, Kubernetes and Slurm orchestration, observability, fleet management, and managed AI software services.",
