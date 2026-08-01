@@ -176,6 +176,53 @@ test("supports public member profiles, follows, and per-message visibility", asy
   assert.match(messageClient, /Also appears on their profile/);
 });
 
+test("distinguishes public research from verified-account tools and collects private phone details", async () => {
+  const [comparison, home, login, onboarding, header] = await Promise.all([
+    source("app/AccessComparison.tsx"),
+    source("app/page.tsx"),
+    source("app/login/page.tsx"),
+    source("app/onboarding/page.tsx"),
+    source("app/ui.tsx"),
+  ]);
+
+  assert.match(comparison, /WITHOUT AN ACCOUNT/);
+  assert.match(comparison, /WITH A FREE ACCOUNT/);
+  assert.match(comparison, /private watchlists, portfolios, and research notebooks/);
+  assert.match(home, /<AccessComparison/);
+  assert.match(login, /PHONE NUMBER <em>optional<\/em>/);
+  assert.match(login, /does not opt you into marketing texts/);
+  assert.match(onboarding, /PHONE NUMBER <em>optional<\/em>/);
+  assert.match(login, /phone_number: phoneNumber/);
+  assert.match(onboarding, /sms_marketing_consent: false/);
+  assert.match(onboarding, /supabase\.auth\.updateUser/);
+  assert.match(header, /Join free/);
+});
+
+test("accepts authenticated product feedback with private history and moderation status", async () => {
+  const [page, client, route, migration, layout, account] = await Promise.all([
+    source("app/feedback/page.tsx"),
+    source("app/feedback/FeedbackClient.tsx"),
+    source("app/api/feedback/route.ts"),
+    source("drizzle/0008_product_feedback.sql"),
+    source("app/layout.tsx"),
+    source("app/account/AccountClient.tsx"),
+  ]);
+
+  assert.match(page, /HELP SHAPE THE PRODUCT/);
+  assert.match(client, /New product feedback/);
+  assert.match(client, /My feedback history/);
+  assert.match(client, /RemarkAI will review/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /Title must be 8–120 characters/);
+  assert.match(route, /Details must be 30–4,000 characters/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `product_feedback`/);
+  assert.match(migration, /`status` IN \('submitted', 'reviewing', 'planned', 'completed', 'declined'\)/);
+  assert.match(route, /env\.DB\.prepare/);
+  assert.match(route, /WHERE user_id=\?/);
+  assert.match(layout, /href="\/feedback"/);
+  assert.match(account, /Product feedback/);
+});
+
 test("keeps investment notebooks private while supporting sourced public handoff", async () => {
   const [migration, route, client, captureButton, contributionPage, header] = await Promise.all([
     source("supabase/migrations/20260801020000_private_research_notebooks.sql"),
