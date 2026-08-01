@@ -116,7 +116,7 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
   return <section className="research-foundation" id="research-foundation">
     <div className="research-foundation-heading">
       <div><span className="kicker">EVIDENCE + NETWORK INTELLIGENCE</span><h2>The facts beneath the ownership story</h2><p>Numerical facts come from public filings. Editorial analysis and member insights remain visibly labeled so evidence, interpretation, and opinion never become interchangeable.</p></div>
-      <Link href={relationshipHref(ticker)}>Add relationship evidence →</Link>
+      <div className="research-foundation-actions">{ticker==="AAPL"&&<Link href="/company/aapl/supply-chain">Open Apple supply-chain document →</Link>}<Link href={relationshipHref(ticker)}>Add relationship evidence →</Link></div>
     </div>
 
     {loading ? <div className="research-foundation-state">Loading filing-grounded research…</div> : error ? <div className="research-foundation-state error">{error}</div> : <>

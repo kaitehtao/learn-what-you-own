@@ -237,3 +237,45 @@ test("provides an admin-only audience and account control center", async () => {
   assert.match(layout, /<VisitorTracker/);
   assert.match(adminPage, /<AdminDashboard/);
 });
+
+test("moderates IPO and private-company dossiers before publishing them to D1", async () => {
+  const [schema, d1Migration, supabaseMigration, contributionRoute, moderationRoute, contributionClient, directory] = await Promise.all([
+    source("db/schema.ts"),
+    source("drizzle/0005_emerging-companies-and-aapl-supply-chain.sql"),
+    source("supabase/migrations/20260801050000_company_dossier_proposals.sql"),
+    source("app/api/contributions/route.ts"),
+    source("app/api/admin/contributions/route.ts"),
+    source("app/contribute/ContributionClient.tsx"),
+    source("app/emerging-companies/page.tsx"),
+  ]);
+
+  assert.match(schema, /export const emergingCompanyDossiers/);
+  assert.match(d1Migration, /CREATE TABLE IF NOT EXISTS `emerging_company_dossiers`/);
+  assert.match(supabaseMigration, /roadshow-materials/);
+  assert.match(supabaseMigration, /file_size_limit/);
+  assert.match(supabaseMigration, /application\/pdf/);
+  assert.match(contributionRoute, /Upcoming IPO dossier/);
+  assert.match(contributionRoute, /Private company dossier/);
+  assert.match(moderationRoute, /publishCompanyProposal/);
+  assert.match(moderationRoute, /payload\.status === "approved"/);
+  assert.match(contributionClient, /UPLOAD PDF · MAX 20 MB/);
+  assert.match(directory, /Upcoming IPOs/);
+  assert.match(directory, /Private companies/);
+});
+
+test("shows an evidence-classified Apple supply-chain research document", async () => {
+  const [document, panel, migration] = await Promise.all([
+    source("app/company/aapl/supply-chain/page.tsx"),
+    source("app/ResearchFoundationPanel.tsx"),
+    source("drizzle/0005_emerging-companies-and-aapl-supply-chain.sql"),
+  ]);
+
+  assert.match(document, /Apple’s 2025 Form 10-K/);
+  assert.match(document, /generally does <strong>not<\/strong> name the individual supplier/);
+  assert.match(document, /Apple Supplier List/);
+  assert.match(document, /What one graph relationship stores/);
+  assert.match(document, /Still unresolved/);
+  assert.match(panel, /Open Apple supply-chain document/);
+  assert.match(migration, /Taiwan Semiconductor Manufacturing Company Limited/);
+  assert.match(migration, /exact role in the cited list/);
+});

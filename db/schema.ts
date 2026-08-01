@@ -124,6 +124,32 @@ export const companyRelationships = sqliteTable("company_relationships", {
   uniqueIndex("company_relationship_contribution_idx").on(table.supabaseContributionId),
 ]);
 
+// Upcoming IPO and private-company dossiers enter through Supabase moderation.
+// Only approved profiles are copied into D1 and become publicly discoverable.
+export const emergingCompanyDossiers = sqliteTable("emerging_company_dossiers", {
+  slug: text("slug").primaryKey(),
+  companyName: text("company_name").notNull(),
+  companyType: text("company_type", { enum: ["upcoming_ipo", "private"] }).notNull(),
+  proposedTicker: text("proposed_ticker"),
+  proposedExchange: text("proposed_exchange"),
+  expectedIpoDate: text("expected_ipo_date"),
+  websiteUrl: text("website_url").notNull(),
+  summary: text("summary").notNull(),
+  whyItMatters: text("why_it_matters").notNull(),
+  primarySourceUrl: text("primary_source_url").notNull(),
+  roadshowTitle: text("roadshow_title"),
+  roadshowStoragePath: text("roadshow_storage_path"),
+  roadshowSourceUrl: text("roadshow_source_url"),
+  contributorUsername: text("contributor_username"),
+  supabaseContributionId: text("supabase_contribution_id").notNull(),
+  verifiedBy: text("verified_by").notNull(),
+  verifiedAt: text("verified_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("emerging_company_contribution_idx").on(table.supabaseContributionId),
+]);
+
 export const profiles = sqliteTable("profiles", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull(),
