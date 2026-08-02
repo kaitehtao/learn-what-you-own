@@ -25,6 +25,28 @@ test("describes homepage search honestly and offers supported examples", async (
   assert.match(search, /company\.memberships/);
 });
 
+test("features the full benchmark dossier set, including the four new companies", async () => {
+  const [home, registry, additions, complements, validator] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/data/featuredDossiers.ts"),
+    source("app/data/additionalFlagshipDossiers.ts"),
+    source("app/data/dossierBenchmarkComplements.ts"),
+    source("scripts/validate-featured-dossiers.ts"),
+  ]);
+
+  for (const ticker of ["AMD", "MSFT", "GOOG", "META"]) {
+    assert.match(home, new RegExp(`ticker: "${ticker}"`));
+    assert.match(additions, new RegExp(`${ticker}: \\{`));
+  }
+
+  assert.match(registry, /Object\.assign\(featuredDossiers, additionalFlagshipDossiers\)/);
+  assert.match(registry, /completeDossierBenchmark/);
+  assert.match(complements, /completeness: 100/);
+  assert.match(validator, /financialDrivers\.length >= 6/);
+  assert.match(validator, /dossier\.risks\.length >= 5/);
+  assert.match(validator, /dossier\.sources\.length >= 5/);
+});
+
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
   const [home, statsRoute, styles] = await Promise.all([
     source("app/page.tsx"),

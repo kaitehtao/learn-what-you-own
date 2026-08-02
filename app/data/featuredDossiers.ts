@@ -1,3 +1,6 @@
+import { additionalFlagshipDossiers } from "./additionalFlagshipDossiers";
+import { completeDossierBenchmark, dossierBenchmarkComplements } from "./dossierBenchmarkComplements";
+
 export type FeaturedDossier = {
   ticker: string;
   reviewed?: string;
@@ -542,3 +545,10 @@ for (const [ticker, upgrade] of Object.entries(flagshipDossierUpgrades)) {
 
 featuredDossiers.SPCX = spcxDossier;
 featuredDossiers.TSLA = tslaDossier;
+
+Object.assign(featuredDossiers, additionalFlagshipDossiers);
+
+for (const [ticker, complement] of Object.entries(dossierBenchmarkComplements)) {
+  const existing = featuredDossiers[ticker];
+  if (existing) featuredDossiers[ticker] = completeDossierBenchmark(existing, complement);
+}
