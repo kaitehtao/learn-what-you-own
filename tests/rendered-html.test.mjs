@@ -49,6 +49,27 @@ test("features the full benchmark dossier set, including the four new companies"
   assert.match(validator, /dossier\.sources\.length >= 5/);
 });
 
+test("publishes the first 30-company S&P 500 market-cap dossier batch", async () => {
+  const [registry, batchDossiers, batches, page, navigation] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/data/sp500Batch01Dossiers.ts"),
+    source("app/data/sp500DossierBatches.ts"),
+    source("app/research/batches/page.tsx"),
+    source("app/ui.tsx"),
+  ]);
+
+  assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch01Dossiers\)/);
+  assert.match(registry, /featuredDossiers\.GOOGL/);
+  for (const ticker of ["AVGO", "BRK.B", "LLY", "MU", "JPM", "WMT", "V", "XOM", "JNJ", "MA", "INTC", "ABBV", "CSCO", "BAC", "COST", "AMAT", "CVX", "UNH", "KO", "LRCX", "GE"]) {
+    assert.match(batchDossiers, new RegExp(`ticker: "${ticker.replace(".", "\\.")}"`));
+  }
+  assert.match(batches, /\[30, "GE", "GE Aerospace"/);
+  assert.match(batches, /sp500DossierBatchAsOf = "July 30, 2026"/);
+  assert.match(page, /Thirty companies/);
+  assert.match(page, /Alphabet’s two share classes share one company dossier/);
+  assert.match(navigation, /href="\/research\/batches">Research/);
+});
+
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
   const [home, statsRoute, styles] = await Promise.all([
     source("app/page.tsx"),
@@ -821,7 +842,7 @@ test("publishes the founder mission with @Yourhost as host and letter author", a
   assert.match(founderMigration, /set role = 'admin'/);
   assert.match(founderMigration, /order by created_at asc/);
   assert.match(home, /href="\/company\/amc"/);
-  assert.match(header, /href="\/company\/amc">Research/);
+  assert.match(header, /href="\/research\/batches">Research/);
   assert.match(footer, /Founder’s Letter/);
   assert.match(footer, /Featured AMC dossier/);
 });
