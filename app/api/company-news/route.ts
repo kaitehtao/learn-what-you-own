@@ -32,6 +32,7 @@ type OfficialSourceHealth = {
 const verifiedOfficialFeeds: Record<string, string> = {
   AAPL: "https://www.apple.com/newsroom/rss-feed.rss",
   MSFT: "https://news.microsoft.com/source/feed/",
+  NFLX: "https://about.netflix.com/en/feed.xml",
   NVDA: "https://nvidianews.nvidia.com/releases.xml",
 };
 
