@@ -8,8 +8,8 @@ import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../.
 export const dynamic = "force-dynamic";
 
 // The Worker invokes this small batch several times per day. Eight dossiers per
-// run covers the current flagship universe within roughly one day without
-// creating a burst against SEC data services or D1.
+// run rotates through the expanded flagship universe without creating a burst
+// against SEC data services or D1; first dossier reads can self-heal sooner.
 const SCHEDULED_REFRESH_LIMIT = 8;
 
 function secretValue() {

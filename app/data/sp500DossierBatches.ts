@@ -43,3 +43,24 @@ const batch01Rows: Array<[number, string, string, number]> = [
 ];
 
 export const sp500DossierBatch01: DossierBatchCompany[] = batch01Rows.map(([rank, ticker, name, marketCap]) => ({ rank, ticker, name, marketCap, status: "complete" }));
+
+const batch02Tickers = [
+  "PG", "HD", "MS", "MRK", "NFLX", "GS", "PM", "RTX", "PANW", "DELL",
+  "GEV", "WFC", "TXN", "KLAC", "LIN", "AXP", "C", "ANET", "TMO", "AMGN",
+  "IBM", "APH", "STX", "VZ", "PEP", "MCD", "SNDK", "CRWD", "TMUS", "WDC",
+  "NEE", "ABT", "SCHW", "ADI", "TJX", "UNP", "BLK", "WELL", "DIS", "GILD",
+  "DE", "MRVL", "QCOM", "T", "IBKR", "ETN", "BKNG", "CRM", "COP", "UBER",
+  "PFE", "PLD", "DHR", "APP", "CB", "CVS", "SYK", "LMT", "BMY", "COF",
+  "ISRG", "PGR", "SPGI", "VRTX", "PH", "SBUX", "LOW", "GLW", "NOW", "MO",
+] as const;
+
+const sp500ByTicker = new Map(sp500Companies.map((company) => [company.ticker, company]));
+
+export const sp500DossierBatch02: DossierBatchCompany[] = batch02Tickers.map((ticker, index) => {
+  const company = sp500ByTicker.get(ticker);
+  const marketCap = marketCaps[ticker];
+  if (!company || !marketCap) throw new Error(`Missing S&P 500 batch data for ${ticker}`);
+  return { rank: index + 31, ticker, name: company.name, marketCap, status: "complete" };
+});
+import { marketCaps } from "./marketCaps.generated";
+import { sp500Companies } from "./sp500";

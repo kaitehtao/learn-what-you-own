@@ -75,23 +75,31 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
   assert.match(styles, /\.admin-verification-actions button\{width:100%/);
 });
 
-test("publishes the first 30-company S&P 500 market-cap dossier batch", async () => {
-  const [registry, batchDossiers, batches, page, navigation] = await Promise.all([
+test("publishes the first 100 S&P 500 companies in descending market-cap dossier batches", async () => {
+  const [registry, batch01Dossiers, batch02Dossiers, batches, page, navigation] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/data/sp500Batch01Dossiers.ts"),
+    source("app/data/sp500Batch02Dossiers.ts"),
     source("app/data/sp500DossierBatches.ts"),
     source("app/research/batches/page.tsx"),
     source("app/ui.tsx"),
   ]);
 
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch01Dossiers\)/);
+  assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch02Dossiers\)/);
   assert.match(registry, /featuredDossiers\.GOOGL/);
   for (const ticker of ["AVGO", "BRK.B", "LLY", "MU", "JPM", "WMT", "V", "XOM", "JNJ", "MA", "INTC", "ABBV", "CSCO", "BAC", "COST", "AMAT", "CVX", "UNH", "KO", "LRCX", "GE"]) {
-    assert.match(batchDossiers, new RegExp(`ticker: "${ticker.replace(".", "\\.")}"`));
+    assert.match(batch01Dossiers, new RegExp(`ticker: "${ticker.replace(".", "\\.")}"`));
+  }
+  for (const ticker of ["PG", "NFLX", "RTX", "PANW", "GEV", "ANET", "TMO", "IBM", "CRWD", "DIS", "QCOM", "UBER", "LMT", "ISRG", "SPGI", "NOW", "MO"]) {
+    assert.match(batch02Dossiers, new RegExp(`ticker:\s*"${ticker}"`));
   }
   assert.match(batches, /\[30, "GE", "GE Aerospace"/);
+  assert.match(batches, /"PG", "HD", "MS", "MRK", "NFLX"/);
+  assert.match(batches, /rank: index \+ 31/);
   assert.match(batches, /sp500DossierBatchAsOf = "July 30, 2026"/);
-  assert.match(page, /Thirty companies/);
+  assert.match(page, /One hundred companies/);
+  assert.match(page, /Batches 01–02 · 100 companies complete/);
   assert.match(page, /Alphabet’s two share classes share one company dossier/);
   assert.match(navigation, /href="\/research\/batches">Research/);
 });

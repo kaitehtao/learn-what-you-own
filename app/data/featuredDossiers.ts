@@ -1,6 +1,7 @@
 import { additionalFlagshipDossiers } from "./additionalFlagshipDossiers";
 import { completeDossierBenchmark, dossierBenchmarkComplements } from "./dossierBenchmarkComplements";
 import { sp500Batch01Dossiers } from "./sp500Batch01Dossiers";
+import { sp500Batch02Dossiers } from "./sp500Batch02Dossiers";
 
 export type FeaturedDossier = {
   ticker: string;
@@ -549,6 +550,7 @@ featuredDossiers.TSLA = tslaDossier;
 
 Object.assign(featuredDossiers, additionalFlagshipDossiers);
 Object.assign(featuredDossiers, sp500Batch01Dossiers);
+Object.assign(featuredDossiers, sp500Batch02Dossiers);
 
 // Alphabet's two S&P 500 share classes represent one underlying company and
 // therefore share the same evidence-linked owner dossier.
