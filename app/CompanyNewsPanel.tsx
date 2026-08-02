@@ -52,7 +52,7 @@ function OfficialNewsList({ items, empty }: { items: NewsItem[]; empty: string }
       <div className="official-news-meta"><span>{item.source === "SEC EDGAR official filing" ? "✓ OFFICIAL SEC FILING" : "✓ OFFICIAL COMPANY RELEASE"}</span><time>{dateLabel(item.publishedAt)}</time></div>
       <h4>{item.title}</h4>
       <p>{item.summary || "This official release is indexed from the company archive. The company did not provide a separate archive summary."}</p>
-      <footer><span>{item.category || "Company update"}{item.readingMinutes ? ` · ${item.readingMinutes} min read` : ""}</span><a href={item.url} target="_blank" rel="noreferrer">Verify original release ↗</a></footer>
+      <footer><span>{item.category || "Company update"}{item.readingMinutes ? ` · ${item.readingMinutes} min read` : ""}</span><a href={item.url} target="_blank" rel="noreferrer">Expand to Read Full Press Release ↗</a></footer>
     </article>)}</div>
     {filtered.length === 0 && <p className="news-empty">No official releases match that search.</p>}
     {visible < filtered.length && <button type="button" className="official-news-more" onClick={() => setVisible((count) => count + 10)}>Show 10 more official releases ↓</button>}
