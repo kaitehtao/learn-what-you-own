@@ -955,8 +955,12 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(importer, /filingFactImports/);
   assert.match(importer, /recordLatestQuarterlyUpdate/);
   assert.match(importer, /quarterlyDossierUpdates/);
+  assert.match(importer, /ensureFeaturedDossierRegistration/);
+  assert.match(importer, /Founding editorial research/);
   assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 8/);
   assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
+  assert.match(scheduledRoute, /Object\.values\(featuredDossiers\)/);
+  assert.match(scheduledRoute, /ensureFeaturedDossierRegistration/);
   assert.match(worker, /refreshScheduledSecFacts/);
   assert.match(worker, /if \(!isPacificDigestHour\(controller\.scheduledTime\)\) return/);
   assert.match(viteConfig, /0 0,6,12,18 \* \* \*/);
