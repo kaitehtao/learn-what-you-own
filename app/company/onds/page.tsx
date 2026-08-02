@@ -14,6 +14,7 @@ import { ResearchDemandButton } from "../../ResearchDemandButton";
 import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "../../CompanyFollowerCount";
+import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -49,6 +50,7 @@ export default function OndasDossier() {
             <button className="share-button">Share ↗</button>
           </div>
         </div>
+        <CompanyMarketSnapshot ticker="ONDS" />
         <div className="container metrics-bar">
           <div><small>MARKET DATA</small><strong>Live chart</strong><span>Displayed below</span></div>
           <div><small>FINANCIAL FACTS</small><strong>SEC sourced</strong><span>No analyst estimates</span></div>
