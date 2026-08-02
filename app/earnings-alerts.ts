@@ -65,7 +65,11 @@ function sessionFromText(reportText: string): EarningsSession {
 }
 
 function officialVerification(ticker: string, date: string | null) {
-  return date ? officialEarningsVerifications.get(`${date}:${ticker}`) : undefined;
+  const exact = date ? officialEarningsVerifications.get(`${date}:${ticker}`) : undefined;
+  if (exact) return exact;
+  return [...officialEarningsVerifications.values()]
+    .filter((record) => record.ticker === ticker && record.date >= pacificDate())
+    .sort((left, right) => left.date.localeCompare(right.date))[0];
 }
 
 export async function fetchNasdaqEarningsDate(tickerValue: string): Promise<EarningsCalendarRecord> {
@@ -80,8 +84,9 @@ export async function fetchNasdaqEarningsDate(tickerValue: string): Promise<Earn
   const announcement = payload.data?.announcement ?? "";
   const reportText = payload.data?.reportText ?? "";
   const announcedDate = announcement.match(/:\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4})/)?.[1] ?? "";
-  const earningsDate = isoDate(announcedDate);
-  const verification = officialVerification(ticker, earningsDate);
+  const providerDate = isoDate(announcedDate);
+  const verification = officialVerification(ticker, providerDate);
+  const earningsDate = verification?.date ?? providerDate;
   const session = verification?.session ?? sessionFromText(reportText);
 
   return {
