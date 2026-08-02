@@ -22,6 +22,18 @@ type GdeltArticle = {
   sourcecountry?: string;
 };
 
+type PalantirPressRelease = {
+  Body?: string;
+  Headline?: string;
+  LinkToDetailPage?: string;
+  PressReleaseDate?: string;
+  ShortDescription?: string;
+};
+
+type PalantirPressReleaseResponse = {
+  GetPressReleaseListResult?: PalantirPressRelease[];
+};
+
 type OfficialSourceHealth = {
   source: "company" | "sec";
   status: "working" | "empty" | "unavailable" | "not-configured" | "not-applicable";
@@ -34,6 +46,21 @@ const verifiedOfficialFeeds: Record<string, string> = {
   MSFT: "https://news.microsoft.com/source/feed/",
   NFLX: "https://about.netflix.com/en/feed.xml",
   NVDA: "https://nvidianews.nvidia.com/releases.xml",
+  PLD: "https://ir.prologis.com/news-events/press-releases/rss",
+};
+
+// Prefer issuer-maintained release archives over broad corporate newsroom
+// landing pages. These URLs are verified entry points for the live archive and
+// also give the fallback indexer an exact official host to constrain against.
+const verifiedOfficialNewsrooms: Record<string, string> = {
+  AMAT: "https://ir.appliedmaterials.com/news-releases/",
+  AXP: "https://ir.americanexpress.com/news/investor-relations-news/default.aspx",
+  MCD: "https://corporate.mcdonalds.com/corpmcd/our-stories/press-releases.html",
+  PLD: "https://ir.prologis.com/press-releases",
+  SNDK: "https://investor.sandisk.com/news-events/news-releases",
+  TJX: "https://investor.tjx.com/investors/press-releases",
+  TMO: "https://ir.thermofisher.com/investors/news-events/news/default.aspx",
+  TXN: "https://www.ti.com/about-ti/newsroom.html",
 };
 
 function decodeXml(value: string): string {
@@ -106,19 +133,68 @@ function stripHtml(value: string): string {
   return decodeXml(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
 }
 
+function releaseDate(value: string): string {
+  const text = stripHtml(value);
+  return text.match(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+\d{1,2},?\s+20\d{2}\b/i)?.[0]
+    ?? text.match(/\b\d{1,2}\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+20\d{2}\b/i)?.[0]
+    ?? text.match(/\b20\d{2}-\d{2}-\d{2}(?:T[^\s"'<]+)?\b/)?.[0]
+    ?? text.match(/\b\d{1,2}\/\d{1,2}\/20\d{2}(?:\s+\d{1,2}:\d{2}:\d{2})?\b/)?.[0]
+    ?? "";
+}
+
+function isReleaseContext(value: string): boolean {
+  return /(?:press|news|media|earnings|financial|operational)\s+(?:release|announcement|results)|\bpressroom\b/i.test(stripHtml(value));
+}
+
 function parseNewsroomHtml(html: string, newsroomUrl: string): NewsItem[] {
   const source = new URL(newsroomUrl).hostname.replace(/^www\./, "");
-  return [...html.matchAll(/<div[^>]+class=["'][^"']*\brelease\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)].flatMap(([, block]) => {
+  const releaseBlocks = [...html.matchAll(/<div[^>]+class=["'][^"']*\brelease\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)].flatMap(([, block]) => {
     const anchor = block.match(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
     if (!anchor) return [];
-    const date = block.match(/<p[^>]+class=["'][^"']*\bdate\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? "";
     return [{
       title: stripHtml(anchor[2]),
       url: new URL(decodeXml(anchor[1]), newsroomUrl).toString(),
-      publishedAt: stripHtml(date),
+      publishedAt: releaseDate(block),
       source,
+      category: "Company press release",
     }];
-  }).filter((item) => item.title && /^https:\/\//.test(item.url));
+  });
+
+  const attributedCards = [...html.matchAll(/<([a-z][\w-]*)\b([^>]*(?:\bhref|\burl)=["'][^"']+["'][^>]*)>/gi)].flatMap((match) => {
+    const attributes = match[2];
+    const title = htmlAttribute(attributes, "heading") || htmlAttribute(attributes, "data-title");
+    const href = htmlAttribute(attributes, "href") || htmlAttribute(attributes, "url");
+    if (!title || !href || !isReleaseContext(attributes)) return [];
+    try {
+      return [{
+        title: stripHtml(title),
+        url: new URL(href, newsroomUrl).toString(),
+        publishedAt: releaseDate(htmlAttribute(attributes, "description") || attributes),
+        source,
+        category: "Company press release",
+      }];
+    } catch {
+      return [];
+    }
+  });
+
+  const anchors = [...html.matchAll(/<a\b([^>]+)>([\s\S]*?)<\/a>/gi)].flatMap((match) => {
+    const attributes = match[1];
+    const href = htmlAttribute(attributes, "href");
+    const title = stripHtml(match[2]) || htmlAttribute(attributes, "aria-label") || htmlAttribute(attributes, "title");
+    if (!href || title.length < 18 || /^(?:all |latest )?(?:news|press|media|releases?|read more|learn more)$/i.test(title)) return [];
+    const start = Math.max(0, (match.index ?? 0) - 500);
+    const context = html.slice(start, (match.index ?? 0) + match[0].length + 500);
+    const publishedAt = releaseDate(context);
+    if (!publishedAt || !isReleaseContext(`${href} ${context}`)) return [];
+    try {
+      return [{ title, url: new URL(href, newsroomUrl).toString(), publishedAt, source, category: "Company press release" }];
+    } catch {
+      return [];
+    }
+  });
+
+  return unique([...releaseBlocks, ...attributedCards, ...anchors].filter((item) => item.title && /^https:\/\//.test(item.url)), 100);
 }
 
 function htmlAttribute(attributes: string, name: string): string {
@@ -184,6 +260,24 @@ function parsePalantirNewsroom(html: string, newsroomUrl: string): NewsItem[] {
   } catch {
     return [];
   }
+}
+
+function parsePalantirInvestorReleases(payload: PalantirPressReleaseResponse, investorUrl: string, source = "Palantir Investor Relations"): NewsItem[] {
+  return (payload.GetPressReleaseListResult ?? []).flatMap((release) => {
+    const title = release.Headline?.trim() ?? "";
+    const href = release.LinkToDetailPage?.trim() ?? "";
+    if (!title || !href) return [];
+    const summary = stripHtml(release.ShortDescription || release.Body || "");
+    return [{
+      title,
+      publishedAt: release.PressReleaseDate ?? "",
+      url: new URL(href, investorUrl).toString(),
+      source,
+      summary: summary.length > 420 ? `${summary.slice(0, 417).trimEnd()}…` : summary,
+      category: "Company press release",
+      provider: "Palantir IR",
+    }];
+  });
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -254,7 +348,7 @@ async function gdeltNews(query: string): Promise<NewsItem[]> {
     maxrecords: "25",
     format: "json",
     sort: "HybridRel",
-    timespan: "7d",
+    timespan: "30d",
   });
   const payload = await fetchJson<{ articles?: GdeltArticle[] }>(`https://api.gdeltproject.org/api/v2/doc/doc?${params}`);
   return (payload.articles ?? []).flatMap((article) => {
@@ -269,11 +363,93 @@ async function gdeltNews(query: string): Promise<NewsItem[]> {
   });
 }
 
+async function retryOnce<T>(load: () => Promise<T>): Promise<T> {
+  try {
+    return await load();
+  } catch {
+    return load();
+  }
+}
+
+const corporateReleasePublishers = /(?:business\s*wire|pr\s*newswire|globe\s*newswire|access\s*newswire|accesswire|newsfile|ein\s*presswire|issuer\s*direct|investor\s*brand\s*network)/i;
+const corporateReleaseHosts = /(?:^|\.)(?:palantir\.com|businesswire\.com|prnewswire\.com|globenewswire\.com|accesswire\.com|newsfilecorp\.com|einpresswire\.com)$/i;
+
+function isIndependentCoverage(item: NewsItem): boolean {
+  if (corporateReleasePublishers.test(`${item.source} ${item.provider ?? ""}`)) return false;
+  try {
+    const hostname = new URL(item.url).hostname.replace(/^www\./, "");
+    if (corporateReleaseHosts.test(hostname)) return false;
+  } catch {
+    return false;
+  }
+  return item.source !== "SEC EDGAR official filing" && item.category !== "Company press release";
+}
+
+async function palantirOfficialNews(investorUrl: string): Promise<NewsItem[]> {
+  const year = new Date().getUTCFullYear();
+  const endpoint = new URL("/feed/PressRelease.svc/GetPressReleaseList", investorUrl);
+  endpoint.search = new URLSearchParams({
+    languageId: "1",
+    bodyType: "1",
+    year: String(year),
+    includeTags: "true",
+    pressReleaseDateFilter: "1",
+  }).toString();
+  const current = parsePalantirInvestorReleases(await fetchJson<PalantirPressReleaseResponse>(endpoint.toString()), investorUrl);
+
+  try {
+    const historicalUrl = "https://www.palantir.com/newsroom/press-releases/";
+    const historical = parsePalantirNewsroom(await fetchText(historicalUrl), historicalUrl);
+    return unique([...current, ...historical].sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 100);
+  } catch {
+    return unique(current, 100);
+  }
+}
+
+async function q4OfficialNews(companyName: string, newsroomUrl: string): Promise<NewsItem[]> {
+  const endpoint = new URL("/feed/PressRelease.svc/GetPressReleaseList", newsroomUrl);
+  endpoint.search = new URLSearchParams({
+    languageId: "1",
+    bodyType: "1",
+    year: String(new Date().getUTCFullYear()),
+    includeTags: "true",
+    pressReleaseDateFilter: "1",
+  }).toString();
+  const payload = await fetchJson<PalantirPressReleaseResponse>(endpoint.toString());
+  return parsePalantirInvestorReleases(payload, newsroomUrl, `${companyName} Investor Relations`);
+}
+
+async function indexedOfficialNews(companyName: string, newsroomUrl: string): Promise<NewsItem[]> {
+  const hostname = new URL(newsroomUrl).hostname;
+  const pressItems = (await googleNews(`site:${hostname} "press release" when:365d`))
+    .filter((item) => /[a-z0-9]{3}/i.test(item.title));
+  let items = pressItems;
+  if (pressItems.length < 2) {
+    const generalItems = await googleNews(`site:${hostname} "${companyName.replace(/\b(?:INC|INCORPORATED|LTD|PLC|CORP|CORPORATION|CLASS [A-Z])\.?\b/gi, "").replace(/\s+/g, " ").trim()}" when:365d`);
+    items = [...pressItems, ...generalItems];
+  }
+  return unique(items.flatMap((item) => {
+    if (/\b(?:careers?|jobs?|newsroom|press releases?|media center|home page)\b/i.test(item.title)) return [];
+    if (/^(?:how|why|what|meet|highlights?|shareholders?|search|for (?:himself|herself|patients?|families?))\b/i.test(item.title)) return [];
+    return [{
+      ...item,
+      source: `${companyName} official newsroom`,
+      summary: "Company-published release discovered from the issuer's configured official newsroom host.",
+      category: "Company press release",
+      provider: "Official-domain index",
+    }];
+  }), 30);
+}
+
 async function companyOfficialNews(companyName: string, newsroomUrl: string | null, feedUrl: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
   const source = `${companyName} official newsroom`;
   const primaryUrl = feedUrl || newsroomUrl;
   if (!primaryUrl) return { items: [], health: { source: "company", status: "not-configured", records: 0, url: null } };
   try {
+    if (newsroomUrl && new URL(newsroomUrl).hostname.replace(/^www\./, "") === "investors.palantir.com") {
+      const items = await palantirOfficialNews(newsroomUrl);
+      return { items, health: { source: "company", status: items.length ? "working" : "empty", records: items.length, url: newsroomUrl } };
+    }
     if (feedUrl) {
       const items = parseRss(await fetchText(feedUrl), source);
       return { items, health: { source: "company", status: items.length ? "working" : "empty", records: items.length, url: feedUrl } };
@@ -285,15 +461,33 @@ async function companyOfficialNews(companyName: string, newsroomUrl: string | nu
       : hostname === "palantir.com"
         ? parsePalantirNewsroom(html, newsroomUrl!)
         : parseNewsroomHtml(html, newsroomUrl!);
-    if (direct.length) return { items: direct, health: { source: "company", status: "working", records: direct.length, url: newsroomUrl } };
+    let discovered: NewsItem[] = [];
     for (const discoveredFeed of discoverFeedUrls(html, newsroomUrl!)) {
       try {
         const items = parseRss(await fetchText(discoveredFeed), source);
-        if (items.length) return { items, health: { source: "company", status: "working", records: items.length, url: discoveredFeed } };
+        if (items.length) {
+          discovered = items;
+          break;
+        }
       } catch { /* Continue through alternate official feeds. */ }
     }
-    return { items: [], health: { source: "company", status: "empty", records: 0, url: newsroomUrl } };
+    let q4: NewsItem[] = [];
+    if (direct.length + discovered.length < 2) {
+      try { q4 = await q4OfficialNews(companyName, newsroomUrl!); } catch { /* This issuer does not use a compatible Q4 feed. */ }
+    }
+    let indexed: NewsItem[] = [];
+    if (direct.length + discovered.length + q4.length < 2) {
+      try { indexed = await indexedOfficialNews(companyName, newsroomUrl!); } catch { /* The official-domain index is a last-resort discovery path. */ }
+    }
+    const items = unique([...direct, ...discovered, ...q4, ...indexed].sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 100);
+    return { items, health: { source: "company", status: items.length ? "working" : "empty", records: items.length, url: newsroomUrl } };
   } catch {
+    if (newsroomUrl) {
+      try {
+        const items = await indexedOfficialNews(companyName, newsroomUrl);
+        if (items.length) return { items, health: { source: "company", status: "working", records: items.length, url: newsroomUrl } };
+      } catch { /* Preserve the unavailable status when both direct and indexed discovery fail. */ }
+    }
     return { items: [], health: { source: "company", status: "unavailable", records: 0, url: primaryUrl } };
   }
 }
@@ -324,7 +518,8 @@ function curatedCompanyReleases(dossier: FeaturedDossier | undefined): NewsItem[
   if (!dossier) return [];
   return dossier.sources.flatMap((source) => {
     const classification = `${source.title} ${source.meta}`;
-    if (source.href.includes("sec.gov") || !/(company|earnings|press release|operational release|results|investor relations)/i.test(classification)) return [];
+    const isArchiveOrFiling = /(?:SEC|filing|10-[KQ]|annual report|events?|investor relations|archive|presentation|webcast)/i.test(classification);
+    if (source.href.includes("sec.gov") || isArchiveOrFiling || !/(?:earnings|press|operational) release|results/i.test(classification)) return [];
     const dateText = source.meta.match(/(?:Filed|Published|release|materials|event|results)\s*[·:]?\s*([A-Z][a-z]+ \d{1,2}, \d{4})/i)?.[1] ?? "";
     return [{
       title: source.title,
@@ -366,14 +561,23 @@ export async function GET(request: Request) {
 
   const dossier = featuredDossiers[ticker];
   const companyName = catalogCompany?.name || universeCompany?.name || ticker;
-  const newsroomUrl = dossier?.newsroomUrl ?? dossier?.sources.find((source) => source.meta.toLowerCase().includes("company"))?.href ?? null;
-  const newsroomFeedUrl = dossier?.newsroomFeedUrl ?? verifiedOfficialFeeds[ticker] ?? null;
+  const newsroomUrl = verifiedOfficialNewsrooms[ticker]
+    ?? dossier?.newsroomUrl
+    ?? dossier?.sources.find((source) => source.meta.toLowerCase().includes("company"))?.href
+    ?? null;
+  const newsroomFeedUrl = verifiedOfficialFeeds[ticker] ?? dossier?.newsroomFeedUrl ?? null;
   const cik = catalogCompany?.cik || getSecCompany(ticker)?.cik || null;
-  const displayQuery = `"${companyName.replace(/\b(INC|INCORPORATED|LTD|PLC|CORP|CORPORATION)\.?\b/gi, "").replace(/\s+/g, " ").trim()}" ${ticker}`;
+  const searchName = companyName
+    .replace(/\b(CLASS\s+[A-Z]|COMMON STOCK)\b/gi, "")
+    .replace(/\b(INC|INCORPORATED|LTD|PLC|CORP|CORPORATION)\.?\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const searchAliases: Record<string, string> = { IBM: "IBM", IBKR: "Interactive Brokers", PLD: "Prologis", PLTR: "Palantir", SPCX: "SpaceX" };
+  const displayQuery = searchAliases[ticker] ? `${searchAliases[ticker]} ${ticker}` : `"${searchName}" ${ticker}`;
 
   const publicSources = [
-    { provider: "Bing News", load: () => bingNews(displayQuery) },
-    { provider: "Google News", load: () => googleNews(displayQuery) },
+    { provider: "Bing News", load: () => retryOnce(() => bingNews(displayQuery)) },
+    { provider: "Google News", load: () => retryOnce(() => googleNews(`${displayQuery} when:30d`)) },
     { provider: "GDELT", load: () => gdeltNews(displayQuery) },
   ];
   const [companyOfficial, secOfficial, publicResults] = await Promise.all([
@@ -397,13 +601,11 @@ export async function GET(request: Request) {
     return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
   }), 100);
   const officialTitles = new Set(official.map((item) => item.title.toLowerCase()));
-  const fulfilledPublicGroups = publicResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  const independentPublicGroups = publicResults.map((result) => result.status === "fulfilled" ? result.value.filter(isIndependentCoverage) : []);
+  const fulfilledPublicGroups = independentPublicGroups.filter((group) => group.length);
   const publicNews = mergePublicSources(fulfilledPublicGroups, 18)
     .filter((item) => !officialTitles.has(item.title.toLowerCase()));
-  const providers = publicSources.flatMap((source, index) => {
-    const result = publicResults[index];
-    return result.status === "fulfilled" && result.value.length ? [source.provider] : [];
-  });
+  const providers = publicSources.flatMap((source, index) => independentPublicGroups[index]?.length ? [source.provider] : []);
   const unavailableProviders = publicSources.flatMap((source, index) => publicResults[index].status === "rejected" ? [source.provider] : []);
 
   return Response.json({
