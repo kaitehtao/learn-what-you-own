@@ -10,10 +10,32 @@ type OwnershipData = {
   publicTradableFloat?: { value: number; unit: string; asOf: string; filedAt: string; form: string; sourceUrl: string; methodology: string } | null;
   institutional?: { percent: number; shares: number | null; holders: number | null; asOf: string; sourceUrl: string; topHolders: Array<{ name: string; date: string; shares: number | null; change: number | null; changePercent: string; marketValue: string; sourceUrl: string }> } | null;
   estimatedRetailOther?: { percent: number; methodology: string } | null;
+  insiderTransactions?: {
+    purchases: InsiderTransaction[];
+    sales: InsiderTransaction[];
+    otherCount: number;
+    transactionRecordsReviewed: number;
+    availableRecords: number | null;
+    sourceUrl: string;
+    secSourceUrl: string;
+    methodology: string;
+  };
   insiders?: { people: Array<{ name: string; relation: string; latestDate: string; latestTransaction: string; reportedShares: number; sourceUrl: string }>; displayedPeople: number; transactionRecordsReviewed: number; availableRecords: number | null; sourceUrl: string; secSourceUrl: string };
   sourceStatus?: { sec: boolean; institutional13F: boolean; insiderFilings: boolean };
   updatedAt?: string;
   error?: string;
+};
+
+type InsiderTransaction = {
+  name: string;
+  relation: string;
+  date: string;
+  transactionType: string;
+  shares: number;
+  price: number | null;
+  value: number | null;
+  sharesHeld: number | null;
+  sourceUrl: string;
 };
 
 function compact(value: number | null | undefined, currency = false) {
@@ -29,6 +51,20 @@ function dateLabel(value: string | undefined) {
   if (!value) return "Date unavailable";
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function InsiderTransactionTable({ rows, emptyLabel, fallbackUrl }: { rows: InsiderTransaction[]; emptyLabel: string; fallbackUrl: string }) {
+  if (!rows.length) return <div className="ownership-state compact"><strong>{emptyLabel}</strong><p>Other Forms 3, 4, and 5 may still report grants, option exercises, gifts, tax withholding, conversions, or position changes.</p></div>;
+  return <div className="ownership-table insider-transaction-table">
+    <div className="ownership-table-head"><span>Insider</span><span>Date</span><span>Shares</span><span>Price</span><span>Reported value</span></div>
+    {rows.map((row, index) => <a href={row.sourceUrl || fallbackUrl} target="_blank" rel="noreferrer" key={`${row.name}-${row.date}-${row.transactionType}-${index}`}>
+      <span><strong>{row.name}</strong><small>{row.relation} · {row.transactionType}</small></span>
+      <span>{dateLabel(row.date)}</span>
+      <span>{compact(row.shares)}</span>
+      <span>{row.price ? compact(row.price, true) : "Not reported"}</span>
+      <span>{row.value ? compact(row.value, true) : "Not reported"}</span>
+    </a>)}
+  </div>;
 }
 
 export function StockOwnershipPanel({ ticker }: { ticker: string }) {
@@ -56,7 +92,15 @@ export function StockOwnershipPanel({ ticker }: { ticker: string }) {
         <article><small>ESTIMATED RETAIL + OTHER</small><strong>{data.estimatedRetailOther ? `${data.estimatedRetailOther.percent.toFixed(2)}%` : "Not estimated"}</strong><span>Residual estimate—not a reported SEC retail figure</span></article>
         <article><small>PUBLIC TRADABLE FLOAT</small><strong>{data.publicTradableFloat ? compact(data.publicTradableFloat.value, true) : "Not available"}</strong><span>{data.publicTradableFloat ? `SEC-filed non-affiliate market value · ${dateLabel(data.publicTradableFloat.asOf)}` : "Issuer did not expose a standardized public-float fact"}</span>{data.publicTradableFloat && <a href={data.publicTradableFloat.sourceUrl} target="_blank" rel="noreferrer">Open filing ↗</a>}</article>
       </div>
-      <div className="ownership-methodology"><strong>How to read this section</strong><p>{data.estimatedRetailOther?.methodology ?? "A retail estimate is shown only when a current institutional percentage is available."}</p><p>SEC public float is a filed market value of non-affiliate equity, not a current share count. Institutional totals are delayed quarterly filings and can include reporting overlap. Insider rows show the most recently reported positions found in the public filing ledger, not a substitute for the latest proxy beneficial-ownership table.</p></div>
+      <div className="ownership-methodology"><strong>How to read this section</strong><p>{data.estimatedRetailOther?.methodology ?? "A retail estimate is shown only when a current institutional percentage is available."}</p><p>SEC public float is a filed market value of non-affiliate equity, not a current share count. Institutional totals are delayed quarterly filings and can include reporting overlap. Insider transactions are filing events—not investment recommendations—and the reported date, transaction code, price, and post-transaction position should be reviewed together.</p></div>
+      <section className="insider-transactions-section" aria-labelledby={`insider-transactions-${ticker.toLowerCase()}`}>
+        <div className="ownership-subheading"><div><small>INSIDER TRANSACTIONS</small><h3 id={`insider-transactions-${ticker.toLowerCase()}`}>Purchases and sales, separated</h3></div><span>{data.insiderTransactions?.transactionRecordsReviewed ?? 0} filing rows reviewed</span></div>
+        <div className="ownership-transaction-grid">
+          <section><div className="ownership-transaction-title purchase"><strong>Insider purchases</strong><span>{data.insiderTransactions?.purchases.length ?? 0} reported</span></div><InsiderTransactionTable rows={data.insiderTransactions?.purchases ?? []} emptyLabel="No explicitly labeled insider purchases were returned." fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
+          <section><div className="ownership-transaction-title sale"><strong>Insider sales</strong><span>{data.insiderTransactions?.sales.length ?? 0} reported</span></div><InsiderTransactionTable rows={data.insiderTransactions?.sales ?? []} emptyLabel="No explicitly labeled insider sales were returned." fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
+        </div>
+        <div className="ownership-transaction-note"><p>{data.insiderTransactions?.methodology ?? "Only transactions explicitly labeled as purchases or sales are placed in these tables."}</p>{data.insiderTransactions && <span>{data.insiderTransactions.otherCount} other or unclassified filing rows excluded from purchase and sale totals.</span>}</div>
+      </section>
       <div className="ownership-detail-grid">
         <section><div className="ownership-subheading"><div><small>INSIDERS</small><h3>Reporting insiders</h3></div><span>{data.insiders?.displayedPeople ?? 0} people</span></div>
           {data.insiders?.people.length ? <div className="ownership-table insider-table"><div className="ownership-table-head"><span>Insider</span><span>Role</span><span>Latest filing activity</span><span>Latest reported shares</span></div>{data.insiders.people.map((person) => <a href={person.sourceUrl || data.insiders!.secSourceUrl} target="_blank" rel="noreferrer" key={person.name}><span><strong>{person.name}</strong><small>{person.latestDate}</small></span><span>{person.relation}</span><span>{person.latestTransaction}</span><span>{compact(person.reportedShares)}</span></a>)}</div> : <div className="ownership-state compact">No recent insider rows were returned.</div>}

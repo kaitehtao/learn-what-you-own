@@ -86,7 +86,7 @@ export const dossierBenchmarkComplements: Record<string, Complement> = {
       { name: "Embraer", ticker: "ERJ", ownership: "Public", relationship: "Commercial aircraft and services competitor", valuation: "Compare backlog, delivery growth, margin, and net debt", financialStatus: "Smaller profitable aircraft manufacturer focused on regional and executive markets.", sourceUrl: "https://ri.embraer.com.br/en/" },
       { name: "General Dynamics", ticker: "GD", ownership: "Public", relationship: "Defense and business-jet manufacturing comparable", valuation: "Separate Gulfstream and defense segments", financialStatus: "Profitable diversified contractor with a different fixed-price and commercial mix.", sourceUrl: "https://investorrelations.gd.com/" },
     ],
-    sources: [{ title: "Boeing Annual Reports", meta: "Company annual filing archive", href: "https://investors.boeing.com/investors/reports/default.aspx", excerpt: "Annual reports and statistical summaries provide program, backlog, delivery, liquidity, debt, pension, cash-flow, and risk evidence." }],
+    sources: [{ title: "Boeing Proxy Statements", meta: "SEC DEF 14A · Governance source", href: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000012927&type=DEF%2014A&owner=exclude&count=40", excerpt: "Proxy filings disclose beneficial ownership, board oversight, executive incentives, related matters, and shareholder proposals." }],
   },
   BB: {
     financialDrivers: [

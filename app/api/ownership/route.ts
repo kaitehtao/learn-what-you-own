@@ -10,6 +10,7 @@ type InstitutionalRow = { ownerName?: string; date?: string; sharesHeld?: string
 type NasdaqInstitutional = { data?: { ownershipSummary?: { SharesOutstandingPCT?: { value?: string }; ShareoutstandingTotal?: { value?: string } }; activePositions?: { rows?: Array<{ positions?: string; holders?: string; shares?: string }> }; holdingsTransactions?: { institutionalHolders?: string; sharesHeld?: string; table?: { rows?: InstitutionalRow[] } } } };
 type InsiderRow = { insider?: string; relation?: string; lastDate?: string; transactionType?: string; ownType?: string; sharesTraded?: string; lastPrice?: string; sharesHeld?: string; url?: string };
 type NasdaqInsiders = { data?: { transactionTable?: { totalRecords?: string; table?: { rows?: InsiderRow[] } } } };
+type InsiderTransactionDirection = "purchase" | "sale" | "other";
 
 function latestFact(payload: SecCompanyFacts, concept: string, unit: string) {
   const values = payload.facts?.dei?.[concept]?.units?.[unit] ?? [];
@@ -64,6 +65,33 @@ function aggregateInsiders(rows: InsiderRow[]) {
   }));
 }
 
+function insiderTransactionDirection(transactionType: string | undefined): InsiderTransactionDirection {
+  const label = transactionType?.trim().toLowerCase() ?? "";
+  if (/\b(buy|bought|purchase|purchased)\b/.test(label)) return "purchase";
+  if (/\b(sell|sold|sale)\b/.test(label)) return "sale";
+  return "other";
+}
+
+function insiderTransactions(rows: InsiderRow[], direction: Exclude<InsiderTransactionDirection, "other">) {
+  return rows
+    .filter((row) => insiderTransactionDirection(row.transactionType) === direction)
+    .map((row) => {
+      const shares = Math.abs(numberFrom(row.sharesTraded) ?? 0);
+      const price = Math.abs(numberFrom(row.lastPrice) ?? 0);
+      return {
+        name: row.insider?.trim() || "Reporting insider",
+        relation: row.relation || "Reporting person",
+        date: row.lastDate || "",
+        transactionType: row.transactionType || (direction === "purchase" ? "Purchase" : "Sale"),
+        shares,
+        price: price || null,
+        value: shares && price ? shares * price : null,
+        sharesHeld: numberFrom(row.sharesHeld),
+        sourceUrl: row.url ? new URL(row.url, "https://www.nasdaq.com").toString() : "",
+      };
+    });
+}
+
 export async function GET(request: Request) {
   const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) return Response.json({ error: "Choose a valid ticker." }, { status: 400 });
@@ -94,6 +122,11 @@ export async function GET(request: Request) {
   const holderRows = institutional?.holdingsTransactions?.table?.rows ?? [];
   const insiderRows = insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.table?.rows ?? [] : [];
   const insiders = aggregateInsiders(insiderRows);
+  const insiderPurchases = insiderTransactions(insiderRows, "purchase");
+  const insiderSales = insiderTransactions(insiderRows, "sale");
+  const insiderOtherCount = insiderRows.filter((row) => insiderTransactionDirection(row.transactionType) === "other").length;
+  const insiderSourceUrl = `https://www.nasdaq.com/market-activity/stocks/${ticker.toLowerCase()}/insider-activity`;
+  const secInsiderSourceUrl = `https://www.sec.gov/edgar/search/#/ciks=${cik}&category=custom&forms=3%2C4%2C5`;
 
   return Response.json({
     ticker,
@@ -111,13 +144,23 @@ export async function GET(request: Request) {
       topHolders: holderRows.slice(0, 12).map((row) => ({ name: row.ownerName ?? "Institutional manager", date: row.date ?? "", shares: numberFrom(row.sharesHeld), change: numberFrom(row.sharesChange), changePercent: row.sharesChangePCT ?? "", marketValue: row.marketValue ?? "", sourceUrl: row.url ? new URL(row.url, "https://www.nasdaq.com").toString() : "" })),
     },
     estimatedRetailOther: institutionalPct === null ? null : { percent: Math.max(0, 100 - institutionalPct), methodology: "Residual after reported institutional ownership. It includes retail holders, insiders, small institutions below Form 13F thresholds, and other unclassified holders; it is not a directly reported SEC retail figure." },
+    insiderTransactions: {
+      purchases: insiderPurchases,
+      sales: insiderSales,
+      otherCount: insiderOtherCount,
+      transactionRecordsReviewed: insiderRows.length,
+      availableRecords: numberFrom(insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.totalRecords : undefined),
+      sourceUrl: insiderSourceUrl,
+      secSourceUrl: secInsiderSourceUrl,
+      methodology: "Purchases and sales are separated only when the public insider ledger explicitly labels the transaction as a buy, purchase, sell, or sale. Awards, grants, option exercises, gifts, tax withholding, conversions, and unclassified ownership filings remain outside both totals.",
+    },
     insiders: {
       people: insiders,
       displayedPeople: insiders.length,
       transactionRecordsReviewed: insiderRows.length,
       availableRecords: numberFrom(insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.totalRecords : undefined),
-      sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${ticker.toLowerCase()}/insider-activity`,
-      secSourceUrl: `https://www.sec.gov/edgar/search/#/ciks=${cik}&category=custom&forms=3%2C4%2C5`,
+      sourceUrl: insiderSourceUrl,
+      secSourceUrl: secInsiderSourceUrl,
     },
     sourceStatus: { sec: secResult.status === "fulfilled", institutional13F: institutionalResult.status === "fulfilled", insiderFilings: insiderResult.status === "fulfilled" },
     updatedAt: new Date().toISOString(),
