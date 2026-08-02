@@ -366,3 +366,21 @@ export const professionalInterviews = sqliteTable("professional_interviews", {
   index("professional_interview_public_idx").on(table.status, table.createdAt),
   index("professional_interview_user_idx").on(table.userId, table.createdAt),
 ]);
+
+// Outbound brokerage events measure channel interest without storing account
+// credentials, holdings, IP addresses, user-agent fingerprints, or member IDs.
+// Partner conversions and compensation remain authoritative in the broker's
+// approved affiliate reporting portal.
+export const brokerageClicks = sqliteTable("brokerage_clicks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clickId: text("click_id").notNull(),
+  brokerKey: text("broker_key").notNull(),
+  action: text("action", { enum: ["login", "open"] }).notNull(),
+  destinationType: text("destination_type", { enum: ["official", "paid_referral"] }).notNull().default("official"),
+  sourcePath: text("source_path").notNull().default("/portfolio"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("brokerage_click_id_idx").on(table.clickId),
+  index("brokerage_click_broker_created_idx").on(table.brokerKey, table.createdAt),
+  index("brokerage_click_action_created_idx").on(table.action, table.createdAt),
+]);

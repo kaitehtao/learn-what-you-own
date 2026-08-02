@@ -1,58 +1,4 @@
-const brokerages = [
-  {
-    name: "E*TRADE from Morgan Stanley",
-    mark: "E*TRADE",
-    className: "etrade",
-    host: "us.etrade.com",
-    loginUrl: "https://us.etrade.com/e/t/user/login",
-    openUrl: "https://us.etrade.com/what-we-offer/our-accounts/brokerage-account",
-  },
-  {
-    name: "Fidelity Investments",
-    mark: "FIDELITY",
-    className: "fidelity",
-    host: "fidelity.com",
-    loginUrl: "https://digital.fidelity.com/prgw/digital/login/full-page",
-    openUrl: "https://www.fidelity.com/open-account/overview/",
-  },
-  {
-    name: "Charles Schwab",
-    mark: "SCHWAB",
-    className: "schwab",
-    host: "schwab.com",
-    loginUrl: "https://client.schwab.com/Login/SignOn/CustomerCenterLogin.aspx",
-    openUrl: "https://www.schwab.com/brokerage",
-  },
-  {
-    name: "Morgan Stanley",
-    mark: "MORGAN STANLEY",
-    className: "morgan-stanley",
-    host: "morganstanley.com",
-    loginUrl: "https://www.morganstanley.com/online",
-    openUrl: "https://www.morganstanley.com/what-we-do/wealth-management",
-  },
-  {
-    name: "J.P. Morgan",
-    mark: "J.P. MORGAN",
-    className: "jpmorgan",
-    host: "chase.com",
-    loginUrl: "https://secure.chase.com/web/auth/dashboard#/dashboard/overviewAccounts/overview/index",
-    openUrl: "https://www.chase.com/personal/investments/brokerage-account",
-  },
-  {
-    name: "Interactive Brokers",
-    mark: "IBKR",
-    className: "interactive-brokers",
-    host: "interactivebrokers.com",
-    loginUrl: "https://www.interactivebrokers.com/sso/Login?RL=1",
-    openUrl: "https://www.interactivebrokers.com/en/accounts/open_account.php",
-  },
-] as const;
-
-const externalLinkProps = {
-  target: "_blank",
-  rel: "noopener noreferrer external",
-} as const;
+import { brokerages } from "../brokerageDirectory";
 
 export function BrokerageLinks() {
   return (
@@ -90,16 +36,18 @@ export function BrokerageLinks() {
               </div>
               <div className="brokerage-actions">
                 <a
-                  href={brokerage.loginUrl}
+                  href={`/api/brokerage-click?broker=${encodeURIComponent(brokerage.key)}&action=login`}
                   aria-label={`Sign in to ${brokerage.name} on its official website`}
-                  {...externalLinkProps}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
                 >
                   Existing client login <span aria-hidden="true">↗</span>
                 </a>
                 <a
-                  href={brokerage.openUrl}
+                  href={`/api/brokerage-click?broker=${encodeURIComponent(brokerage.key)}&action=open`}
                   aria-label={`Explore opening an account with ${brokerage.name} on its official website`}
-                  {...externalLinkProps}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored nofollow"
                 >
                   Open / explore accounts <span aria-hidden="true">↗</span>
                 </a>
@@ -109,9 +57,11 @@ export function BrokerageLinks() {
         </div>
 
         <p className="brokerage-disclaimer">
-          Brokerage links are provided for convenience, not as endorsements or personalized
-          recommendations. Account eligibility, features, fees, and availability are determined by
-          each firm. Learn What You Own is not affiliated with these brokerages.
+          <strong>Affiliate disclosure:</strong> Learn What You Own may receive compensation if you
+          open an eligible account through a participating link, at no additional cost to you. Paid
+          relationships never determine research coverage, rankings, or conclusions. Brokerage links
+          are provided for convenience, not as endorsements or personalized recommendations.
+          Account eligibility, features, fees, and availability are determined by each firm.
         </p>
       </div>
     </section>
