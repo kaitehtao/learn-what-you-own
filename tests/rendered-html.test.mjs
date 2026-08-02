@@ -313,6 +313,40 @@ test("lets members add a public biography and validated profile photo", async ()
   assert.match(styles, /\.profile-editor-form/);
 });
 
+test("publishes moderated professional identity and a transparent correction record", async () => {
+  const [migration, accountRoute, editor, memberRoute, memberClient, adminRoute, adminClient, styles] = await Promise.all([
+    source("supabase/migrations/20260801100000_public_profile_research_identity.sql"),
+    source("app/api/account/route.ts"),
+    source("app/account/profile/ProfileEditorClient.tsx"),
+    source("app/api/members/[username]/route.ts"),
+    source("app/members/[username]/MemberProfileClient.tsx"),
+    source("app/api/admin/dashboard/route.ts"),
+    source("app/admin/AdminDashboard.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(migration, /investment_style/);
+  assert.match(migration, /linkedin_url/);
+  assert.match(migration, /credential_status/);
+  assert.match(migration, /create table if not exists public\.contribution_corrections/);
+  assert.match(migration, /Published correction history is public/);
+  assert.match(accountRoute, /Enter a valid LinkedIn profile URL/);
+  assert.match(accountRoute, /links_status: linksChanged/);
+  assert.match(accountRoute, /credential_status: credentialChanged/);
+  assert.match(editor, /LINKEDIN PROFILE/);
+  assert.match(editor, /INVESTMENT STYLE/);
+  assert.match(editor, /CREDENTIALS FOR VERIFICATION/);
+  assert.match(memberRoute, /links_status === "approved"/);
+  assert.match(memberRoute, /credential_status === "verified"/);
+  assert.match(memberClient, /LinkedIn profile/);
+  assert.match(memberClient, /Published corrections/);
+  assert.match(adminRoute, /verify_credentials/);
+  assert.match(adminRoute, /approve_links/);
+  assert.match(adminClient, /Verify credentials/);
+  assert.match(adminClient, /Approve links/);
+  assert.match(styles, /\.research-identity-card/);
+});
+
 test("distinguishes public research from verified-account tools and collects private phone details", async () => {
   const [comparison, home, login, onboarding, header] = await Promise.all([
     source("app/AccessComparison.tsx"),

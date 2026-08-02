@@ -36,6 +36,7 @@ npm run dev
    - `supabase/migrations/20260801070000_founder_administrator.sql`
    - `supabase/migrations/20260801080000_admin_email_verification.sql`
    - `supabase/migrations/20260801090000_public_profile_bio_photo.sql`
+   - `supabase/migrations/20260801100000_public_profile_research_identity.sql`
 3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
 4. In **Authentication → URL Configuration**, set the production Site URL and allow:
    - `http://localhost:3000/auth/callback`

@@ -9,6 +9,16 @@ export type SupabaseProfile = {
   onboarding_complete: boolean;
   bio: string;
   avatar_path: string | null;
+  investment_style: string;
+  time_horizon: string;
+  expertise_areas: string;
+  linkedin_url: string | null;
+  website_url: string | null;
+  links_status: "unreviewed" | "pending" | "approved" | "rejected";
+  credential_summary: string;
+  credential_status: "unverified" | "pending" | "verified" | "rejected";
+  credential_verified_by: string | null;
+  credential_verified_at: string | null;
   created_at: string;
   updated_at: string;
 };
