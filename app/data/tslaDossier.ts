@@ -61,6 +61,18 @@ export const tslaDossier: FeaturedDossier = {
     "How are related-party transactions—including Tesla's SpaceX investment and sales—reviewed, priced, and disclosed for minority shareholders?",
   ],
   competitors: "No single peer spans vehicles, batteries, charging, storage, mobility, AI, and robotics. BYD, Toyota, GM, Volkswagen, Hyundai, and Rivian compete in vehicles; CATL and battery manufacturers influence cost and integration; Fluence and integrators compete in storage; Waymo and other mobility platforms compete in autonomy; robotics companies compete with Optimus.",
+  performance: {
+    label: "2026 YTD share-price return",
+    value: "−30.8%",
+    asOf: "December 31, 2025 close $449.72 → July 31, 2026 close $311.21",
+    detail: "Tesla's 2026 decline occurred even as Q2 revenue and deliveries rebounded, illustrating the difference between operating scale and the expectations embedded in the share price. Investors continued to weigh thinner automotive margins, a more-than-$25B capital plan, and still-unproven Robotaxi and robotics economics against liquidity, Energy growth, software, and manufacturing reach. These are evidence-backed influences, not a single-cause explanation of daily trading.",
+    drivers: [
+      { title: "Q2 revenue and deliveries returned to growth", detail: "Revenue rose 26% to $28.236B and deliveries reached 480,126 vehicles. Owners still need to reconcile volume and revenue growth with pricing, mix, margin, incentives, and cash returns.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026049270/tsla-20260630.htm" },
+      { title: "Automotive margin remained under pressure", detail: "Total automotive gross margin was 16.9% versus 17.2% a year earlier, while regulatory-credit revenue fell 67%. Scale is valuable only when incremental units earn adequate margins and returns.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026049270/tsla-20260630.htm" },
+      { title: "The investment program stepped up sharply", detail: "Tesla spent $8.282B on property and equipment in the first half and expects more than $25B of 2026 capex. AI compute, factories, fleet assets, and new products must produce measurable returns.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026049270/tsla-20260630.htm" },
+      { title: "Energy and liquidity provide real offsets", detail: "Q2 Energy revenue was $3.139B and cash plus short-term investments totaled $43.524B. Energy gross margin fell year over year, so growth and liquidity do not remove the need to test segment economics.", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026049270/tsla-20260630.htm" },
+    ],
+  },
   comparables: [
     { name: "BYD Company", ticker: "1211.HK", ownership: "Public", relationship: "Global EV, plug-in hybrid, battery, electronics, and vertically integrated manufacturing competitor.", valuation: "Compare automotive and battery earnings, net cash/debt, geography, and share count separately", financialStatus: "Profitable scaled manufacturer with broader price points; consolidated results include batteries and electronics, so it is not a pure vehicle peer.", sourceUrl: "https://www.bydglobal.com/en/Investor.html" },
     { name: "Toyota Motor", ticker: "TM", ownership: "Public", relationship: "Global vehicle, hybrid, financing, manufacturing, and mobility competitor.", valuation: "Legacy auto multiples require finance-subsidiary debt and cycle normalization", financialStatus: "Large profitable manufacturer with different powertrain mix, dealer distribution, and capital structure.", sourceUrl: "https://global.toyota/en/ir/" },
@@ -76,5 +88,6 @@ export const tslaDossier: FeaturedDossier = {
     { title: "Tesla 2025 Form 10-K", meta: "SEC filing · Filed January 28, 2026", href: "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm", excerpt: "The annual filing describes Tesla's automotive and Energy segments, products, manufacturing, supply chain, services, cash flow, governance, competition, legal matters, and material risks." },
     { title: "Tesla Investor Relations", meta: "Company primary materials", href: "https://ir.tesla.com/", excerpt: "Tesla's official archive provides quarterly shareholder decks, production and delivery releases, webcasts, SEC filings, consensus material, annual meeting information, and impact reports." },
     { title: "Tesla SEC filing library", meta: "SEC EDGAR · All public filings", href: "https://www.sec.gov/edgar/browse/?CIK=1318605&owner=exclude", excerpt: "The SEC issuer page provides Tesla's annual, quarterly, current, proxy, ownership, and other filings under CIK 0001318605." },
+    { title: "Tesla stock-price history", meta: "Nasdaq historical quotes · Through July 31, 2026", href: "https://www.nasdaq.com/market-activity/stocks/tsla/historical", excerpt: "TSLA closed at $311.21 on July 31, 2026 versus $449.72 on December 31, 2025." },
   ],
 };

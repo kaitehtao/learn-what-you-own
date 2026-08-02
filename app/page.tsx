@@ -13,9 +13,10 @@ const companies = [
   { ticker: "NVDA", name: "NVIDIA", sector: "Semiconductors", updated: "4h ago", score: 96, note: "Supply chain map refreshed" },
   { ticker: "AAPL", name: "Apple", sector: "Consumer Technology", updated: "Today", score: 96, note: "Supplier evidence map added" },
   { ticker: "AMZN", name: "Amazon", sector: "Commerce & Cloud", updated: "Today", score: 95, note: "AWS capital intensity reviewed" },
-  { ticker: "TSLA", name: "Tesla", sector: "Automotive & Energy", updated: "Today", score: 94, note: "AI and energy thesis refreshed" },
+  { ticker: "TSLA", name: "Tesla", sector: "Automotive & Energy", updated: "Today", score: 100, note: "Q2 filing, performance, autonomy, and energy economics reviewed" },
   { ticker: "PLTR", name: "Palantir", sector: "Enterprise AI", updated: "3d ago", score: 95, note: "Commercial cohort review" },
   { ticker: "RKLB", name: "Rocket Lab", sector: "Space Systems", updated: "2d ago", score: 93, note: "Neutron milestone added" },
+  { ticker: "SPCX", name: "SpaceX", sector: "Space, Connectivity & AI", updated: "Today", score: 100, note: "IPO prospectus, segment economics, governance, and capital needs reviewed" },
   { ticker: "BB", name: "BlackBerry", sector: "Infrastructure Software", updated: "Yesterday", score: 91, note: "QNX backlog analysis" },
   { ticker: "BE", name: "Bloom Energy", sector: "Clean Energy", updated: "Yesterday", score: 88, note: "Margin thesis revised" },
   { ticker: "BA", name: "Boeing", sector: "Aerospace & Defense", updated: "3d ago", score: 92, note: "Production recovery evidence reviewed" },
@@ -26,6 +27,8 @@ const companies = [
 
 const updates = [
   { date: "Today", ticker: "AMC", title: "Record Q2 economics and premium-format footprint reviewed", impact: "Recovery evidence strengthened", type: "SEC filing" },
+  { date: "Today", ticker: "SPCX", title: "IPO prospectus and three-segment economics reviewed", impact: "Founding public dossier published", type: "SEC filing" },
+  { date: "Today", ticker: "TSLA", title: "Q2 filing and 2026 capital plan reviewed", impact: "Cash-return debate updated", type: "SEC filing" },
   { date: "Today", ticker: "NVDA", title: "A key supplier raised capacity guidance", impact: "Dependency updated", type: "Primary source" },
   { date: "Yesterday", ticker: "BB", title: "QNX royalty backlog reached a new high", impact: "Thesis unchanged", type: "Company filing" },
 ];
