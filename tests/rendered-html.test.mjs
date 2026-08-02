@@ -332,7 +332,14 @@ test("calculates a clean private portfolio status from shares, cost, and current
   assert.match(styles, /\.portfolio-summary\{/);
   assert.match(styles, /\.portfolio-table-head/);
   assert.match(styles, /Resilient member workspace layouts/);
+  assert.match(styles, /@media\(max-width:1480px\)\{/);
+  assert.match(styles, /\.notification-bell:not\(\[open\]\) \.notification-popover\{display:none\}/);
+  assert.match(styles, /\.portfolio-workspace>\.portfolio-layout\{grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(styles, /\.portfolio-form\{position:static;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.portfolio-table\{overflow-x:auto\}/);
   assert.match(styles, /@media\(max-width:1180px\)\{\.portfolio-workspace>\.portfolio-layout\{grid-template-columns:1fr\}/);
+  assert.match(styles, /\.portfolio-table \.position-row\{grid-template-columns:minmax\(220px,1\.35fr\) minmax\(120px,1fr\) minmax\(120px,1fr\);min-width:0\}/);
+  assert.match(styles, /@media\(max-width:480px\)\{\.portfolio-summary\{grid-template-columns:1fr\}/);
   assert.match(styles, /\.portfolio-list,\.portfolio-table,\.portfolio-table \.position-row>\*\{min-width:0\}/);
 });
 
