@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 
 let quarterlySchemaPromise: Promise<unknown> | null = null;
+let feedbackVotingSchemaPromise: Promise<unknown> | null = null;
 
 // Manual migrations are packaged with the worker, but an older production D1
 // database can briefly receive new application code before the migration is
@@ -35,4 +36,23 @@ export function ensureQuarterlyDossierUpdatesSchema() {
     });
   }
   return quarterlySchemaPromise;
+}
+
+export function ensureFeedbackVotingSchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!feedbackVotingSchemaPromise) {
+    feedbackVotingSchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS product_feedback_votes (
+        feedback_id INTEGER NOT NULL REFERENCES product_feedback(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS product_feedback_vote_unique_idx ON product_feedback_votes(feedback_id, user_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS product_feedback_vote_rank_idx ON product_feedback_votes(feedback_id, created_at)"),
+    ]).catch((error) => {
+      feedbackVotingSchemaPromise = null;
+      throw error;
+    });
+  }
+  return feedbackVotingSchemaPromise;
 }
