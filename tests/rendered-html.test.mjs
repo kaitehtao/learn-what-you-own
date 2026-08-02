@@ -207,6 +207,8 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(starter, /<ExternalIntelligencePanel/);
   assert.match(ondas, /<ExternalIntelligencePanel/);
   assert.match(contributionClient, /External dataset observation/);
+  assert.match(contributionClient, /CITE SOURCE OF SUBMITTED INFORMATION/);
+  assert.match(contributionClient, /CITE PRIMARY COMPANY OR SEC SOURCE/);
   assert.match(contributionRoute, /External dataset observation/);
   assert.match(schema, /export const externalDataSources/);
   assert.match(schema, /export const externalObservations/);
