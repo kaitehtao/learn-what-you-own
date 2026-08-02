@@ -13,6 +13,7 @@ import {
   otcUniverseAsOf,
 } from "./data/exchangeUniverseMeta.generated";
 import { Header } from "./ui";
+import { followingLabel, type CompanyFollower } from "./company-followers";
 
 type CatalogCompany = {
   ticker: string;
@@ -54,6 +55,15 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
   const [payload, setPayload] = useState<Payload>({ total: otc ? otcSecurityCount : listedSecurityCount, page: 1, pageSize: PAGE_SIZE, companies: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch("/api/company-followers", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const data = await response.json() as { companies?: CompanyFollower[] };
+      setFollowerCounts(Object.fromEntries((data.companies ?? []).map((item) => [item.ticker, item.follower_count])));
+    }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedQuery(query); setPage(1); }, 250);
@@ -104,9 +114,9 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
         <label><span>Direction</span><select value={direction} onChange={(event) => { setDirection(event.target.value); setPage(1); }}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
       </div></div>
       {error && <div className="directory-empty"><strong>Catalog temporarily unavailable.</strong><p>{error}</p></div>}
-      {!error && <div className={`directory-table catalog-table ${otc ? "otc-table" : ""}`}><div className="directory-row catalog-row directory-labels"><span>SECURITY / ISSUER</span><span>{otc ? "ISSUE TYPE" : "CIK / INDEX MEMBERSHIP"}</span><span>RESEARCH STATUS</span><span>MARKET</span><span /></div>{payload.companies.map((company) => {
+      {!error && <div className={`directory-table catalog-table ${otc ? "otc-table" : ""}`}><div className="directory-row catalog-row directory-labels"><span>SECURITY / ISSUER</span><span>{otc ? "ISSUE TYPE" : "CIK / INDEX MEMBERSHIP"}</span><span>RESEARCH / FOLLOWERS</span><span>MARKET</span><span /></div>{payload.companies.map((company) => {
         const tags = memberships(company);
-        return <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row catalog-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong><small>{company.security_description !== company.name ? company.security_description : company.sector}</small></span></span><span>{otc ? company.security_type : <><small className="catalog-cik">CIK {company.cik ?? "not available"}</small><span className="catalog-memberships">{tags.length ? tags.join(" · ") : "No tracked index membership"}</span></>}</span><span className={`catalog-status ${company.dossier_status === "published" ? "published" : ""}`}>{company.dossier_status === "published" ? "Published dossier" : company.dossier_status ? `${company.dossier_status} dossier` : "Catalogued · not researched"}</span><span>{company.exchange}</span><span>→</span></Link>;
+        return <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row catalog-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong><small>{company.security_description !== company.name ? company.security_description : company.sector}</small></span></span><span>{otc ? company.security_type : <><small className="catalog-cik">CIK {company.cik ?? "not available"}</small><span className="catalog-memberships">{tags.length ? tags.join(" · ") : "No tracked index membership"}</span></>}</span><span className={`catalog-status ${company.dossier_status === "published" ? "published" : ""}`}>{company.dossier_status === "published" ? "Published dossier" : company.dossier_status ? `${company.dossier_status} dossier` : "Catalogued · not researched"}<em className="company-followers">♡ {followingLabel(followerCounts[company.ticker] ?? 0)}</em></span><span>{company.exchange}</span><span>→</span></Link>;
       })}</div>}
       {!loading && !error && payload.companies.length === 0 && <div className="directory-empty"><strong>No securities found.</strong><p>Try a different symbol, issuer name, exchange, index, or issue type.</p></div>}
       <div className="pagination"><button disabled={page === 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}>← Previous</button><span>Page {page.toLocaleString()} of {pageCount.toLocaleString()}</span><button disabled={page >= pageCount || loading} onClick={() => setPage((current) => current + 1)}>Next →</button></div>

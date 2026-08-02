@@ -14,6 +14,7 @@ import { ResearchDemandButton } from "../../ResearchDemandButton";
 import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
+import { CompanyFollowerCount } from "../../CompanyFollowerCount";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
 // after editorial content for the same ticker has been promoted to flagship depth.
@@ -85,7 +86,7 @@ export default async function CompanyStarterPage({
     <section className="container starter-dossier">
       {company.exchange === "OTC" && <div className="otc-company-notice"><strong>OTC security · {company.securityType ?? "issue type not classified"}</strong><p>This security is not listed on the NYSE or Nasdaq. OTC liquidity, disclosure, reporting status, and market tier require separate verification before research is published.</p></div>}
       <div className="coverage-banner"><span>FOUNDING COVERAGE</span><h2>This owner’s manual is ready to be built.</h2><p>The company and ticker are now part of the research universe. Verified claims, sources, business-model analysis, theses, filings, and expert contributions will be added through the editorial workflow.</p></div>
-      <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ") || "No tracked membership"}</strong></div><div><small>{company.exchange === "OTC" ? "ISSUE TYPE" : "SECTOR"}</small><strong>{company.exchange === "OTC" ? company.securityType : company.sector}</strong></div><div><small>MARKET</small><strong>{company.exchange}</strong></div><div><small>DOSSIER STATUS</small><strong className="amber-text">Not yet researched</strong></div></div>
+      <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ") || "No tracked membership"}</strong></div><div><small>{company.exchange === "OTC" ? "ISSUE TYPE" : "SECTOR"}</small><strong>{company.exchange === "OTC" ? company.securityType : company.sector}</strong></div><div><small>MARKET</small><strong>{company.exchange}</strong></div><div><small>PEOPLE FOLLOWING</small><CompanyFollowerCount ticker={company.ticker} /></div><div><small>DOSSIER STATUS</small><strong className="amber-text">Not yet researched</strong></div></div>
       {universeCompany && company.exchange !== "OTC" && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
       <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />

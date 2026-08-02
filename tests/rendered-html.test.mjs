@@ -49,6 +49,32 @@ test("features the full benchmark dossier set, including the four new companies"
   assert.match(validator, /dossier\.sources\.length >= 5/);
 });
 
+test("enforces the AMC dossier standard across completed dossiers and keeps company releases separate from SEC filings", async () => {
+  const [newsRoute, newsPanel, upgrades, validator, migration, styles] = await Promise.all([
+    source("app/api/company-news/route.ts"),
+    source("app/CompanyNewsPanel.tsx"),
+    source("app/data/featuredDossierUpgrades.ts"),
+    source("scripts/validate-featured-dossiers.ts"),
+    source("drizzle/0013_sync-featured-dossiers-and-pltr-facts.sql"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(newsRoute, /companyReleases/);
+  assert.match(newsRoute, /secFilings/);
+  assert.match(newsRoute, /parsePalantirNewsroom/);
+  assert.match(newsRoute, /curatedCompanyReleases/);
+  assert.match(newsPanel, /Official company releases/);
+  assert.match(newsPanel, /PRIMARY · REGULATORY/);
+  assert.match(newsPanel, /Open Exact SEC Filing/);
+  assert.match(upgrades, /https:\/\/www\.palantir\.com\/newsroom\/press-releases\//);
+  assert.match(validator, /official newsroom/);
+  assert.match(validator, /SEC source/);
+  assert.match(validator, /company source/);
+  assert.match(migration, /'PLTR', 'success'/);
+  assert.match(migration, /'PLTR', 'published'/);
+  assert.match(styles, /\.admin-verification-actions button\{width:100%/);
+});
+
 test("publishes the first 30-company S&P 500 market-cap dossier batch", async () => {
   const [registry, batchDossiers, batches, page, navigation] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
@@ -886,7 +912,10 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /parseCoreWeaveNewsroom/);
   assert.match(route, /data-content-type=\["'\]press-release/);
-  assert.match(route, /unique\(\[\.\.\.companyOfficial\.items, \.\.\.secOfficial\.items\]/);
+  assert.match(route, /const companyReleases = unique/);
+  assert.match(route, /const secFilings = unique/);
+  assert.match(route, /companyReleases,/);
+  assert.match(route, /secFilings,/);
   assert.match(panel, /official-source-health/);
   assert.match(route, /stale-while-revalidate=900/);
   assert.match(dossiers, /www\.coreweave\.com\/newsroom/);
@@ -949,4 +978,29 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(amcSeed, /CIK0001411579\.json', 240, 12/);
   assert.match(publisher, /generateSecFactSql/);
   assert.match(styles, /\.filing-history\{display:flex/);
+});
+
+test("shows privacy-preserving watchlist follower totals for every company", async () => {
+  const [followerApi, home, directory, featured, starter, followerCount, watchlistButton] = await Promise.all([
+    source("app/api/company-followers/route.ts"),
+    source("app/page.tsx"),
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/CompanyFollowerCount.tsx"),
+    source("app/WatchlistButton.tsx"),
+  ]);
+
+  assert.match(followerApi, /from\("watchlist_items"\)/);
+  assert.match(followerApi, /select\("ticker"\)/);
+  assert.match(followerApi, /follower_count/);
+  assert.doesNotMatch(followerApi, /select\("user_id/);
+  assert.match(followerApi, /cache-control.*public, max-age=60/);
+  assert.match(home, /followingLabel/);
+  assert.match(directory, /RESEARCH \/ FOLLOWERS/);
+  assert.match(directory, /company-followers/);
+  assert.match(featured, /PEOPLE FOLLOWING/);
+  assert.match(starter, /PEOPLE FOLLOWING/);
+  assert.match(followerCount, /Watchlist count unavailable/);
+  assert.match(watchlistButton, /company-following-change/);
 });

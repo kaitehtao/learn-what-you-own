@@ -14,6 +14,7 @@ import { CommunityInsights } from "./CommunityInsights";
 import { ResearchFoundationPanel } from "./ResearchFoundationPanel";
 import { CompanyNewsPanel } from "./CompanyNewsPanel";
 import { ExternalIntelligencePanel } from "./ExternalIntelligencePanel";
+import { CompanyFollowerCount } from "./CompanyFollowerCount";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -47,6 +48,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ")}</strong></div>
         <div><small>SECTOR</small><strong>{company.sector}</strong></div>
         <div><small>PRIMARY SOURCES</small><strong>{dossier.sources.length}</strong><span>Linked below</span></div>
+        <div><small>PEOPLE FOLLOWING</small><CompanyFollowerCount ticker={company.ticker} /></div>
         <div><small>DOSSIER STATUS</small><strong className="positive">Flagship coverage</strong><span>Structured owner research</span></div>
         <div><small>DOSSIER LAST UPDATED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>

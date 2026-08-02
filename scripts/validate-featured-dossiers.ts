@@ -30,6 +30,9 @@ for (const ticker of requiredTickers) {
     ["owner questions", dossier.questions.length >= 6],
     ["comparables", (dossier.comparables?.length ?? 0) >= 6],
     ["primary sources", dossier.sources.length >= 5],
+    ["official newsroom", Boolean(dossier.newsroomUrl || dossier.newsroomFeedUrl)],
+    ["SEC source", dossier.sources.some((source) => source.href.includes("sec.gov"))],
+    ["company source", dossier.sources.some((source) => !source.href.includes("sec.gov"))],
   ] as const;
 
   for (const [label, passed] of checks) {
