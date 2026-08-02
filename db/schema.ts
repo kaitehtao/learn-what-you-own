@@ -338,3 +338,31 @@ export const memberRewardLedger = sqliteTable("member_reward_ledger", {
   index("member_reward_user_created_idx").on(table.userId, table.createdAt),
   index("member_reward_username_idx").on(table.username),
 ]);
+
+// Professional and community interviews are distinct from issuer-management
+// interviews. Contributors submit them, editors verify credentials and
+// disclosures, and only approved records become public.
+export const professionalInterviews = sqliteTable("professional_interviews", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  guestName: text("guest_name").notNull(),
+  guestTitle: text("guest_title").notNull(),
+  firm: text("firm").notNull().default(""),
+  credentials: text("credentials").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  topicsJson: text("topics_json").notNull().default("[]"),
+  interviewUrl: text("interview_url").notNull(),
+  transcriptUrl: text("transcript_url").notNull().default(""),
+  disclosure: text("disclosure").notNull(),
+  status: text("status", { enum: ["submitted", "reviewing", "approved", "rejected"] }).notNull().default("submitted"),
+  moderatorNote: text("moderator_note").notNull().default(""),
+  moderatedBy: text("moderated_by"),
+  moderatedAt: text("moderated_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("professional_interview_public_idx").on(table.status, table.createdAt),
+  index("professional_interview_user_idx").on(table.userId, table.createdAt),
+]);
