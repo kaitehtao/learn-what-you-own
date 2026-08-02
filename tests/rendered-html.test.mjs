@@ -76,13 +76,14 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
 });
 
 test("publishes the first 100 S&P 500 companies in descending market-cap dossier batches", async () => {
-  const [registry, batch01Dossiers, batch02Dossiers, batches, page, navigation] = await Promise.all([
+  const [registry, batch01Dossiers, batch02Dossiers, batches, page, navigation, secCompanies] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/data/sp500Batch01Dossiers.ts"),
     source("app/data/sp500Batch02Dossiers.ts"),
     source("app/data/sp500DossierBatches.ts"),
     source("app/research/batches/page.tsx"),
     source("app/ui.tsx"),
+    source("app/data/secCompanies.generated.ts"),
   ]);
 
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch01Dossiers\)/);
@@ -102,6 +103,8 @@ test("publishes the first 100 S&P 500 companies in descending market-cap dossier
   assert.match(page, /Batches 01–02 · 100 companies complete/);
   assert.match(page, /Alphabet’s two share classes share one company dossier/);
   assert.match(navigation, /href="\/research\/batches">Research/);
+  assert.match(secCompanies, /normalizedTicker === "XOM"/);
+  assert.match(secCompanies, /cik: "0000034088", name: "Exxon Mobil Corporation"/);
 });
 
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
