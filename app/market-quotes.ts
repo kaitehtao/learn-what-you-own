@@ -13,10 +13,21 @@ type NasdaqQuotePayload = {
   } | null;
 };
 
+type NasdaqSummaryPayload = {
+  data?: {
+    summaryData?: {
+      MarketCap?: {
+        value?: string;
+      } | null;
+    } | null;
+  } | null;
+};
+
 export type MarketQuote = {
   ticker: string;
   companyName: string;
   price: number | null;
+  marketCap: number | null;
   asOf: string;
   marketStatus: string;
   isRealTime: boolean;
@@ -30,20 +41,32 @@ function priceFromDisplay(value: string | undefined) {
   return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
+function marketCapFromDisplay(value: string | undefined) {
+  if (!value || value === "N/A") return null;
+  const marketCap = Number(value.replace(/[$,]/g, ""));
+  return Number.isFinite(marketCap) && marketCap >= 0 ? marketCap : null;
+}
+
 export async function fetchNasdaqQuote(tickerValue: string): Promise<MarketQuote> {
   const ticker = tickerValue.trim().toUpperCase();
   if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) throw new Error("Invalid ticker");
-  const response = await fetch(`${NASDAQ_QUOTE_URL}/${encodeURIComponent(ticker)}/info?assetclass=stocks`, {
-    headers: { accept: "application/json", "user-agent": "Learn What You Own portfolio valuation" },
+  const requestOptions = {
+    headers: { accept: "application/json", "user-agent": "Learn What You Own market data" },
     next: { revalidate: 300 },
-  });
-  if (!response.ok) throw new Error(`Quote provider returned ${response.status}`);
-  const payload = await response.json() as NasdaqQuotePayload;
+  } as const;
+  const [quoteResponse, summaryResponse] = await Promise.all([
+    fetch(`${NASDAQ_QUOTE_URL}/${encodeURIComponent(ticker)}/info?assetclass=stocks`, requestOptions),
+    fetch(`${NASDAQ_QUOTE_URL}/${encodeURIComponent(ticker)}/summary?assetclass=stocks`, requestOptions),
+  ]);
+  if (!quoteResponse.ok) throw new Error(`Quote provider returned ${quoteResponse.status}`);
+  const payload = await quoteResponse.json() as NasdaqQuotePayload;
+  const summary = summaryResponse.ok ? await summaryResponse.json() as NasdaqSummaryPayload : null;
   const primary = payload.data?.primaryData;
   return {
     ticker,
     companyName: payload.data?.companyName ?? ticker,
     price: priceFromDisplay(primary?.lastSalePrice),
+    marketCap: marketCapFromDisplay(summary?.data?.summaryData?.MarketCap?.value),
     asOf: primary?.lastTradeTimestamp ?? "Latest available close",
     marketStatus: payload.data?.marketStatus ?? "Status unavailable",
     isRealTime: Boolean(primary?.isRealTime),

@@ -49,6 +49,27 @@ test("features the full benchmark dossier set, including the four new companies"
   assert.match(validator, /dossier\.sources\.length >= 5/);
 });
 
+test("shows current stock price and market capitalization on detailed dossiers and homepage cards", async () => {
+  const [featured, ondas, home, snapshot, api, quotes] = await Promise.all([
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/onds/page.tsx"),
+    source("app/page.tsx"),
+    source("app/CompanyMarketSnapshot.tsx"),
+    source("app/api/market-snapshot/route.ts"),
+    source("app/market-quotes.ts"),
+  ]);
+  assert.match(featured, /<CompanyMarketSnapshot ticker=\{company\.ticker\}/);
+  assert.match(ondas, /<CompanyMarketSnapshot ticker="ONDS"/);
+  assert.match(snapshot, /CURRENT STOCK PRICE/);
+  assert.match(snapshot, /MARKET CAPITALIZATION/);
+  assert.match(home, /className="card-market-data"/);
+  assert.match(home, /CURRENT PRICE/);
+  assert.match(home, /MARKET CAP/);
+  assert.match(api, /cache-control/);
+  assert.match(quotes, /summary\?assetclass=stocks/);
+  assert.match(quotes, /MarketCap/);
+});
+
 test("enforces the AMC dossier standard across completed dossiers and keeps company releases separate from SEC filings", async () => {
   const [newsRoute, newsPanel, upgrades, validator, migration, styles] = await Promise.all([
     source("app/api/company-news/route.ts"),
