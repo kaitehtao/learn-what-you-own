@@ -946,6 +946,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Corporate press-release wires are excluded/);
   assert.match(panel, /Bing News, Google News, TradingView, and GDELT/);
   assert.match(panel, /news-provider-filters/);
+  assert.match(panel, /summaryFormat=2/);
   assert.match(route, /companyOfficialNews\(companyName, newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /secOfficialNews\(cik\)/);
   assert.match(route, /officialSources: \[companyOfficial\.health, secOfficial\.health\]/);
