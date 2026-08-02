@@ -47,6 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <div>
                 <strong>Explore</strong>
                 <Link href="/companies">Companies</Link>
+                <Link href="/research/batches">Research batches</Link>
                 <Link href="/otc">OTC / Pink Market</Link>
                 <Link href="/earnings">Earnings calendar</Link>
                 <Link href="/emerging-companies">IPOs &amp; private companies</Link>
