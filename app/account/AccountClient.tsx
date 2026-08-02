@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ProfileAvatar } from "../ProfileAvatar";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
+import { RewardsSummary } from "./RewardsSummary";
 
 type Account = {
   email?: string;
@@ -64,9 +65,12 @@ export function AccountClient() {
       <Link className="public-profile-link" href={`/members/${encodeURIComponent(account.profile.username)}`}>View public profile →</Link>
       <em>{account.profile.role}</em><button onClick={signOut}>Sign out</button>
     </aside>
-    <div className="account-actions">
+    <div className="account-workspace-column">
+      <RewardsSummary />
+      <div className="account-actions">
       {actions.map(([href, title, description], index) => <Link href={href} key={href}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{href === "/contribute" ? `${description} as @${account.profile.username}.` : description}</p></div><i>→</i></Link>)}
       {(account.profile.role === "admin" || account.profile.role === "editor") && <Link href="/admin"><span>09</span><div><strong>{account.profile.role === "admin" ? "Administrator dashboard" : "Editorial desk"}</strong><p>{account.profile.role === "admin" ? "Manage audience analytics, account invitations, roles, and access." : "Review community research before it is approved."}</p></div><i>→</i></Link>}
+      </div>
     </div>
   </section>;
 }
