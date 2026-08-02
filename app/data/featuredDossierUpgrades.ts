@@ -153,7 +153,7 @@ export const flagshipDossierUpgrades: Record<string, DossierUpgrade> = {
   PLTR: {
     reviewed: "August 1, 2026",
     completeness: 96,
-    newsroomUrl: "https://www.palantir.com/newsroom/press-releases/",
+    newsroomUrl: "https://investors.palantir.com/news",
     financialDrivers: [
       { label: "Q1 REVENUE", value: "$1.6B · +85%", detail: "Growth across U.S. commercial and government; contract timing and termination provisions still matter" },
       { label: "GROSS MARGIN", value: "87% GAAP", detail: "Software economics before stock-based compensation, sales investment, and infrastructure requirements" },
