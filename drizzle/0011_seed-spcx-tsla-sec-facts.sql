@@ -6,11 +6,13 @@ VALUES
 ('TSLA', 'Tesla, Inc.', 'Consumer Discretionary', 'NASDAQ', 1219817712637, '["S&P 500","Russell 3000","Nasdaq-100 (QQQ)"]', '{"S&P 500":1.36,"Russell 3000":1.32,"Nasdaq-100 (QQQ)":0}', '0001318605', 'listed', 'Listed issuer security', 'Tesla, Inc.', 'https://www.sec.gov/files/company_tickers_exchange.json', '2026-07-31', 1)
 ON CONFLICT(ticker) DO UPDATE SET name=excluded.name, sector=excluded.sector, exchange=excluded.exchange, market_cap=excluded.market_cap, memberships_json=excluded.memberships_json, index_weights_json=excluded.index_weights_json, cik=excluded.cik, listing_scope=excluded.listing_scope, security_type=excluded.security_type, security_description=excluded.security_description, universe_source_url=excluded.universe_source_url, universe_source_as_of=excluded.universe_source_as_of, is_active=excluded.is_active, updated_at=CURRENT_TIMESTAMP;
 
-INSERT INTO company_dossiers (ticker, status, content_json, verified_by, verified_at, published_at, updated_at)
+-- These columns are shared by both the original normalized schema and the
+-- legacy-compatible production dossier table created by migration 0003.
+INSERT INTO company_dossiers (ticker, status, published_at, updated_at)
 VALUES
-('SPCX', 'published', '{"coverage":"flagship static dossier plus SEC facts","source":"SpaceX final IPO prospectus"}', '@Yourhost', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-('TSLA', 'published', '{"coverage":"flagship static dossier plus SEC facts","source":"Tesla periodic filings"}', '@Yourhost', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT(ticker) DO UPDATE SET status=excluded.status, content_json=excluded.content_json, verified_by=excluded.verified_by, verified_at=CURRENT_TIMESTAMP, published_at=COALESCE(company_dossiers.published_at, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP;
+('SPCX', 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('TSLA', 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT(ticker) DO UPDATE SET status=excluded.status, published_at=COALESCE(company_dossiers.published_at, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP;
 
 INSERT INTO filing_fact_imports (ticker, status, source_url, imported_count, metric_count, last_attempted_at, last_success_at, error_message)
 VALUES ('SPCX', 'no_compatible_facts', 'https://data.sec.gov/api/xbrl/companyfacts/CIK0001181412.json', 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
