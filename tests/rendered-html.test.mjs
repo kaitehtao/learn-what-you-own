@@ -375,6 +375,38 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(header, /href="\/notifications"/);
 });
 
+test("shows watchlist earnings dates and creates duplicate-safe seven-day alerts", async () => {
+  const [calendar, watchlistApi, watchlist, alertsRoute, worker, bell, center, emailDelivery, notificationsApi] = await Promise.all([
+    source("app/earnings-alerts.ts"),
+    source("app/api/watchlist/route.ts"),
+    source("app/watchlist/WatchlistClient.tsx"),
+    source("app/api/internal/earnings-alerts/route.ts"),
+    source("worker/index.ts"),
+    source("app/NotificationBell.tsx"),
+    source("app/notifications/NotificationsClient.tsx"),
+    source("app/email-notifications.ts"),
+    source("app/api/notifications/route.ts"),
+  ]);
+
+  assert.match(calendar, /ALERT_WINDOW_DAYS = 7/);
+  assert.match(calendar, /api\/analyst[\s\S]*earnings-date/);
+  assert.match(calendar, /verification_status: verification \? "company-confirmed"/);
+  assert.match(calendar, /earningsAlertIdentity/);
+  assert.match(calendar, /onConflict: "user_id,entity_type,entity_id"/);
+  assert.match(watchlistApi, /refreshEarningsCalendar/);
+  assert.match(watchlistApi, /daysUntilEarnings/);
+  assert.match(watchlist, /NEXT EARNINGS/);
+  assert.match(watchlist, /7-day alert scheduled/);
+  assert.match(watchlist, /Company confirmed/);
+  assert.match(alertsRoute, /NOTIFICATION_CRON_SECRET/);
+  assert.match(worker, /\/api\/internal\/earnings-alerts/);
+  assert.match(worker, /await deliverScheduledDigest/);
+  assert.match(bell, /notification\.entityType === "earnings_alert"/);
+  assert.match(center, /EARNINGS ALERT/);
+  assert.match(notificationsApi, /entityType: row\.entity_type/);
+  assert.match(emailDelivery, /\.in\("frequency", \["immediate", "daily"\]\)/);
+});
+
 test("provides an admin-only audience and account control center", async () => {
   const [migration, verificationMigration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
     source("supabase/migrations/20260801040000_admin_dashboard_analytics.sql"),

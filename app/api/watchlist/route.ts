@@ -1,5 +1,6 @@
 import { researchUniverse } from "../../data/universe";
-import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { createDueEarningsAlerts, daysUntilEarnings, earningsSessionLabel, refreshEarningsCalendar } from "../../earnings-alerts";
+import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,31 @@ export async function GET(request: Request) {
     const { profile, supabase } = await requireSupabaseUser(request);
     const { data, error } = await supabase.from("watchlist_items").select("id,ticker,created_at").eq("user_id", profile.user_id).order("ticker");
     if (error) throw error;
+    const admin = getSupabaseAdminClient();
+    const calendar = await refreshEarningsCalendar(admin, (data ?? []).map((row) => row.ticker));
+    await createDueEarningsAlerts(admin, (data ?? []).map((row) => ({ user_id: profile.user_id, ticker: row.ticker })), calendar);
     return Response.json({
       items: (data ?? []).map((row) => {
         const company = findCompany(row.ticker);
-        return { id: row.id, ticker: row.ticker, createdAt: row.created_at, name: company?.name ?? row.ticker, sector: company?.sector ?? "Company", memberships: company?.memberships ?? [] };
+        const earnings = calendar.get(row.ticker);
+        return {
+          id: row.id,
+          ticker: row.ticker,
+          createdAt: row.created_at,
+          name: company?.name ?? row.ticker,
+          sector: company?.sector ?? "Company",
+          memberships: company?.memberships ?? [],
+          earnings: earnings ? {
+            date: earnings.earnings_date,
+            daysUntil: earnings.earnings_date ? daysUntilEarnings(earnings.earnings_date) : null,
+            session: earnings.session,
+            sessionLabel: earningsSessionLabel(earnings.session),
+            verificationStatus: earnings.verification_status,
+            sourceUrl: earnings.source_url,
+            sourceLabel: earnings.source_label,
+            checkedAt: earnings.checked_at,
+          } : null,
+        };
       }),
     });
   } catch (error) {
