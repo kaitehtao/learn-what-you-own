@@ -318,3 +318,23 @@ export const productFeedbackVotes = sqliteTable("product_feedback_votes", {
   uniqueIndex("product_feedback_vote_unique_idx").on(table.feedbackId, table.userId),
   index("product_feedback_vote_rank_idx").on(table.feedbackId, table.createdAt),
 ]);
+
+// Points are awarded only after an editor or administrator verifies that a
+// contribution created durable value. The source tuple makes every award
+// idempotent and auditable instead of rewarding raw posting volume.
+export const memberRewardLedger = sqliteTable("member_reward_ledger", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  eventType: text("event_type").notNull(),
+  sourceType: text("source_type").notNull(),
+  sourceId: text("source_id").notNull(),
+  points: integer("points").notNull(),
+  description: text("description").notNull(),
+  awardedBy: text("awarded_by"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("member_reward_source_unique_idx").on(table.userId, table.eventType, table.sourceType, table.sourceId),
+  index("member_reward_user_created_idx").on(table.userId, table.createdAt),
+  index("member_reward_username_idx").on(table.username),
+]);
