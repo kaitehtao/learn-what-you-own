@@ -864,7 +864,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Official does not mean independently verified/);
   assert.match(panel, /Official company releases/);
   assert.match(panel, /SEARCH OFFICIAL RELEASES/);
-  assert.match(panel, /Verify original release/);
+  assert.match(panel, /Expand to Read Full Press Release/);
   assert.match(panel, /Show 10 more official releases/);
   assert.match(panel, /Public &amp; industry coverage/);
   assert.match(panel, /Bing News, Google News, and GDELT/);
