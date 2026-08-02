@@ -8,6 +8,11 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
+// Editorial and workspace updates ship frequently. Render the shared document
+// shell dynamically so canonical routes always reference the current hashed CSS
+// and JavaScript assets after a production deployment.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Learn What You Own — Research for Owners",
   description: "Living, evidence-linked owner’s manuals for the businesses you own.",

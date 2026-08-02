@@ -305,12 +305,13 @@ test("distinguishes public research from verified-account tools and collects pri
 });
 
 test("calculates a clean private portfolio status from shares, cost, and current quotes", async () => {
-  const [page, client, route, quotes, styles] = await Promise.all([
+  const [page, client, route, quotes, styles, layout] = await Promise.all([
     source("app/portfolio/page.tsx"),
     source("app/portfolio/PortfolioClient.tsx"),
     source("app/api/portfolio/route.ts"),
     source("app/market-quotes.ts"),
     source("app/globals.css"),
+    source("app/layout.tsx"),
   ]);
 
   assert.match(page, /current market value, cost basis, and unrealized gain or loss/);
@@ -341,6 +342,7 @@ test("calculates a clean private portfolio status from shares, cost, and current
   assert.match(styles, /\.portfolio-table \.position-row\{grid-template-columns:minmax\(220px,1\.35fr\) minmax\(120px,1fr\) minmax\(120px,1fr\);min-width:0\}/);
   assert.match(styles, /@media\(max-width:480px\)\{\.portfolio-summary\{grid-template-columns:1fr\}/);
   assert.match(styles, /\.portfolio-list,\.portfolio-table,\.portfolio-table \.position-row>\*\{min-width:0\}/);
+  assert.match(layout, /export const dynamic = "force-dynamic"/);
 });
 
 test("accepts authenticated product feedback with private history and moderation status", async () => {
