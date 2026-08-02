@@ -1173,6 +1173,10 @@ test("links portfolio members to official brokerage login and account-opening de
   for (const name of ["E\*TRADE", "Fidelity", "Charles Schwab", "Morgan Stanley", "J\.P\. Morgan", "Interactive Brokers", "Robinhood", "SoFi Invest"]) {
     assert.match(directory, new RegExp(name));
   }
+  const expectedOrder = ["key: \"robinhood\"", "key: \"etrade\"", "key: \"sofi\"", "key: \"schwab\"", "key: \"fidelity\"", "key: \"interactive-brokers\"", "key: \"morgan-stanley\"", "key: \"jpmorgan\""];
+  const orderPositions = expectedOrder.map((entry) => directory.indexOf(entry));
+  assert.ok(orderPositions.every((position) => position >= 0));
+  assert.deepEqual(orderPositions, [...orderPositions].sort((a, b) => a - b));
   assert.match(directory, /BROKERAGE_REFERRAL_ETRADE/);
   assert.match(directory, /BROKERAGE_REFERRAL_ROBINHOOD/);
   assert.match(directory, /BROKERAGE_REFERRAL_SOFI/);
