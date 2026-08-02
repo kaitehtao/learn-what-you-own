@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
+import { ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
 import { companyRelationships, dossierClaims, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
 import { researchUniverse } from "../../data/universe";
 
@@ -37,8 +38,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    try {
+      await ensureQuarterlyDossierUpdatesSchema();
+    } catch (error) {
+      console.error(`Quarterly dossier schema check failed for ${ticker}; continuing with core research sources.`, error);
+    }
     const db = getDb();
-    const [facts, claims, relationships, importRows, quarterlyUpdates] = await Promise.all([
+    const queries = await Promise.allSettled([
       db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
         .orderBy(asc(filingFacts.metricKey), desc(filingFacts.periodEnd)).limit(300),
       db.select().from(dossierClaims).where(and(eq(dossierClaims.ticker, ticker), eq(dossierClaims.status, "published")))
@@ -51,9 +57,26 @@ export async function GET(request: Request) {
       db.select().from(quarterlyDossierUpdates).where(eq(quarterlyDossierUpdates.ticker, ticker))
         .orderBy(desc(quarterlyDossierUpdates.filedAt)).limit(8),
     ]);
+    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult] = queries;
+    const facts = factsResult.status === "fulfilled" ? factsResult.value : [];
+    const claims = claimsResult.status === "fulfilled" ? claimsResult.value : [];
+    const relationships = relationshipsResult.status === "fulfilled" ? relationshipsResult.value : [];
+    const importRows = importsResult.status === "fulfilled" ? importsResult.value : [];
+    const quarterlyUpdates = quarterlyResult.status === "fulfilled" ? quarterlyResult.value : [];
+    const sourceStatus = {
+      secFacts: factsResult.status === "fulfilled" ? "available" : "unavailable",
+      claims: claimsResult.status === "fulfilled" ? "available" : "unavailable",
+      relationships: relationshipsResult.status === "fulfilled" ? "available" : "unavailable",
+      importHistory: importsResult.status === "fulfilled" ? "available" : "unavailable",
+      quarterlyUpdates: quarterlyResult.status === "fulfilled" ? "available" : "unavailable",
+    };
+    queries.forEach((result, index) => {
+      if (result.status === "rejected") console.error(`Research source ${Object.keys(sourceStatus)[index]} failed for ${ticker}.`, result.reason);
+    });
 
     return Response.json({
       ticker,
+      sourceStatus,
       facts: facts.map((fact) => ({
         id: fact.id,
         metricKey: fact.metricKey,

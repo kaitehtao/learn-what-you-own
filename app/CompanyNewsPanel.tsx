@@ -11,6 +11,7 @@ type NewsResponse = {
   partial: boolean;
   providers: string[];
   unavailableProviders: string[];
+  officialSources: { source: "company" | "sec"; status: "working" | "empty" | "unavailable" | "not-configured" | "not-applicable"; records: number; url: string | null }[];
   error?: string;
 };
 
@@ -83,7 +84,7 @@ export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker:
     {error && <p className="news-error">{error} <a href={`https://news.google.com/search?q=${encodeURIComponent(ticker)}`} target="_blank" rel="noreferrer">Open news search ↗</a></p>}
     {!data && !error && <div className="news-loading"><i/><span>Loading current releases and coverage…</span></div>}
     {data && <div className="company-news-grid">
-      <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · ON-SITE ARCHIVE</small><h3>Official company releases &amp; SEC filings</h3></div><span>{data.official.length}</span></div><OfficialNewsList items={data.official} empty={officialUrl ? "No official releases or filings were returned by the primary archive." : "An official newsroom has not yet been curated for this ticker."}/></section>
+      <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · ON-SITE ARCHIVE</small><h3>Official company releases &amp; SEC filings</h3></div><span>{data.official.length}</span></div><div className="official-source-health">{(data.officialSources ?? []).map((source) => <span className={`source-${source.status}`} key={source.source}>{source.source === "company" ? "Company newsroom" : "SEC EDGAR"}: {source.status === "working" ? `${source.records} loaded` : source.status.replace("-", " ")}</span>)}</div><OfficialNewsList items={data.official} empty="No official records were returned. The source-status labels above show which primary adapter needs attention."/></section>
       <section><div className="news-column-title"><div><small>EXTERNAL · MULTI-SOURCE</small><h3>Public &amp; industry coverage</h3></div><span>{data.public.length}</span></div><NewsList items={data.public} providers={data.providers} empty="No recent public coverage was returned. Try again later or open a broader news search."/></section>
     </div>}
     {data && <div className="news-updated">Feed checked {dateLabel(data.updatedAt)} · {data.providers.length ? data.providers.join(" + ") : "External indexes unavailable"}{data.unavailableProviders.length ? ` · Temporarily unavailable: ${data.unavailableProviders.join(", ")}` : ""}</div>}
