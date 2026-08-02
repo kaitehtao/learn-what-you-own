@@ -1,4 +1,4 @@
-import { featuredDossiers } from "../../data/featuredDossiers";
+import { featuredDossiers, type FeaturedDossier } from "../../data/featuredDossiers";
 import { researchUniverse } from "../../data/universe";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
@@ -146,6 +146,45 @@ function parseCoreWeaveNewsroom(html: string, newsroomUrl: string): NewsItem[] {
   }).filter((item) => item.title && /^https:\/\//.test(item.url));
 }
 
+function parsePalantirNewsroom(html: string, newsroomUrl: string): NewsItem[] {
+  const serialized = html.match(/<script id=["']__NEXT_DATA__["'] type=["']application\/json["']>([\s\S]*?)<\/script>/i)?.[1];
+  if (!serialized) return [];
+
+  try {
+    const payload = JSON.parse(decodeXml(serialized)) as unknown;
+    const releases: NewsItem[] = [];
+    const visit = (value: unknown) => {
+      if (!value || typeof value !== "object") return;
+      const record = value as Record<string, unknown>;
+      const fields = record.fields && typeof record.fields === "object" ? record.fields as Record<string, unknown> : null;
+      if (fields) {
+        const link = fields.link && typeof fields.link === "object" ? fields.link as Record<string, unknown> : null;
+        const linkFields = link?.fields && typeof link.fields === "object" ? link.fields as Record<string, unknown> : null;
+        const headline = typeof fields.headline === "string" ? fields.headline : "";
+        const publishedAt = typeof fields.date === "string" ? fields.date : "";
+        const href = typeof linkFields?.url === "string" ? linkFields.url : "";
+        if (headline && publishedAt && /^https?:\/\//.test(href)) {
+          releases.push({
+            title: headline,
+            publishedAt,
+            url: new URL(href, newsroomUrl).toString(),
+            source: "Palantir official newsroom",
+            category: "Company press release",
+          });
+        }
+      }
+      for (const nested of Object.values(record)) {
+        if (Array.isArray(nested)) nested.forEach(visit);
+        else if (nested && typeof nested === "object") visit(nested);
+      }
+    };
+    visit(payload);
+    return unique(releases.sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 100);
+  } catch {
+    return [];
+  }
+}
+
 async function fetchText(url: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
@@ -240,7 +279,11 @@ async function companyOfficialNews(companyName: string, newsroomUrl: string | nu
     }
     const html = await fetchText(newsroomUrl!);
     const hostname = new URL(newsroomUrl!).hostname.replace(/^www\./, "");
-    const direct = hostname === "coreweave.com" ? parseCoreWeaveNewsroom(html, newsroomUrl!) : parseNewsroomHtml(html, newsroomUrl!);
+    const direct = hostname === "coreweave.com"
+      ? parseCoreWeaveNewsroom(html, newsroomUrl!)
+      : hostname === "palantir.com"
+        ? parsePalantirNewsroom(html, newsroomUrl!)
+        : parseNewsroomHtml(html, newsroomUrl!);
     if (direct.length) return { items: direct, health: { source: "company", status: "working", records: direct.length, url: newsroomUrl } };
     for (const discoveredFeed of discoverFeedUrls(html, newsroomUrl!)) {
       try {
@@ -274,6 +317,24 @@ function unique(items: NewsItem[], limit: number): NewsItem[] {
     seen.add(key);
     return true;
   }).slice(0, limit);
+}
+
+function curatedCompanyReleases(dossier: FeaturedDossier | undefined): NewsItem[] {
+  if (!dossier) return [];
+  return dossier.sources.flatMap((source) => {
+    const classification = `${source.title} ${source.meta}`;
+    if (source.href.includes("sec.gov") || !/(company|earnings|press release|operational release|results|investor relations)/i.test(classification)) return [];
+    const dateText = source.meta.match(/(?:Filed|Published|release|materials|event|results)\s*[·:]?\s*([A-Z][a-z]+ \d{1,2}, \d{4})/i)?.[1] ?? "";
+    return [{
+      title: source.title,
+      url: source.href,
+      publishedAt: dateText,
+      source: `${dossier.ticker} curated company source`,
+      summary: source.excerpt,
+      category: "Company primary material",
+      provider: "Editorial source registry",
+    }];
+  });
 }
 
 function mergePublicSources(groups: NewsItem[][], limit: number): NewsItem[] {
@@ -319,7 +380,17 @@ export async function GET(request: Request) {
     secOfficialNews(cik),
     Promise.allSettled(publicSources.map((source) => source.load())),
   ]);
-  const official = unique([...companyOfficial.items, ...secOfficial.items].sort((left, right) => {
+  const companyReleases = unique([...companyOfficial.items, ...curatedCompanyReleases(dossier)].sort((left, right) => {
+    const leftTime = new Date(left.publishedAt).valueOf();
+    const rightTime = new Date(right.publishedAt).valueOf();
+    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+  }), 100);
+  const secFilings = unique(secOfficial.items.sort((left, right) => {
+    const leftTime = new Date(left.publishedAt).valueOf();
+    const rightTime = new Date(right.publishedAt).valueOf();
+    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+  }), 100);
+  const official = unique([...companyReleases, ...secFilings].sort((left, right) => {
     const leftTime = new Date(left.publishedAt).valueOf();
     const rightTime = new Date(right.publishedAt).valueOf();
     return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
@@ -338,6 +409,8 @@ export async function GET(request: Request) {
     ticker,
     companyName,
     newsroomUrl,
+    companyReleases,
+    secFilings,
     official,
     officialSources: [companyOfficial.health, secOfficial.health],
     public: publicNews,

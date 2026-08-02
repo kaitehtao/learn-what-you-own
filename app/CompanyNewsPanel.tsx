@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 type NewsItem = { title: string; url: string; publishedAt: string; source: string; summary?: string; category?: string; readingMinutes?: number; provider?: string };
 type NewsResponse = {
   official: NewsItem[];
+  companyReleases: NewsItem[];
+  secFilings: NewsItem[];
   public: NewsItem[];
   newsroomUrl: string | null;
   updatedAt: string;
@@ -35,7 +37,7 @@ function NewsList({ items, providers, empty }: { items: NewsItem[]; providers: s
   </div>;
 }
 
-function OfficialNewsList({ items, empty }: { items: NewsItem[]; empty: string }) {
+function OfficialNewsList({ items, empty, searchLabel = "SEARCH OFFICIAL RELEASES", linkLabel = "Expand to Read Full Press Release ↗" }: { items: NewsItem[]; empty: string; searchLabel?: string; linkLabel?: string }) {
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(10);
   const filtered = useMemo(() => {
@@ -46,13 +48,13 @@ function OfficialNewsList({ items, empty }: { items: NewsItem[]; empty: string }
 
   if (items.length === 0) return <p className="news-empty">{empty}</p>;
   return <div className="official-news-archive">
-    <label className="official-news-search"><span>SEARCH OFFICIAL RELEASES</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setVisible(10); }} placeholder="Partnership, financing, customer, product…"/></label>
+    <label className="official-news-search"><span>{searchLabel}</span><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setVisible(10); }} placeholder="Partnership, financing, customer, product…"/></label>
     <div className="official-news-count">Showing {Math.min(visible, filtered.length)} of {filtered.length} official records</div>
     <div className="official-news-list">{filtered.slice(0, visible).map((item) => <article key={`${item.url}-${item.title}`}>
       <div className="official-news-meta"><span>{item.source === "SEC EDGAR official filing" ? "✓ OFFICIAL SEC FILING" : "✓ OFFICIAL COMPANY RELEASE"}</span><time>{dateLabel(item.publishedAt)}</time></div>
       <h4>{item.title}</h4>
       <p>{item.summary || "This official release is indexed from the company archive. The company did not provide a separate archive summary."}</p>
-      <footer><span>{item.category || "Company update"}{item.readingMinutes ? ` · ${item.readingMinutes} min read` : ""}</span><a href={item.url} target="_blank" rel="noreferrer">Expand to Read Full Press Release ↗</a></footer>
+      <footer><span>{item.category || "Company update"}{item.readingMinutes ? ` · ${item.readingMinutes} min read` : ""}</span><a href={item.url} target="_blank" rel="noreferrer">{linkLabel}</a></footer>
     </article>)}</div>
     {filtered.length === 0 && <p className="news-empty">No official releases match that search.</p>}
     {visible < filtered.length && <button type="button" className="official-news-more" onClick={() => setVisible((count) => count + 10)}>Show 10 more official releases ↓</button>}
@@ -83,10 +85,10 @@ export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker:
     <div className="company-news-notice"><strong>Official does not mean independently verified.</strong><span>Company summaries reflect management’s framing. Learn What You Own keeps them on-site and promotes material developments into the dossier only after checking filings and other direct evidence.</span></div>
     {error && <p className="news-error">{error} <a href={`https://news.google.com/search?q=${encodeURIComponent(ticker)}`} target="_blank" rel="noreferrer">Open news search ↗</a></p>}
     {!data && !error && <div className="news-loading"><i/><span>Loading current releases and coverage…</span></div>}
-    {data && <div className="company-news-grid">
-      <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · ON-SITE ARCHIVE</small><h3>Official company releases &amp; SEC filings</h3></div><span>{data.official.length}</span></div><div className="official-source-health">{(data.officialSources ?? []).map((source) => <span className={`source-${source.status}`} key={source.source}>{source.source === "company" ? "Company newsroom" : "SEC EDGAR"}: {source.status === "working" ? `${source.records} loaded` : source.status.replace("-", " ")}</span>)}</div><OfficialNewsList items={data.official} empty="No official records were returned. The source-status labels above show which primary adapter needs attention."/></section>
+    {data && <><div className="company-news-grid">
+      <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · COMPANY-PUBLISHED PRESS RELEASES</small><h3>Official company releases</h3></div><span>{data.companyReleases.length}</span></div><div className="official-source-health">{(data.officialSources ?? []).filter((source) => source.source === "company").map((source) => <span className={`source-${source.status}`} key={source.source}>Company newsroom: {source.status === "working" ? `${source.records} loaded` : source.status.replace("-", " ")}</span>)}</div><OfficialNewsList items={data.companyReleases} empty="No company press releases were returned. This does not mean there were no SEC filings; those are listed separately below."/></section>
       <section><div className="news-column-title"><div><small>EXTERNAL · MULTI-SOURCE</small><h3>Public &amp; industry coverage</h3></div><span>{data.public.length}</span></div><NewsList items={data.public} providers={data.providers} empty="No recent public coverage was returned. Try again later or open a broader news search."/></section>
-    </div>}
+    </div><section className="sec-news-column"><div className="news-column-title"><div><small>PRIMARY · REGULATORY</small><h3>SEC EDGAR filings</h3></div><span>{data.secFilings.length}</span></div><div className="official-source-health">{(data.officialSources ?? []).filter((source) => source.source === "sec").map((source) => <span className={`source-${source.status}`} key={source.source}>SEC EDGAR: {source.status === "working" ? `${source.records} loaded` : source.status.replace("-", " ")}</span>)}</div><OfficialNewsList items={data.secFilings} searchLabel="SEARCH SEC FILINGS" linkLabel="Open Exact SEC Filing ↗" empty="No SEC filings were returned for this ticker."/></section></>}
     {data && <div className="news-updated">Feed checked {dateLabel(data.updatedAt)} · {data.providers.length ? data.providers.join(" + ") : "External indexes unavailable"}{data.unavailableProviders.length ? ` · Temporarily unavailable: ${data.unavailableProviders.join(", ")}` : ""}</div>}
   </section>;
 }
