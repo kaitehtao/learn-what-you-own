@@ -912,6 +912,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /secOfficialNews\(cik\)/);
   assert.match(route, /officialSources: \[companyOfficial\.health, secOfficial\.health\]/);
   assert.match(route, /news\.microsoft\.com\/source\/feed/);
+  assert.match(route, /about\.netflix\.com\/en\/feed\.xml/);
   assert.match(route, /www\.apple\.com\/newsroom\/rss-feed\.rss/);
   assert.match(route, /nvidianews\.nvidia\.com\/releases\.xml/);
   assert.match(route, /www\.bing\.com\/news\/search/);
