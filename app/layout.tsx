@@ -61,6 +61,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/notebook">Notebook</Link>
                 <Link href="/messages">Messages</Link>
                 <Link href="/contribute">Contribute research</Link>
+                <Link href="/contributors">Contributor leaderboard</Link>
                 <Link href="/login?mode=signup">Create free account</Link>
                 <Link href="/account">Account</Link>
               </div>
