@@ -10,6 +10,15 @@ type NewsItem = {
   summary?: string;
   category?: string;
   readingMinutes?: number;
+  provider?: string;
+};
+
+type GdeltArticle = {
+  title?: string;
+  url?: string;
+  seendate?: string;
+  domain?: string;
+  sourcecountry?: string;
 };
 
 function decodeXml(value: string): string {
@@ -122,13 +131,69 @@ async function fetchText(url: string): Promise<string> {
   }
 }
 
+async function fetchJson<T>(url: string): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "LearnWhatYouOwn/1.0 research@learnwhatyouown.com",
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`News API returned ${response.status}.`);
+    return await response.json() as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function bingNews(query: string): Promise<NewsItem[]> {
   const params = new URLSearchParams({ q: query, format: "rss" });
   return parseRss(await fetchText(`https://www.bing.com/news/search?${params}`)).map((item) => ({
     ...item,
     url: item.url.replace(/^http:\/\/www\.bing\.com/i, "https://www.bing.com"),
     source: item.source === "Public news source" ? "Bing News index" : item.source,
+    provider: "Bing News",
   }));
+}
+
+async function googleNews(query: string): Promise<NewsItem[]> {
+  const params = new URLSearchParams({ q: query, hl: "en-US", gl: "US", ceid: "US:en" });
+  return parseRss(await fetchText(`https://news.google.com/rss/search?${params}`)).map((item) => ({
+    ...item,
+    source: item.source === "Public news source" ? "Google News index" : item.source,
+    provider: "Google News",
+  }));
+}
+
+function gdeltDate(value: string | undefined): string {
+  if (!value) return "";
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z` : value;
+}
+
+async function gdeltNews(query: string): Promise<NewsItem[]> {
+  const params = new URLSearchParams({
+    query,
+    mode: "ArtList",
+    maxrecords: "25",
+    format: "json",
+    sort: "HybridRel",
+    timespan: "7d",
+  });
+  const payload = await fetchJson<{ articles?: GdeltArticle[] }>(`https://api.gdeltproject.org/api/v2/doc/doc?${params}`);
+  return (payload.articles ?? []).flatMap((article) => {
+    if (!article.title || !article.url || !/^https?:\/\//.test(article.url)) return [];
+    return [{
+      title: article.title.trim(),
+      url: article.url,
+      publishedAt: gdeltDate(article.seendate),
+      source: article.domain || article.sourcecountry || "GDELT indexed publisher",
+      provider: "GDELT",
+    }];
+  });
 }
 
 async function officialNews(newsroomUrl: string | null, feedUrl: string | null): Promise<NewsItem[]> {
@@ -150,6 +215,24 @@ function unique(items: NewsItem[], limit: number): NewsItem[] {
   }).slice(0, limit);
 }
 
+function mergePublicSources(groups: NewsItem[][], limit: number): NewsItem[] {
+  const queues = groups.map((group) => unique(group, 30));
+  const merged: NewsItem[] = [];
+  const seen = new Set<string>();
+  while (merged.length < limit && queues.some((queue) => queue.length)) {
+    for (const queue of queues) {
+      const item = queue.shift();
+      if (!item) continue;
+      const key = item.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+      if (merged.length === limit) break;
+    }
+  }
+  return merged;
+}
+
 export async function GET(request: Request) {
   const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) return Response.json({ error: "Choose a valid ticker." }, { status: 400 });
@@ -164,15 +247,28 @@ export async function GET(request: Request) {
   const newsroomFeedUrl = dossier?.newsroomFeedUrl ?? null;
   const displayQuery = `"${companyName.replace(/\b(INC|INCORPORATED|LTD|PLC|CORP|CORPORATION)\.?\b/gi, "").replace(/\s+/g, " ").trim()}" ${ticker}`;
 
-  const [officialResult, publicResult] = await Promise.allSettled([
-    officialNews(newsroomUrl, newsroomFeedUrl),
-    bingNews(displayQuery),
+  const publicSources = [
+    { provider: "Bing News", load: () => bingNews(displayQuery) },
+    { provider: "Google News", load: () => googleNews(displayQuery) },
+    { provider: "GDELT", load: () => gdeltNews(displayQuery) },
+  ];
+  const [officialResult, publicResults] = await Promise.all([
+    officialNews(newsroomUrl, newsroomFeedUrl).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason) => ({ status: "rejected" as const, reason }),
+    ),
+    Promise.allSettled(publicSources.map((source) => source.load())),
   ]);
   const official = officialResult.status === "fulfilled" ? unique(officialResult.value, 100) : [];
   const officialTitles = new Set(official.map((item) => item.title.toLowerCase()));
-  const publicNews = publicResult.status === "fulfilled"
-    ? unique(publicResult.value.filter((item) => !officialTitles.has(item.title.toLowerCase())), 8)
-    : [];
+  const fulfilledPublicGroups = publicResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  const publicNews = mergePublicSources(fulfilledPublicGroups, 18)
+    .filter((item) => !officialTitles.has(item.title.toLowerCase()));
+  const providers = publicSources.flatMap((source, index) => {
+    const result = publicResults[index];
+    return result.status === "fulfilled" && result.value.length ? [source.provider] : [];
+  });
+  const unavailableProviders = publicSources.flatMap((source, index) => publicResults[index].status === "rejected" ? [source.provider] : []);
 
   return Response.json({
     ticker,
@@ -180,7 +276,9 @@ export async function GET(request: Request) {
     newsroomUrl,
     official,
     public: publicNews,
+    providers,
+    unavailableProviders,
     updatedAt: new Date().toISOString(),
-    partial: officialResult.status === "rejected" || publicResult.status === "rejected",
+    partial: officialResult.status === "rejected" || unavailableProviders.length > 0,
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }

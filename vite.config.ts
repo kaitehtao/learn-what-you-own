@@ -26,9 +26,10 @@ const localBindingConfig = {
     { pattern: "learnwhatyouown.com", custom_domain: true },
     { pattern: "www.learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
   ],
-  // 15:00 UTC is 08:00 PDT; 16:00 UTC is 08:00 PST. The Worker confirms
-  // America/Los_Angeles local time before delivering, so only one run proceeds.
-  triggers: { crons: ["0 15,16 * * *"] },
+  // Rotate filing refreshes through the dossier universe every six hours.
+  // 15:00 UTC is 08:00 PDT and 16:00 UTC is 08:00 PST; the Worker confirms
+  // local time before member alerts and the digest are delivered.
+  triggers: { crons: ["0 0,6,12,18 * * *", "0 15,16 * * *"] },
   d1_databases: d1
     ? [
         {

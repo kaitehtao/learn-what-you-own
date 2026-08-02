@@ -115,15 +115,13 @@ const worker = {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // The trigger runs at both possible 08:00 Pacific UTC offsets. Only the
-    // invocation that is actually 08:00 in Los Angeles proceeds, keeping the
-    // delivery time stable across daylight-saving changes.
-    if (!isPacificDigestHour(controller.scheduledTime)) return;
+    // Filing facts rotate through the published dossier universe several times
+    // per day. The member digest and earnings alerts still run only at 08:00
+    // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
-      await Promise.all([
-        refreshScheduledEarningsAlerts(env),
-        refreshScheduledSecFacts(env),
-      ]);
+      await refreshScheduledSecFacts(env);
+      if (!isPacificDigestHour(controller.scheduledTime)) return;
+      await refreshScheduledEarningsAlerts(env);
       await deliverScheduledDigest(env);
     })());
   },
