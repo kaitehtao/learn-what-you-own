@@ -138,10 +138,13 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
 
   assert.match(panel, /PUBLIC FILING FACTS/);
   assert.match(panel, /BUSINESS RELATIONSHIP GRAPH/);
+  assert.match(panel, /DOSSIER LAST UPDATED/);
+  assert.match(panel, /SEC facts refreshed/);
   assert.match(panel, /relatedTicker[\s\S]*\/company\//);
-  assert.match(featured, /<ResearchFoundationPanel/);
+  assert.match(featured, /editorialUpdatedAt=\{dossier\.reviewed/);
+  assert.match(featured, /DOSSIER LAST UPDATED/);
   assert.match(starter, /<ResearchFoundationPanel/);
-  assert.match(ondas, /<ResearchFoundationPanel/);
+  assert.match(ondas, /editorialUpdatedAt="August 1, 2026"/);
 });
 
 test("publishes flagship-depth SPCX and TSLA owner dossiers with SEC-grounded official archives", async () => {

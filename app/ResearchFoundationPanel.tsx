@@ -106,6 +106,7 @@ function relationshipHref(ticker: string, type = "Supplier / customer relationsh
 
 function shortDate(value: string | null | undefined) {
   if (!value) return "not yet refreshed";
+  if (/^[A-Za-z]+\s+\d{4}$/.test(value.trim())) return value.trim();
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? value.slice(0, 10) : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -133,7 +134,7 @@ function quarterlyStatusLabel(status: QuarterlyDossierUpdate["status"]) {
   return "Filed facts refreshed · thesis review queued";
 }
 
-export function ResearchFoundationPanel({ ticker, companyName }: { ticker: string; companyName: string }) {
+export function ResearchFoundationPanel({ ticker, companyName, editorialUpdatedAt }: { ticker: string; companyName: string; editorialUpdatedAt?: string }) {
   const [data, setData] = useState<ResearchResponse>({ facts: [], claims: [], relationships: [], factsImport: null, quarterlyUpdates: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -161,11 +162,15 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
   const latestPeriodEnd = data.facts.reduce((latest, fact) => fact.periodEnd > latest ? fact.periodEnd : latest, "");
   const suppliers = data.relationships.filter((relationship) => relationship.direction === "supplier");
   const customers = data.relationships.filter((relationship) => relationship.direction === "customer");
+  const filedDataUpdatedAt = data.factsImport?.lastSuccessAt ?? data.facts[0]?.updatedAt;
 
   return <section className="research-foundation" id="research-foundation">
     <div className="research-foundation-heading">
       <div><span className="kicker">EVIDENCE + NETWORK INTELLIGENCE</span><h2>The facts beneath the ownership story</h2><p>Numerical facts come from public filings. Editorial analysis and member insights remain visibly labeled so evidence, interpretation, and opinion never become interchangeable.</p></div>
-      <div className="research-foundation-actions">{ticker==="AAPL"&&<Link href="/company/aapl/supply-chain">Open Apple supply-chain document →</Link>}<Link href={relationshipHref(ticker)}>Add relationship evidence →</Link></div>
+      <div className="research-foundation-actions">
+        <div className="dossier-update-dates"><small>DOSSIER LAST UPDATED</small><strong>{editorialUpdatedAt ? shortDate(editorialUpdatedAt) : "Editorial research not yet published"}</strong><span>{filedDataUpdatedAt ? `SEC facts refreshed ${shortDate(filedDataUpdatedAt)}` : "Awaiting first SEC facts refresh"}</span></div>
+        {ticker==="AAPL"&&<Link href="/company/aapl/supply-chain">Open Apple supply-chain document →</Link>}<Link href={relationshipHref(ticker)}>Add relationship evidence →</Link>
+      </div>
     </div>
 
     {loading ? <div className="research-foundation-state">Loading filing-grounded research…</div> : error ? <div className="research-foundation-state error">{error}</div> : <>
