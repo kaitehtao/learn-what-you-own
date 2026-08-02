@@ -869,7 +869,12 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Public &amp; industry coverage/);
   assert.match(panel, /Bing News, Google News, and GDELT/);
   assert.match(panel, /news-provider-filters/);
-  assert.match(route, /officialNews\(newsroomUrl, newsroomFeedUrl\)/);
+  assert.match(route, /companyOfficialNews\(companyName, newsroomUrl, newsroomFeedUrl\)/);
+  assert.match(route, /secOfficialNews\(cik\)/);
+  assert.match(route, /officialSources: \[companyOfficial\.health, secOfficial\.health\]/);
+  assert.match(route, /news\.microsoft\.com\/source\/feed/);
+  assert.match(route, /www\.apple\.com\/newsroom\/rss-feed\.rss/);
+  assert.match(route, /nvidianews\.nvidia\.com\/releases\.xml/);
   assert.match(route, /www\.bing\.com\/news\/search/);
   assert.match(route, /news\.google\.com\/rss\/search/);
   assert.match(route, /api\.gdeltproject\.org\/api\/v2\/doc\/doc/);
@@ -879,7 +884,8 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /parseCoreWeaveNewsroom/);
   assert.match(route, /data-content-type=\["'\]press-release/);
-  assert.match(route, /unique\(officialResult\.value, 100\)/);
+  assert.match(route, /unique\(\[\.\.\.companyOfficial\.items, \.\.\.secOfficial\.items\]/);
+  assert.match(panel, /official-source-health/);
   assert.match(route, /stale-while-revalidate=900/);
   assert.match(dossiers, /www\.coreweave\.com\/newsroom/);
   assert.match(dossiers, /investor\.amctheatres\.com\/news-events\/press-releases/);
@@ -893,7 +899,7 @@ test("separates company releases from external news on every dossier", async () 
 });
 
 test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
-  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, quarterlyMigration, amcSeed, publisher, styles, viteConfig] = await Promise.all([
+  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, quarterlyMigration, runtimeSchema, amcSeed, publisher, styles, viteConfig] = await Promise.all([
     source("app/ResearchFoundationPanel.tsx"),
     source("app/api/research/route.ts"),
     source("app/data/secFactsRepository.ts"),
@@ -902,6 +908,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
     source("db/schema.ts"),
     source("drizzle/0007_sec-fact-import-status.sql"),
     source("drizzle/0012_quarterly_dossier_updates.sql"),
+    source("db/runtimeSchema.ts"),
     source("drizzle/0010_seed-amc-sec-facts.sql"),
     source("scripts/generate-normalized-dossier-publish.ts"),
     source("app/globals.css"),
@@ -926,6 +933,9 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(quarterlyMigration, /quarterly_dossier_updates/);
   assert.match(quarterlyMigration, /facts_refreshed/);
   assert.match(researchApi, /quarterlyUpdates/);
+  assert.match(researchApi, /Promise\.allSettled/);
+  assert.match(researchApi, /continuing with core research sources/);
+  assert.match(runtimeSchema, /CREATE TABLE IF NOT EXISTS quarterly_dossier_updates/);
   assert.match(panel, /QUARTERLY DOSSIER REFRESH/);
   assert.match(panel, /thesis review queued/);
   assert.match(worker, /learn-what-you-own\.julianspencer\.chatgpt\.site/);
