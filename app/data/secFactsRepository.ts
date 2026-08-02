@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../db";
+import { ensureQuarterlyDossierUpdatesSchema } from "../../db/runtimeSchema";
 import { companies, companyDossiers, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../db/schema";
 import { getSecCompany } from "./secCompanies.generated";
 import { normalizeCompanyFacts, type SecCompanyFacts } from "./secMetrics";
@@ -22,6 +23,7 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
     .sort((left, right) => right.filedAt.localeCompare(left.filedAt) || right.periodEnd.localeCompare(left.periodEnd))[0];
   if (!latest) return null;
 
+  await ensureQuarterlyDossierUpdatesSchema();
   const db = getDb();
   const published = await db.select({ ticker: companyDossiers.ticker }).from(companyDossiers)
     .where(and(eq(companyDossiers.ticker, ticker), eq(companyDossiers.status, "published"))).limit(1);
