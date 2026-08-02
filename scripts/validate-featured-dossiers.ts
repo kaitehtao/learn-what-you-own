@@ -1,19 +1,19 @@
 import { featuredDossiers } from "../app/data/featuredDossiers";
+import { sp500DossierBatch01, sp500DossierBatch02 } from "../app/data/sp500DossierBatches";
 
-const originalBenchmarkTickers = [
-  "AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "SPCX", "BB", "BE",
-  "BA", "CAT", "CRWV", "ORCL", "RCL", "AMD", "MSFT", "GOOG", "META",
-];
-
-const sp500Batch01Tickers = [
-  "AAPL", "NVDA", "GOOG", "GOOGL", "MSFT", "AMZN", "AVGO", "META", "TSLA", "BRK.B",
-  "LLY", "MU", "JPM", "WMT", "AMD", "V", "XOM", "JNJ", "MA", "INTC", "ABBV", "CSCO",
-  "BAC", "COST", "AMAT", "CVX", "UNH", "KO", "CAT", "LRCX", "GE",
-];
-
-const requiredTickers = [...new Set([...originalBenchmarkTickers, ...sp500Batch01Tickers])];
+const requiredTickers = Object.keys(featuredDossiers).sort();
 
 const failures: string[] = [];
+const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02];
+
+if (rankedSpxCompanies.length !== 100) failures.push(`S&P 500 program: expected 100 ranked companies, found ${rankedSpxCompanies.length}`);
+for (let index = 0; index < rankedSpxCompanies.length; index += 1) {
+  const company = rankedSpxCompanies[index];
+  if (company.rank !== index + 1) failures.push(`${company.ticker}: expected rank ${index + 1}, found ${company.rank}`);
+  if (index > 0 && company.marketCap > rankedSpxCompanies[index - 1].marketCap) {
+    failures.push(`${company.ticker}: market cap exceeds prior-ranked ${rankedSpxCompanies[index - 1].ticker}`);
+  }
+}
 
 for (const ticker of requiredTickers) {
   const dossier = featuredDossiers[ticker];
