@@ -17,11 +17,11 @@ function latestFact(payload: SecCompanyFacts, concept: string, unit: string) {
     .sort((left, right) => (right.filed ?? "").localeCompare(left.filed ?? "") || (right.end ?? "").localeCompare(left.end ?? ""))[0] ?? null;
 }
 
-async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000): Promise<T> {
+async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000, extraHeaders: Record<string, string> = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { headers: { accept: "application/json", "user-agent": userAgent }, signal: controller.signal });
+    const response = await fetch(url, { headers: { accept: "application/json, text/plain, */*", "user-agent": userAgent, ...extraHeaders }, signal: controller.signal });
     if (!response.ok) throw new Error(`Ownership source returned ${response.status}.`);
     return await response.json() as T;
   } finally { clearTimeout(timeout); }
@@ -77,10 +77,11 @@ export async function GET(request: Request) {
   const nasdaqInstitutionalUrl = `https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/institutional-holdings?limit=25&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`;
   const nasdaqInsidersUrl = `https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/insider-trades?limit=500`;
   const browserAgent = "Mozilla/5.0 (compatible; LearnWhatYouOwn/1.0; +https://learnwhatyouown.com)";
+  const nasdaqHeaders = { "accept-language": "en-US,en;q=0.9", referer: "https://www.nasdaq.com/", origin: "https://www.nasdaq.com" };
   const [secResult, institutionalResult, insiderResult] = await Promise.allSettled([
     fetchJson<SecCompanyFacts>(secSourceUrl, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com"),
-    fetchJson<NasdaqInstitutional>(nasdaqInstitutionalUrl, browserAgent),
-    fetchJson<NasdaqInsiders>(nasdaqInsidersUrl, browserAgent),
+    fetchJson<NasdaqInstitutional>(nasdaqInstitutionalUrl, browserAgent, 15_000, nasdaqHeaders),
+    fetchJson<NasdaqInsiders>(nasdaqInsidersUrl, browserAgent, 15_000, nasdaqHeaders),
   ]);
 
   const sec = secResult.status === "fulfilled" ? secResult.value : null;
@@ -88,6 +89,7 @@ export async function GET(request: Request) {
   const publicFloat = sec ? latestFact(sec, "EntityPublicFloat", "USD") : null;
   const institutional = institutionalResult.status === "fulfilled" ? institutionalResult.value.data : null;
   const institutionalPct = numberFrom(institutional?.ownershipSummary?.SharesOutstandingPCT?.value);
+  const summarizedSharesOutstanding = numberFrom(institutional?.ownershipSummary?.ShareoutstandingTotal?.value);
   const activeTotal = institutional?.activePositions?.rows?.find((row) => row.positions === "Total Institutional Shares");
   const holderRows = institutional?.holdingsTransactions?.table?.rows ?? [];
   const insiderRows = insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.table?.rows ?? [] : [];
@@ -96,7 +98,9 @@ export async function GET(request: Request) {
   return Response.json({
     ticker,
     available: true,
-    sharesOutstanding: shares ? { value: shares.val, asOf: shares.end, filedAt: shares.filed, form: shares.form, sourceUrl: secFilingUrl(cik, shares.accn) } : null,
+    sharesOutstanding: shares ? { value: shares.val, asOf: shares.end, filedAt: shares.filed, form: shares.form, sourceLabel: `SEC ${shares.form}`, sourceUrl: secFilingUrl(cik, shares.accn) }
+      : summarizedSharesOutstanding !== null ? { value: summarizedSharesOutstanding * 1_000_000, asOf: holderRows.map((row) => row.date ?? "").sort().at(-1) ?? "", filedAt: "", form: "13F-derived", sourceLabel: "Public ownership summary", sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${ticker.toLowerCase()}/institutional-holdings` }
+        : null,
     publicTradableFloat: publicFloat ? { value: publicFloat.val, unit: "USD", asOf: publicFloat.end, filedAt: publicFloat.filed, form: publicFloat.form, sourceUrl: secFilingUrl(cik, publicFloat.accn), methodology: "SEC-reported market value of voting and non-voting common equity held by non-affiliates." } : null,
     institutional: institutionalPct === null ? null : {
       percent: institutionalPct,
