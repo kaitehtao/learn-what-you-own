@@ -51,6 +51,7 @@ export function Header() {
           <Link href="/research/batches">Research</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/contribute">Contribute</Link>
+          <Link href="/contributors">Contributors</Link>
           <Link href="/feedback">Feedback</Link>
           {signedIn && (
             <details className="workspace-menu">
