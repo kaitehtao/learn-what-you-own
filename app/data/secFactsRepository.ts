@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { companies, filingFactImports, filingFacts } from "../../db/schema";
+import { companies, companyDossiers, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../db/schema";
 import { getSecCompany } from "./secCompanies.generated";
 import { normalizeCompanyFacts, type SecCompanyFacts } from "./secMetrics";
 import { researchUniverse } from "./universe";
@@ -13,7 +13,45 @@ export type SecFactImportResult = {
   metrics: number;
   status: "success" | "no_compatible_facts";
   source: string;
+  quarterlyUpdate: { accessionNumber: string; form: string; filedAt: string; periodEnd: string } | null;
 };
+
+async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnType<typeof normalizeCompanyFacts>) {
+  const latest = normalized
+    .filter((fact) => /^(10-Q|10-K)(?:\/A)?$/.test(fact.form))
+    .sort((left, right) => right.filedAt.localeCompare(left.filedAt) || right.periodEnd.localeCompare(left.periodEnd))[0];
+  if (!latest) return null;
+
+  const db = getDb();
+  const published = await db.select({ ticker: companyDossiers.ticker }).from(companyDossiers)
+    .where(and(eq(companyDossiers.ticker, ticker), eq(companyDossiers.status, "published"))).limit(1);
+  if (!published.length) return null;
+
+  await db.insert(quarterlyDossierUpdates).values({
+    ticker,
+    accessionNumber: latest.accessionNumber,
+    form: latest.form,
+    periodEnd: latest.periodEnd,
+    filedAt: latest.filedAt,
+    sourceUrl: latest.sourceUrl,
+  }).onConflictDoUpdate({
+    target: [quarterlyDossierUpdates.ticker, quarterlyDossierUpdates.accessionNumber],
+    set: {
+      form: latest.form,
+      periodEnd: latest.periodEnd,
+      filedAt: latest.filedAt,
+      sourceUrl: latest.sourceUrl,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    },
+  });
+
+  return {
+    accessionNumber: latest.accessionNumber,
+    form: latest.form,
+    filedAt: latest.filedAt,
+    periodEnd: latest.periodEnd,
+  };
+}
 
 export async function importSecFilingFacts(tickerValue: string): Promise<SecFactImportResult> {
   const ticker = tickerValue.trim().toUpperCase();
@@ -80,6 +118,7 @@ export async function importSecFilingFacts(tickerValue: string): Promise<SecFact
     }
 
     const metrics = new Set(normalized.map((fact) => fact.metricKey)).size;
+    const quarterlyUpdate = await recordLatestQuarterlyUpdate(ticker, normalized);
     const status = normalized.length ? "success" as const : "no_compatible_facts" as const;
     await db.insert(filingFactImports).values({
       ticker,
@@ -100,7 +139,7 @@ export async function importSecFilingFacts(tickerValue: string): Promise<SecFact
         errorMessage: null,
       },
     });
-    return { ticker, imported: normalized.length, metrics, status, source };
+    return { ticker, imported: normalized.length, metrics, status, source, quarterlyUpdate };
   } catch (error) {
     const message = error instanceof Error ? error.message : "SEC import failed.";
     await db.insert(filingFactImports).values({

@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type NewsItem = { title: string; url: string; publishedAt: string; source: string; summary?: string; category?: string; readingMinutes?: number };
+type NewsItem = { title: string; url: string; publishedAt: string; source: string; summary?: string; category?: string; readingMinutes?: number; provider?: string };
 type NewsResponse = {
   official: NewsItem[];
   public: NewsItem[];
   newsroomUrl: string | null;
   updatedAt: string;
   partial: boolean;
+  providers: string[];
+  unavailableProviders: string[];
   error?: string;
 };
 
@@ -17,11 +19,19 @@ function dateLabel(value: string): string {
   return Number.isNaN(parsed.valueOf()) ? "Date unavailable" : parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function NewsList({ items, empty }: { items: NewsItem[]; empty: string }) {
+function NewsList({ items, providers, empty }: { items: NewsItem[]; providers: string[]; empty: string }) {
+  const [activeProvider, setActiveProvider] = useState("All sources");
+  const filtered = activeProvider === "All sources" ? items : items.filter((item) => item.provider === activeProvider);
   if (items.length === 0) return <p className="news-empty">{empty}</p>;
-  return <div className="company-news-list">{items.map((item) => <a href={item.url} target="_blank" rel="noreferrer" key={`${item.url}-${item.title}`}>
-    <span>{item.source}</span><h4>{item.title}</h4><small>{dateLabel(item.publishedAt)} · Open story ↗</small>
-  </a>)}</div>;
+  return <div className="external-news-archive">
+    <div className="news-provider-filters" aria-label="Filter external coverage by news index">
+      {["All sources", ...providers].map((provider) => <button type="button" className={activeProvider === provider ? "active" : ""} onClick={() => setActiveProvider(provider)} key={provider}>{provider}</button>)}
+    </div>
+    <div className="company-news-list">{filtered.map((item) => <a href={item.url} target="_blank" rel="noreferrer" key={`${item.url}-${item.title}`}>
+      <span>{item.source}{item.provider ? ` · indexed by ${item.provider}` : ""}</span><h4>{item.title}</h4><small>{dateLabel(item.publishedAt)} · Open original publisher ↗</small>
+    </a>)}</div>
+    {filtered.length === 0 && <p className="news-empty">No current stories were returned by this source.</p>}
+  </div>;
 }
 
 function OfficialNewsList({ items, empty }: { items: NewsItem[]; empty: string }) {
@@ -68,14 +78,14 @@ export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker:
 
   const officialUrl = data?.newsroomUrl || newsroomUrl;
   return <section className="company-news-panel" id="news">
-    <div className="company-news-heading"><div><span className="kicker">NEWS &amp; DEVELOPMENTS · {ticker}</span><h2>What is changing around {companyName}</h2><p>Read the company’s official release archive here, alongside clearly separated independent coverage. Original source links remain available for verification.</p></div>{officialUrl && <a href={officialUrl} target="_blank" rel="noreferrer">Source archive ↗</a>}</div>
+    <div className="company-news-heading"><div><span className="kicker">NEWS &amp; DEVELOPMENTS · {ticker}</span><h2>What is changing around {companyName}</h2><p>Read the company’s official release archive here, alongside independent coverage gathered across Bing News, Google News, and GDELT. Original publisher links remain available for verification.</p></div>{officialUrl && <a href={officialUrl} target="_blank" rel="noreferrer">Source archive ↗</a>}</div>
     <div className="company-news-notice"><strong>Official does not mean independently verified.</strong><span>Company summaries reflect management’s framing. Learn What You Own keeps them on-site and promotes material developments into the dossier only after checking filings and other direct evidence.</span></div>
     {error && <p className="news-error">{error} <a href={`https://news.google.com/search?q=${encodeURIComponent(ticker)}`} target="_blank" rel="noreferrer">Open news search ↗</a></p>}
     {!data && !error && <div className="news-loading"><i/><span>Loading current releases and coverage…</span></div>}
     {data && <div className="company-news-grid">
       <section className="official-news-column"><div className="news-column-title"><div><small>PRIMARY · ON-SITE ARCHIVE</small><h3>Official company releases &amp; SEC filings</h3></div><span>{data.official.length}</span></div><OfficialNewsList items={data.official} empty={officialUrl ? "No official releases or filings were returned by the primary archive." : "An official newsroom has not yet been curated for this ticker."}/></section>
-      <section><div className="news-column-title"><div><small>EXTERNAL</small><h3>Public &amp; industry coverage</h3></div><span>{data.public.length}</span></div><NewsList items={data.public} empty="No recent public coverage was returned. Try again later or open a broader news search."/></section>
+      <section><div className="news-column-title"><div><small>EXTERNAL · MULTI-SOURCE</small><h3>Public &amp; industry coverage</h3></div><span>{data.public.length}</span></div><NewsList items={data.public} providers={data.providers} empty="No recent public coverage was returned. Try again later or open a broader news search."/></section>
     </div>}
-    {data && <div className="news-updated">Feed checked {dateLabel(data.updatedAt)}{data.partial ? " · One source was temporarily unavailable" : ""}</div>}
+    {data && <div className="news-updated">Feed checked {dateLabel(data.updatedAt)} · {data.providers.length ? data.providers.join(" + ") : "External indexes unavailable"}{data.unavailableProviders.length ? ` · Temporarily unavailable: ${data.unavailableProviders.join(", ")}` : ""}</div>}
   </section>;
 }
