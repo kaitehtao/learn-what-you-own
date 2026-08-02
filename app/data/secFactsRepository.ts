@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { ensureQuarterlyDossierUpdatesSchema } from "../../db/runtimeSchema";
-import { companies, companyDossiers, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../db/schema";
+import { companies, companyDossiers, dossierSources, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../db/schema";
+import { featuredDossiers } from "./featuredDossiers";
 import { getSecCompany } from "./secCompanies.generated";
 import { normalizeCompanyFacts, type SecCompanyFacts } from "./secMetrics";
 import { researchUniverse } from "./universe";
@@ -16,6 +17,67 @@ export type SecFactImportResult = {
   source: string;
   quarterlyUpdate: { accessionNumber: string; form: string; filedAt: string; periodEnd: string } | null;
 };
+
+export async function ensureFeaturedDossierRegistration(tickerValue: string) {
+  const ticker = tickerValue.trim().toUpperCase();
+  const dossier = featuredDossiers[ticker];
+  const company = researchUniverse.find((candidate) => candidate.ticker === ticker);
+  const secCompany = getSecCompany(ticker);
+  if (!dossier || !company || !secCompany) return false;
+
+  const db = getDb();
+  await db.insert(companies).values({
+    ticker: company.ticker,
+    name: company.name,
+    sector: company.sector,
+    exchange: company.exchange,
+    marketCap: company.marketCap,
+    membershipsJson: JSON.stringify(company.memberships),
+    indexWeightsJson: JSON.stringify(company.indexWeights),
+    cik: secCompany.cik,
+  }).onConflictDoUpdate({
+    target: companies.ticker,
+    set: {
+      name: company.name,
+      sector: company.sector,
+      exchange: company.exchange,
+      marketCap: company.marketCap,
+      membershipsJson: JSON.stringify(company.memberships),
+      indexWeightsJson: JSON.stringify(company.indexWeights),
+      cik: secCompany.cik,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    },
+  });
+
+  await db.insert(companyDossiers).values({
+    ticker,
+    status: "published",
+    contentJson: JSON.stringify(dossier),
+    verifiedBy: "Founding editorial research",
+    verifiedAt: sql`CURRENT_TIMESTAMP`,
+    publishedAt: sql`CURRENT_TIMESTAMP`,
+  }).onConflictDoUpdate({
+    target: companyDossiers.ticker,
+    set: {
+      status: "published",
+      contentJson: JSON.stringify(dossier),
+      verifiedBy: "Founding editorial research",
+      verifiedAt: sql`CURRENT_TIMESTAMP`,
+      publishedAt: sql`COALESCE(${companyDossiers.publishedAt}, CURRENT_TIMESTAMP)`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    },
+  });
+
+  for (const source of dossier.sources) {
+    await db.insert(dossierSources).values({
+      ticker,
+      sourceType: source.href.includes("sec.gov") ? "sec" : "company",
+      title: source.title,
+      url: source.href,
+    }).onConflictDoNothing();
+  }
+  return true;
+}
 
 async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnType<typeof normalizeCompanyFacts>) {
   const latest = normalized

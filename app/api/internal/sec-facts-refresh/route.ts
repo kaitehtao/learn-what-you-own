@@ -1,7 +1,8 @@
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { companyDossiers, filingFactImports } from "../../../../db/schema";
-import { importSecFilingFacts } from "../../../data/secFactsRepository";
+import { filingFactImports } from "../../../../db/schema";
+import { featuredDossiers } from "../../../data/featuredDossiers";
+import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../../data/secFactsRepository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,18 +18,20 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const candidates = await db.select({
-    ticker: companyDossiers.ticker,
+  const importHistory = await db.select({
+    ticker: filingFactImports.ticker,
     lastAttemptedAt: filingFactImports.lastAttemptedAt,
-  }).from(companyDossiers)
-    .leftJoin(filingFactImports, eq(filingFactImports.ticker, companyDossiers.ticker))
-    .where(eq(companyDossiers.status, "published"))
-    .orderBy(asc(filingFactImports.lastAttemptedAt), asc(companyDossiers.ticker))
-    .limit(SCHEDULED_REFRESH_LIMIT);
+  }).from(filingFactImports).orderBy(asc(filingFactImports.lastAttemptedAt));
+  const attempts = new Map(importHistory.map((row) => [row.ticker, row.lastAttemptedAt]));
+  const candidates = [...new Set(Object.values(featuredDossiers).map((dossier) => dossier.ticker))]
+    .map((ticker) => ({ ticker, lastAttemptedAt: attempts.get(ticker) ?? null }))
+    .sort((left, right) => String(left.lastAttemptedAt ?? "").localeCompare(String(right.lastAttemptedAt ?? "")) || left.ticker.localeCompare(right.ticker))
+    .slice(0, SCHEDULED_REFRESH_LIMIT);
 
   const results: Array<{ ticker: string; imported?: number; metrics?: number; quarterlyUpdate?: unknown; status: string; error?: string }> = [];
   for (const candidate of candidates) {
     try {
+      await ensureFeaturedDossierRegistration(candidate.ticker);
       const imported = await importSecFilingFacts(candidate.ticker);
       results.push({ ticker: candidate.ticker, imported: imported.imported, metrics: imported.metrics, quarterlyUpdate: imported.quarterlyUpdate, status: imported.status });
     } catch (error) {
