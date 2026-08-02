@@ -8,6 +8,7 @@ export const rewardRules = {
   approvedCompanyDossier: 175,
   featurePlanned: 40,
   featureCompleted: 75,
+  approvedInterview: 200,
 } as const;
 
 export async function awardPoints(input: {

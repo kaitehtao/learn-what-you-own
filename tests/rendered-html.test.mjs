@@ -1134,3 +1134,24 @@ test("awards moderator-approved value and highlights public contributors", async
   assert.match(schema, /memberRewardLedger/);
   assert.match(migration, /member_reward_source_unique_idx/);
 });
+
+test("separates professional contributor interviews from company management interviews", async () => {
+  const [page, professional, publicApi, adminApi, schema, migration] = await Promise.all([
+    source("app/interviews/page.tsx"),
+    source("app/interviews/ProfessionalInterviews.tsx"),
+    source("app/api/professional-interviews/route.ts"),
+    source("app/api/admin/professional-interviews/route.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0017_professional_interviews.sql"),
+  ]);
+  assert.match(page, /Company &amp; management interviews/);
+  assert.match(page, /Investor &amp; contributor interviews/);
+  assert.match(professional, /youtube-nocookie\.com\/embed/);
+  assert.match(professional, /youtu\.be/);
+  assert.match(professional, /POSITION &amp; CONFLICT DISCLOSURE/);
+  assert.match(publicApi, /WHERE status='approved'/);
+  assert.match(publicApi, /requireSupabaseUser/);
+  assert.match(adminApi, /approved_professional_interview/);
+  assert.match(schema, /professionalInterviews/);
+  assert.match(migration, /professional_interview_public_idx/);
+});
