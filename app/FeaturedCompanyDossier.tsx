@@ -15,6 +15,7 @@ import { ResearchFoundationPanel } from "./ResearchFoundationPanel";
 import { CompanyNewsPanel } from "./CompanyNewsPanel";
 import { ExternalIntelligencePanel } from "./ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "./CompanyFollowerCount";
+import { CompanyMarketSnapshot } from "./CompanyMarketSnapshot";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -44,6 +45,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
         <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
       </div>
+      <CompanyMarketSnapshot ticker={company.ticker} />
       <div className="container metrics-bar featured-metrics">
         <div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ")}</strong></div>
         <div><small>SECTOR</small><strong>{company.sector}</strong></div>
