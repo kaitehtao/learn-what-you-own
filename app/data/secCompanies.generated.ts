@@ -3005,5 +3005,16 @@ export const secCompanies: Record<string, SecCompany> = {
 };
 
 export function getSecCompany(ticker: string) {
-  return secCompanies[ticker.toUpperCase()];
+  const normalizedTicker = ticker.toUpperCase();
+
+  // The SEC ticker feed currently maps XOM to ExxonMobil Holdings Corp
+  // (CIK 0002115436), which does not contain Exxon Mobil Corporation's
+  // historical public-company filings or CompanyFacts. Keep the owner dossier
+  // anchored to the reporting filer so every SEC surface returns the audited
+  // financial history investors expect.
+  if (normalizedTicker === "XOM") {
+    return { cik: "0000034088", name: "Exxon Mobil Corporation", secTicker: "XOM" };
+  }
+
+  return secCompanies[normalizedTicker];
 }
