@@ -25,6 +25,30 @@ test("describes homepage search honestly and offers supported examples", async (
   assert.match(search, /company\.memberships/);
 });
 
+test("features the full benchmark dossier set, including the four new companies", async () => {
+  const [home, companyPage, registry, additions, complements, validator] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/data/featuredDossiers.ts"),
+    source("app/data/additionalFlagshipDossiers.ts"),
+    source("app/data/dossierBenchmarkComplements.ts"),
+    source("scripts/validate-featured-dossiers.ts"),
+  ]);
+
+  for (const ticker of ["AMD", "MSFT", "GOOG", "META"]) {
+    assert.match(home, new RegExp(`ticker: "${ticker}"`));
+    assert.match(additions, new RegExp(`${ticker}: \\{`));
+  }
+
+  assert.match(registry, /Object\.assign\(featuredDossiers, additionalFlagshipDossiers\)/);
+  assert.match(registry, /completeDossierBenchmark/);
+  assert.match(companyPage, /export const dynamic = "force-dynamic"/);
+  assert.match(complements, /completeness: 100/);
+  assert.match(validator, /financialDrivers\.length >= 6/);
+  assert.match(validator, /dossier\.risks\.length >= 5/);
+  assert.match(validator, /dossier\.sources\.length >= 5/);
+});
+
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
   const [home, statsRoute, styles] = await Promise.all([
     source("app/page.tsx"),
@@ -258,6 +282,71 @@ test("supports public member profiles, follows, and per-message visibility", asy
   assert.match(messageClient, /Also appears on their profile/);
 });
 
+test("lets members add a public biography and validated profile photo", async () => {
+  const [migration, accountRoute, photoRoute, editor, memberRoute, memberClient, styles] = await Promise.all([
+    source("supabase/migrations/20260801090000_public_profile_bio_photo.sql"),
+    source("app/api/account/route.ts"),
+    source("app/api/account/photo/route.ts"),
+    source("app/account/profile/ProfileEditorClient.tsx"),
+    source("app/api/members/[username]/route.ts"),
+    source("app/members/[username]/MemberProfileClient.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(migration, /add column if not exists bio/);
+  assert.match(migration, /add column if not exists avatar_path/);
+  assert.match(migration, /length\(bio\) <= 500/);
+  assert.match(migration, /'profile-photos'/);
+  assert.match(migration, /3145728/);
+  assert.match(accountRoute, /Biography must be 500 characters or fewer/);
+  assert.match(photoRoute, /image\/jpeg/);
+  assert.match(photoRoute, /MAX_PHOTO_BYTES/);
+  assert.match(photoRoute, /requireSupabaseUser/);
+  assert.match(photoRoute, /crypto\.randomUUID/);
+  assert.match(editor, /SHORT BIOGRAPHY/);
+  assert.match(editor, /Maximum 3 MB/);
+  assert.match(editor, /email, phone, portfolio, watchlist, and notebook stay private/);
+  assert.match(memberRoute, /approvedContributions/);
+  assert.match(memberRoute, /publicProfilePhotoUrl/);
+  assert.match(memberClient, /Approved contributions/);
+  assert.match(memberClient, /Edit public profile/);
+  assert.match(styles, /\.profile-editor-form/);
+});
+
+test("publishes moderated professional identity and a transparent correction record", async () => {
+  const [migration, accountRoute, editor, memberRoute, memberClient, adminRoute, adminClient, styles] = await Promise.all([
+    source("supabase/migrations/20260801100000_public_profile_research_identity.sql"),
+    source("app/api/account/route.ts"),
+    source("app/account/profile/ProfileEditorClient.tsx"),
+    source("app/api/members/[username]/route.ts"),
+    source("app/members/[username]/MemberProfileClient.tsx"),
+    source("app/api/admin/dashboard/route.ts"),
+    source("app/admin/AdminDashboard.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(migration, /investment_style/);
+  assert.match(migration, /linkedin_url/);
+  assert.match(migration, /credential_status/);
+  assert.match(migration, /create table if not exists public\.contribution_corrections/);
+  assert.match(migration, /Published correction history is public/);
+  assert.match(accountRoute, /Enter a valid LinkedIn profile URL/);
+  assert.match(accountRoute, /links_status: linksChanged/);
+  assert.match(accountRoute, /credential_status: credentialChanged/);
+  assert.match(editor, /LINKEDIN PROFILE/);
+  assert.match(editor, /INVESTMENT STYLE/);
+  assert.match(editor, /CREDENTIALS FOR VERIFICATION/);
+  assert.match(memberRoute, /links_status === "approved"/);
+  assert.match(memberRoute, /credential_status === "verified"/);
+  assert.match(memberClient, /LinkedIn profile/);
+  assert.match(memberClient, /Published corrections/);
+  assert.match(adminRoute, /verify_credentials/);
+  assert.match(adminRoute, /approve_links/);
+  assert.match(adminClient, /Verify credentials/);
+  assert.match(adminClient, /Approve links/);
+  assert.match(styles, /\.research-identity-card/);
+});
+
 test("distinguishes public research from verified-account tools and collects private phone details", async () => {
   const [comparison, home, login, onboarding, header] = await Promise.all([
     source("app/AccessComparison.tsx"),
@@ -281,12 +370,13 @@ test("distinguishes public research from verified-account tools and collects pri
 });
 
 test("calculates a clean private portfolio status from shares, cost, and current quotes", async () => {
-  const [page, client, route, quotes, styles] = await Promise.all([
+  const [page, client, route, quotes, styles, layout] = await Promise.all([
     source("app/portfolio/page.tsx"),
     source("app/portfolio/PortfolioClient.tsx"),
     source("app/api/portfolio/route.ts"),
     source("app/market-quotes.ts"),
     source("app/globals.css"),
+    source("app/layout.tsx"),
   ]);
 
   assert.match(page, /current market value, cost basis, and unrealized gain or loss/);
@@ -308,8 +398,16 @@ test("calculates a clean private portfolio status from shares, cost, and current
   assert.match(styles, /\.portfolio-summary\{/);
   assert.match(styles, /\.portfolio-table-head/);
   assert.match(styles, /Resilient member workspace layouts/);
+  assert.match(styles, /@media\(max-width:1480px\)\{/);
+  assert.match(styles, /\.notification-bell:not\(\[open\]\) \.notification-popover\{display:none\}/);
+  assert.match(styles, /\.portfolio-workspace>\.portfolio-layout\{grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(styles, /\.portfolio-form\{position:static;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.portfolio-table\{overflow-x:auto\}/);
   assert.match(styles, /@media\(max-width:1180px\)\{\.portfolio-workspace>\.portfolio-layout\{grid-template-columns:1fr\}/);
+  assert.match(styles, /\.portfolio-table \.position-row\{grid-template-columns:minmax\(220px,1\.35fr\) minmax\(120px,1fr\) minmax\(120px,1fr\);min-width:0\}/);
+  assert.match(styles, /@media\(max-width:480px\)\{\.portfolio-summary\{grid-template-columns:1fr\}/);
   assert.match(styles, /\.portfolio-list,\.portfolio-table,\.portfolio-table \.position-row>\*\{min-width:0\}/);
+  assert.match(layout, /export const dynamic = "force-dynamic"/);
 });
 
 test("accepts authenticated product feedback with private history and moderation status", async () => {

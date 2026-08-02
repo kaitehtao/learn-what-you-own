@@ -9,6 +9,11 @@ type ProfileRow = {
   display_name: string;
   role: "member" | "contributor" | "editor" | "admin";
   onboarding_complete: boolean;
+  credential_summary: string;
+  credential_status: "unverified" | "pending" | "verified" | "rejected";
+  linkedin_url: string | null;
+  website_url: string | null;
+  links_status: "unreviewed" | "pending" | "approved" | "rejected";
   created_at: string;
   updated_at: string;
 };
@@ -53,7 +58,7 @@ async function adminCount(admin: SupabaseClient) {
 }
 
 async function targetProfile(admin: SupabaseClient, userId: string) {
-  const { data, error } = await admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,created_at,updated_at").eq("user_id", userId).maybeSingle();
+  const { data, error } = await admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,credential_summary,credential_status,linkedin_url,website_url,links_status,created_at,updated_at").eq("user_id", userId).maybeSingle();
   if (error) throw error;
   return data as ProfileRow | null;
 }
@@ -70,7 +75,7 @@ export async function GET(request: Request) {
     await requireAdmin(request);
     const admin = getSupabaseAdminClient();
     const [{ data: profiles, error: profileError }, authUsers, { data: visitorMetrics, error: metricsError }, { data: audit, error: auditError }] = await Promise.all([
-      admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,created_at,updated_at").order("created_at", { ascending: false }),
+      admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,credential_summary,credential_status,linkedin_url,website_url,links_status,created_at,updated_at").order("created_at", { ascending: false }),
       allAuthUsers(admin),
       admin.rpc("admin_dashboard_visitor_metrics"),
       admin.from("admin_account_audit").select("id,actor_id,target_user_id,action,detail,created_at").order("created_at", { ascending: false }).limit(25),
@@ -89,6 +94,10 @@ export async function GET(request: Request) {
         displayName: profile.display_name,
         role: profile.role,
         onboardingComplete: profile.onboarding_complete,
+        credentialSummary: profile.credential_summary,
+        credentialStatus: profile.credential_status,
+        hasProfessionalLinks: Boolean(profile.linkedin_url || profile.website_url),
+        linksStatus: profile.links_status,
         email: auth?.email ?? "",
         verified: Boolean(auth?.email_confirmed_at),
         confirmationSentAt: auth?.confirmation_sent_at ?? auth?.invited_at ?? null,
@@ -197,6 +206,22 @@ export async function PATCH(request: Request) {
       });
       if (auditError) throw auditError;
       return Response.json({ verified: true });
+    }
+
+    if (payload.action === "verify_credentials" || payload.action === "approve_links" || payload.action === "reject_links") {
+      if (!userId) return Response.json({ error: "Account is required." }, { status: 400 });
+      const target = await targetProfile(admin, userId);
+      if (!target) return Response.json({ error: "Account not found." }, { status: 404 });
+      if (payload.action === "verify_credentials" && !target.credential_summary.trim()) return Response.json({ error: "This member has not submitted credentials." }, { status: 409 });
+      if (payload.action !== "verify_credentials" && !target.linkedin_url && !target.website_url) return Response.json({ error: "This member has not submitted professional links." }, { status: 409 });
+      const update = payload.action === "verify_credentials"
+        ? { credential_status: "verified", credential_verified_by: actor.user_id, credential_verified_at: new Date().toISOString() }
+        : { links_status: payload.action === "approve_links" ? "approved" : "rejected" };
+      const { error } = await admin.from("profiles").update(update).eq("user_id", userId);
+      if (error) throw error;
+      const auditAction = payload.action === "verify_credentials" ? "credential_verify" : payload.action === "approve_links" ? "links_approve" : "links_reject";
+      await admin.from("admin_account_audit").insert({ actor_id: actor.user_id, target_user_id: userId, action: auditAction, detail: { username: target.username } });
+      return Response.json({ updated: true });
     }
 
     const role = String(payload.role ?? "");
