@@ -61,6 +61,26 @@ export const brokerages = [
     openUrl: "https://www.interactivebrokers.com/en/accounts/open_account.php",
     referralEnvironmentKey: "BROKERAGE_REFERRAL_INTERACTIVE_BROKERS",
   },
+  {
+    key: "robinhood",
+    name: "Robinhood",
+    mark: "ROBINHOOD",
+    className: "robinhood",
+    host: "robinhood.com",
+    loginUrl: "https://robinhood.com/login/",
+    openUrl: "https://robinhood.com/signup/",
+    referralEnvironmentKey: "BROKERAGE_REFERRAL_ROBINHOOD",
+  },
+  {
+    key: "sofi",
+    name: "SoFi Invest",
+    mark: "SOFI",
+    className: "sofi",
+    host: "sofi.com",
+    loginUrl: "https://www.sofi.com/login/",
+    openUrl: "https://www.sofi.com/apply/invest-short/",
+    referralEnvironmentKey: "BROKERAGE_REFERRAL_SOFI",
+  },
 ] as const;
 
 export type BrokerageKey = typeof brokerages[number]["key"];

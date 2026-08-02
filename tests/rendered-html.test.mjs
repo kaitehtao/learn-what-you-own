@@ -1170,10 +1170,12 @@ test("links portfolio members to official brokerage login and account-opening de
     source("app/globals.css"),
   ]);
   assert.match(page, /BrokerageLinks/);
-  for (const name of ["E\*TRADE", "Fidelity", "Charles Schwab", "Morgan Stanley", "J\.P\. Morgan", "Interactive Brokers"]) {
+  for (const name of ["E\*TRADE", "Fidelity", "Charles Schwab", "Morgan Stanley", "J\.P\. Morgan", "Interactive Brokers", "Robinhood", "SoFi Invest"]) {
     assert.match(directory, new RegExp(name));
   }
   assert.match(directory, /BROKERAGE_REFERRAL_ETRADE/);
+  assert.match(directory, /BROKERAGE_REFERRAL_ROBINHOOD/);
+  assert.match(directory, /BROKERAGE_REFERRAL_SOFI/);
   assert.match(directory, /destinationType: referralUrl \? "paid_referral"/);
   assert.match(brokerageLinks, /api\/brokerage-click\?broker=/);
   assert.match(brokerageLinks, /never asks for, receives, or stores your brokerage username/);
