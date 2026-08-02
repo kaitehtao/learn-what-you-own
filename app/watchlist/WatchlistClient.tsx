@@ -42,22 +42,33 @@ export function WatchlistClient() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const response = await authenticatedFetch("/api/watchlist");
-    const data = await response.json() as { items?: WatchItem[]; error?: string };
-    if (response.ok) setItems(data.items ?? []);
-    else setError(data.error ?? "Unable to load your watchlist.");
-    setLoading(false);
+    setLoading(true);
+    setError("");
+    try {
+      const response = await authenticatedFetch("/api/watchlist", { cache: "no-store" });
+      const data = await response.json() as { items?: WatchItem[]; error?: string };
+      if (response.status === 401) return void (window.location.href = loginPath("/watchlist"));
+      if (!response.ok) throw new Error(data.error ?? "Unable to load your watchlist.");
+      setItems(data.items ?? []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to load your watchlist.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let active = true;
-    authenticatedFetch("/api/watchlist").then(async (response) => {
+    authenticatedFetch("/api/watchlist", { cache: "no-store" }).then(async (response) => {
       const data = await response.json() as { items?: WatchItem[]; error?: string };
       if (!active) return;
-      if (response.ok) setItems(data.items ?? []);
-      else if (response.status === 401) window.location.href = loginPath("/watchlist");
-      else setError(data.error ?? "Unable to load your watchlist.");
-      setLoading(false);
+      if (response.status === 401) return void (window.location.href = loginPath("/watchlist"));
+      if (!response.ok) throw new Error(data.error ?? "Unable to load your watchlist.");
+      setItems(data.items ?? []);
+    }).catch((caught) => {
+      if (active) setError(caught instanceof Error ? caught.message : "Unable to load your watchlist.");
+    }).finally(() => {
+      if (active) setLoading(false);
     });
     return () => { active = false; };
   }, []);
@@ -82,8 +93,7 @@ export function WatchlistClient() {
 
   return <section className="container watchlist-section member-data-section">
     <form className="member-add-bar" onSubmit={add}><div><strong>Add a company</strong><span>Enter any ticker in the research universe.</span></div><input value={ticker} onChange={(event) => setTicker(event.target.value.toUpperCase())} placeholder="e.g. NVDA" aria-label="Ticker symbol"/><button>Add to watchlist</button></form>
-    {error && <p className="form-error">{error}</p>}
-    {loading ? <div className="member-loading">Loading your watchlist…</div> : items.length === 0 ? <div className="empty-watchlist"><span>LW</span><h2>Your research watchlist is empty.</h2><p>Add a ticker above or open a company dossier and select “Add to watchlist.”</p></div> :
+    {loading ? <div className="member-loading">Loading your watchlist…</div> : error ? <div className="member-load-error" role="alert"><span>!</span><div><h2>We couldn’t load your watchlist.</h2><p>{error}</p></div><button type="button" onClick={() => void load()}>Try again</button></div> : items.length === 0 ? <div className="empty-watchlist"><span>LW</span><h2>Your research watchlist is empty.</h2><p>Add a ticker above or open a company dossier and select “Add to watchlist.”</p></div> :
       <><div className="watchlist-summary"><div><small>WATCHED COMPANIES</small><strong>{items.length}</strong></div><div><small>NEXT EARNINGS</small><strong>{upcoming[0]?.earnings?.date ? earningsDateShortLabel(upcoming[0].earnings.date) : "Checking"}</strong></div><div><small>IN 7-DAY WINDOW</small><strong className={alertWindow.length ? "amber-text" : ""}>{alertWindow.length}</strong></div><div><small>ADVANCE NOTICE</small><strong>7 days</strong></div></div>
       <div className="earnings-alert-explainer"><span>◷</span><div><strong>Earnings-date alerts are on for your watchlist.</strong><p>You’ll receive an in-app warning when a company is seven days from its expected report. If email delivery is enabled in <Link href="/notifications">notification settings</Link>, the warning is also emailed. Estimated dates can move, so company-confirmed dates are labeled separately.</p></div></div>
       <div className="member-list">{items.map((item) => <div className="member-company-row watchlist-earnings-row" key={item.ticker}><Link href={`/company/${companySlug(item.ticker)}`}><i>{item.ticker}</i><span><strong>{item.name}</strong><small>{item.sector}</small></span></Link><div className={`watchlist-earnings-date ${(item.earnings?.daysUntil ?? 8) <= 7 ? "due" : ""}`}><small>NEXT EARNINGS</small><strong>{earningsDateLabel(item.earnings?.date ?? null)}</strong><span>{item.earnings?.date ? item.earnings.sessionLabel : "No date supplied by the calendar provider"}</span><em>{alertLabel(item.earnings)}</em>{item.earnings?.sourceUrl && <a href={item.earnings.sourceUrl} target="_blank" rel="noreferrer">{item.earnings.verificationStatus === "company-confirmed" ? "✓ Company confirmed" : "Provider estimate"} ↗</a>}</div><div className="member-tags">{item.memberships.map((membership) => <em key={membership}>{membership}</em>)}</div><button onClick={() => remove(item.ticker)}>Remove</button></div>)}</div></>}
