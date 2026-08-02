@@ -7,6 +7,7 @@ import { companySlug, researchUniverse } from "./data/universe";
 import { normalizedTicker, rankedCompanyMatches } from "./data/companySearch";
 import { authenticatedFetch, loginPath } from "./supabase-browser";
 import { AccessComparison } from "./AccessComparison";
+import { followingLabel, type CompanyDemand, type CompanyFollower } from "./company-followers";
 
 const companies = [
   { ticker: "AMC", name: "AMC Entertainment", sector: "Theatrical Exhibition", updated: "Today", score: 100, note: "Q2 performance, debt actions, and comparables verified" },
@@ -44,7 +45,7 @@ const updates = [
 
 const dossierHref = (ticker: string) => `/company/${companySlug(ticker)}`;
 const searchExamples = ["AMC", "NVIDIA", "Semiconductors", "S&P 500"];
-type Demand = { ticker: string; vote_count: number; page_views: number; demand_score: number };
+type Demand = CompanyDemand;
 type SearchMatch = { ticker: string; name: string; sector: string };
 type SiteStats = {
   researchableSymbols: number;
@@ -63,6 +64,7 @@ export default function Home() {
   const [demandBusy, setDemandBusy] = useState("");
   const [catalogSearch, setCatalogSearch] = useState<{ query: string; matches: SearchMatch[] }>({ query: "", matches: [] });
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
   const localMatches = useMemo(
     () => rankedCompanyMatches(researchUniverse, query).slice(0, 8),
     [query]
@@ -89,6 +91,13 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/site-stats").then(async (response) => {
       if (response.ok) setSiteStats(await response.json() as SiteStats);
+    }).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    fetch("/api/company-followers", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { companies?: CompanyFollower[] };
+      setFollowerCounts(Object.fromEntries((payload.companies ?? []).map((item) => [item.ticker, item.follower_count])));
     }).catch(() => undefined);
   }, []);
   useEffect(() => {
@@ -153,7 +162,7 @@ export default function Home() {
                   <Link href={`/company/${companySlug(company.ticker)}`} key={company.ticker}>
                     <strong>{company.ticker}</strong>
                     <span>{company.name}</span>
-                    <small>{company.sector}</small>
+                    <small>{company.sector} · {followingLabel(followerCounts[company.ticker] ?? 0)}</small>
                   </Link>
                 ))}
               </div>
@@ -210,11 +219,11 @@ export default function Home() {
               <div className="card-update"><span>↗</span><div><small>LATEST UPDATE</small><p>{company.note}</p></div></div>
               <div className="card-meta"><span>{siteStats?.sourceCountsByTicker[company.ticker]?.toLocaleString() ?? "—"} primary sources</span><span>Updated {company.updated}</span></div>
             </Link>
-            <div className="company-demand"><span>{index < 3 && (demand[company.ticker]?.demand_score ?? 0) > 0 ? "HOT COMPANY" : "RESEARCH DEMAND"}<small>{demand[company.ticker]?.vote_count ?? 0} member requests · {demand[company.ticker]?.page_views ?? 0} readers</small></span><button className={viewerVotes.has(company.ticker) ? "voted" : ""} disabled={demandBusy === company.ticker} onClick={() => toggleDemand(company.ticker)}>{demandBusy === company.ticker ? "Saving…" : viewerVotes.has(company.ticker) ? "✓ Requested" : "▲ Upvote"}</button></div>
+            <div className="company-demand"><span>{index < 3 && (demand[company.ticker]?.demand_score ?? 0) > 0 ? "HOT COMPANY" : "RESEARCH DEMAND"}<small>{followingLabel(followerCounts[company.ticker] ?? 0)} · {demand[company.ticker]?.vote_count ?? 0} research requests · {demand[company.ticker]?.page_views ?? 0} readers</small></span><button className={viewerVotes.has(company.ticker) ? "voted" : ""} disabled={demandBusy === company.ticker} onClick={() => toggleDemand(company.ticker)}>{demandBusy === company.ticker ? "Saving…" : viewerVotes.has(company.ticker) ? "✓ Requested" : "▲ Upvote"}</button></div>
             </article>
           ))}
         </div>
-        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured dossiers</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
+        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured dossiers</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{followingLabel(followerCounts[item.ticker] ?? 0)} · {item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
       </section>
 
       <section className="dark-section">

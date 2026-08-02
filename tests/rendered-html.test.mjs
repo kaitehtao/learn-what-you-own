@@ -950,3 +950,28 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(publisher, /generateSecFactSql/);
   assert.match(styles, /\.filing-history\{display:flex/);
 });
+
+test("shows privacy-preserving watchlist follower totals for every company", async () => {
+  const [followerApi, home, directory, featured, starter, followerCount, watchlistButton] = await Promise.all([
+    source("app/api/company-followers/route.ts"),
+    source("app/page.tsx"),
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/CompanyFollowerCount.tsx"),
+    source("app/WatchlistButton.tsx"),
+  ]);
+
+  assert.match(followerApi, /from\("watchlist_items"\)/);
+  assert.match(followerApi, /select\("ticker"\)/);
+  assert.match(followerApi, /follower_count/);
+  assert.doesNotMatch(followerApi, /select\("user_id/);
+  assert.match(followerApi, /cache-control.*public, max-age=60/);
+  assert.match(home, /followingLabel/);
+  assert.match(directory, /RESEARCH \/ FOLLOWERS/);
+  assert.match(directory, /company-followers/);
+  assert.match(featured, /PEOPLE FOLLOWING/);
+  assert.match(starter, /PEOPLE FOLLOWING/);
+  assert.match(followerCount, /Watchlist count unavailable/);
+  assert.match(watchlistButton, /company-following-change/);
+});

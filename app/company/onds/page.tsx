@@ -13,6 +13,7 @@ import { SaveToNotebookButton } from "../../SaveToNotebookButton";
 import { ResearchDemandButton } from "../../ResearchDemandButton";
 import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
+import { CompanyFollowerCount } from "../../CompanyFollowerCount";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -53,6 +54,7 @@ export default function OndasDossier() {
           <div><small>FINANCIAL FACTS</small><strong>SEC sourced</strong><span>No analyst estimates</span></div>
           <div><small>RELATIONSHIP MAP</small><strong>Evidence linked</strong><span>Supplier → customer</span></div>
           <div><small>COMMUNITY</small><strong className="positive">Moderated</strong><span>Username attributed</span></div>
+          <div><small>PEOPLE FOLLOWING</small><CompanyFollowerCount ticker="ONDS" /></div>
           <div><small>DOSSIER LAST UPDATED</small><strong>August 1, 2026</strong><span>Primary-source editorial review</span></div>
         </div>
       </section>

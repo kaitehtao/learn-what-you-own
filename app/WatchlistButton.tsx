@@ -34,7 +34,11 @@ export function WatchlistButton({ ticker }: { ticker: string }) {
       window.location.href = loginPath(window.location.pathname);
       return;
     }
-    if (response.ok) setWatching(!watching);
+    if (response.ok) {
+      const nextWatching = !watching;
+      setWatching(nextWatching);
+      window.dispatchEvent(new CustomEvent("company-following-change", { detail: { ticker, delta: nextWatching ? 1 : -1 } }));
+    }
     setBusy(false);
   }
 
