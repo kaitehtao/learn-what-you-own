@@ -2,6 +2,8 @@ import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
 import { companyRelationships, dossierClaims, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
+import { featuredDossiers } from "../../data/featuredDossiers";
+import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../data/secFactsRepository";
 import { researchUniverse } from "../../data/universe";
 
 export const dynamic = "force-dynamic";
@@ -58,11 +60,28 @@ export async function GET(request: Request) {
         .orderBy(desc(quarterlyDossierUpdates.filedAt)).limit(8),
     ]);
     const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult] = queries;
-    const facts = factsResult.status === "fulfilled" ? factsResult.value : [];
+    let facts = factsResult.status === "fulfilled" ? factsResult.value : [];
     const claims = claimsResult.status === "fulfilled" ? claimsResult.value : [];
     const relationships = relationshipsResult.status === "fulfilled" ? relationshipsResult.value : [];
-    const importRows = importsResult.status === "fulfilled" ? importsResult.value : [];
+    let importRows = importsResult.status === "fulfilled" ? importsResult.value : [];
     const quarterlyUpdates = quarterlyResult.status === "fulfilled" ? quarterlyResult.value : [];
+
+    // Managed deployments can lag a newly added data migration. A completed
+    // dossier therefore performs one safe, idempotent first-read import when
+    // no filing history exists yet. Recurring refreshes remain scheduler-owned.
+    if (facts.length === 0 && featuredDossiers[ticker]) {
+      try {
+        await ensureFeaturedDossierRegistration(ticker);
+        await importSecFilingFacts(ticker);
+        [facts, importRows] = await Promise.all([
+          db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
+            .orderBy(asc(filingFacts.metricKey), desc(filingFacts.periodEnd)).limit(300),
+          db.select().from(filingFactImports).where(eq(filingFactImports.ticker, ticker)).limit(1),
+        ]);
+      } catch (error) {
+        console.error(`Initial SEC facts import failed for ${ticker}; returning available research.`, error);
+      }
+    }
     const sourceStatus = {
       secFacts: factsResult.status === "fulfilled" ? "available" : "unavailable",
       claims: claimsResult.status === "fulfilled" ? "available" : "unavailable",

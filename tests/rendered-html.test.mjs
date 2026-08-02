@@ -951,6 +951,9 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(panel, /No estimates were substituted/);
   assert.match(panel, /Open machine-readable source/);
   assert.match(researchApi, /factsImport/);
+  assert.match(researchApi, /facts\.length === 0 && featuredDossiers\[ticker\]/);
+  assert.match(researchApi, /ensureFeaturedDossierRegistration\(ticker\)/);
+  assert.match(researchApi, /Initial SEC facts import failed/);
   assert.match(importer, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
   assert.match(importer, /filingFactImports/);
   assert.match(importer, /recordLatestQuarterlyUpdate/);
