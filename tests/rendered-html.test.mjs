@@ -961,6 +961,8 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
   assert.match(scheduledRoute, /Object\.values\(featuredDossiers\)/);
   assert.match(scheduledRoute, /ensureFeaturedDossierRegistration/);
+  assert.match(scheduledRoute, /cloudflare:workers/);
+  assert.match(scheduledRoute, /bindings\.NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /refreshScheduledSecFacts/);
   assert.match(worker, /if \(!isPacificDigestHour\(controller\.scheduledTime\)\) return/);
   assert.match(viteConfig, /0 0,6,12,18 \* \* \*/);

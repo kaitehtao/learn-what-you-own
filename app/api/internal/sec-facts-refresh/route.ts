@@ -1,4 +1,5 @@
 import { asc } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { getDb } from "../../../../db";
 import { filingFactImports } from "../../../../db/schema";
 import { featuredDossiers } from "../../../data/featuredDossiers";
@@ -11,8 +12,14 @@ export const dynamic = "force-dynamic";
 // creating a burst against SEC data services or D1.
 const SCHEDULED_REFRESH_LIMIT = 8;
 
+function secretValue() {
+  const bindings = env as unknown as Record<string, unknown>;
+  const value = bindings.SCHEDULED_TASK_SECRET || bindings.NOTIFICATION_CRON_SECRET;
+  return typeof value === "string" && value ? value : process.env.SCHEDULED_TASK_SECRET || process.env.NOTIFICATION_CRON_SECRET;
+}
+
 export async function POST(request: Request) {
-  const secret = process.env.SCHEDULED_TASK_SECRET || process.env.NOTIFICATION_CRON_SECRET;
+  const secret = secretValue();
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
