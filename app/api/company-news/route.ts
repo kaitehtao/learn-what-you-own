@@ -2,6 +2,7 @@ import { featuredDossiers, type FeaturedDossier } from "../../data/featuredDossi
 import { researchUniverse } from "../../data/universe";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
+import { stripNewsHtml } from "../../news-text";
 
 type NewsItem = {
   title: string;
@@ -136,9 +137,7 @@ function discoverFeedUrls(html: string, newsroomUrl: string): string[] {
   }))].slice(0, 3);
 }
 
-function stripHtml(value: string): string {
-  return decodeXml(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-}
+const stripHtml = stripNewsHtml;
 
 function releaseDate(value: string): string {
   const text = stripHtml(value);
