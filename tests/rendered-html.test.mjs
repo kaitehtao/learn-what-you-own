@@ -864,8 +864,14 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Verify original release/);
   assert.match(panel, /Show 10 more official releases/);
   assert.match(panel, /Public &amp; industry coverage/);
+  assert.match(panel, /Bing News, Google News, and GDELT/);
+  assert.match(panel, /news-provider-filters/);
   assert.match(route, /officialNews\(newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /www\.bing\.com\/news\/search/);
+  assert.match(route, /news\.google\.com\/rss\/search/);
+  assert.match(route, /api\.gdeltproject\.org\/api\/v2\/doc\/doc/);
+  assert.match(route, /mergePublicSources/);
+  assert.match(route, /Promise\.allSettled\(publicSources/);
   assert.match(route, /replace\(\/\^http:/);
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /parseCoreWeaveNewsroom/);
@@ -884,7 +890,7 @@ test("separates company releases from external news on every dossier", async () 
 });
 
 test("automatically imports, refreshes, and explains filing-grounded financial history", async () => {
-  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, amcSeed, publisher, styles] = await Promise.all([
+  const [panel, researchApi, importer, scheduledRoute, worker, schema, migration, quarterlyMigration, amcSeed, publisher, styles, viteConfig] = await Promise.all([
     source("app/ResearchFoundationPanel.tsx"),
     source("app/api/research/route.ts"),
     source("app/data/secFactsRepository.ts"),
@@ -892,9 +898,11 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
     source("worker/index.ts"),
     source("db/schema.ts"),
     source("drizzle/0007_sec-fact-import-status.sql"),
+    source("drizzle/0012_quarterly_dossier_updates.sql"),
     source("drizzle/0010_seed-amc-sec-facts.sql"),
     source("scripts/generate-normalized-dossier-publish.ts"),
     source("app/globals.css"),
+    source("vite.config.ts"),
   ]);
 
   assert.match(panel, /Filed financial history/);
@@ -904,9 +912,19 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(researchApi, /factsImport/);
   assert.match(importer, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
   assert.match(importer, /filingFactImports/);
-  assert.match(scheduledRoute, /DAILY_REFRESH_LIMIT = 5/);
+  assert.match(importer, /recordLatestQuarterlyUpdate/);
+  assert.match(importer, /quarterlyDossierUpdates/);
+  assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 8/);
   assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
   assert.match(worker, /refreshScheduledSecFacts/);
+  assert.match(worker, /if \(!isPacificDigestHour\(controller\.scheduledTime\)\) return/);
+  assert.match(viteConfig, /0 0,6,12,18 \* \* \*/);
+  assert.match(schema, /export const quarterlyDossierUpdates/);
+  assert.match(quarterlyMigration, /quarterly_dossier_updates/);
+  assert.match(quarterlyMigration, /facts_refreshed/);
+  assert.match(researchApi, /quarterlyUpdates/);
+  assert.match(panel, /QUARTERLY DOSSIER REFRESH/);
+  assert.match(panel, /thesis review queued/);
   assert.match(worker, /learn-what-you-own\.julianspencer\.chatgpt\.site/);
   assert.match(worker, /www\.learnwhatyouown\.com/);
   assert.match(worker, /Response\.redirect\(canonicalUrl, 308\)/);

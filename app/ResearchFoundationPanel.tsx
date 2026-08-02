@@ -57,11 +57,25 @@ type CompanyRelationship = {
   contributorUsername: string | null;
 };
 
+type QuarterlyDossierUpdate = {
+  id: number;
+  accessionNumber: string;
+  form: string;
+  periodEnd: string;
+  filedAt: string;
+  sourceUrl: string;
+  status: "facts_refreshed" | "editorial_review" | "published";
+  editorialSummary: string;
+  reviewedAt: string | null;
+  publishedAt: string | null;
+};
+
 type ResearchResponse = {
   facts: FilingFact[];
   claims: ResearchClaim[];
   relationships: CompanyRelationship[];
   factsImport: FactsImport | null;
+  quarterlyUpdates: QuarterlyDossierUpdate[];
   error?: string;
 };
 
@@ -113,8 +127,14 @@ function RelationshipNode({ relationship }: { relationship: CompanyRelationship 
     : <div className="relationship-node private-node">{content}</div>;
 }
 
+function quarterlyStatusLabel(status: QuarterlyDossierUpdate["status"]) {
+  if (status === "published") return "Editorial update published";
+  if (status === "editorial_review") return "Analyst review in progress";
+  return "Filed facts refreshed · thesis review queued";
+}
+
 export function ResearchFoundationPanel({ ticker, companyName }: { ticker: string; companyName: string }) {
-  const [data, setData] = useState<ResearchResponse>({ facts: [], claims: [], relationships: [], factsImport: null });
+  const [data, setData] = useState<ResearchResponse>({ facts: [], claims: [], relationships: [], factsImport: null, quarterlyUpdates: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -150,6 +170,12 @@ export function ResearchFoundationPanel({ ticker, companyName }: { ticker: strin
 
     {loading ? <div className="research-foundation-state">Loading filing-grounded research…</div> : error ? <div className="research-foundation-state error">{error}</div> : <>
       <div className="evidence-layer-legend"><span className="fact-layer">FILED FACT</span><span className="statement-layer">COMPANY STATEMENT</span><span className="analysis-layer">EDITORIAL ANALYSIS</span><span className="community-layer">MEMBER INSIGHT</span></div>
+
+      {data.quarterlyUpdates[0] && <div className="quarterly-update-block">
+        <div><small>QUARTERLY DOSSIER REFRESH</small><h3>{data.quarterlyUpdates[0].form} filed {shortDate(data.quarterlyUpdates[0].filedAt)}</h3><p>Primary financial facts now reflect the period ended {data.quarterlyUpdates[0].periodEnd}. The filing is recorded automatically; changes to the owner summary, bull case, bear case, risks, and valuation framing stay in the moderated editorial workflow.</p></div>
+        <div className={`quarterly-update-status ${data.quarterlyUpdates[0].status.replaceAll("_", "-")}`}><span>{quarterlyStatusLabel(data.quarterlyUpdates[0].status)}</span><a href={data.quarterlyUpdates[0].sourceUrl} target="_blank" rel="noreferrer">Open exact SEC filing ↗</a></div>
+        {data.quarterlyUpdates[0].editorialSummary && <blockquote>{data.quarterlyUpdates[0].editorialSummary}</blockquote>}
+      </div>}
 
       <div className="filing-facts-block">
         <div className="research-subheading"><div><small>PUBLIC FILING FACTS</small><h3>Filed financial history</h3></div><span>{data.facts.length ? `${factsByMetric.size} metrics · through ${latestPeriodEnd}` : data.factsImport?.status === "no_compatible_facts" ? "SEC data reviewed" : "Financial import queued"}</span></div>

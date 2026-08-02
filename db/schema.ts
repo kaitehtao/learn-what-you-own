@@ -95,6 +95,30 @@ export const filingFactImports = sqliteTable("filing_fact_imports", {
   index("filing_fact_import_status_attempted_idx").on(table.status, table.lastAttemptedAt),
 ]);
 
+// Each newly detected 10-Q or 10-K creates one durable quarterly update. Filed
+// facts can refresh automatically; thesis prose remains visibly queued for
+// editorial review until a human publishes the interpretation.
+export const quarterlyDossierUpdates = sqliteTable("quarterly_dossier_updates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companyDossiers.ticker, { onDelete: "cascade" }),
+  accessionNumber: text("accession_number").notNull(),
+  form: text("form").notNull(),
+  periodEnd: text("period_end").notNull(),
+  filedAt: text("filed_at").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  status: text("status", { enum: ["facts_refreshed", "editorial_review", "published"] }).notNull().default("facts_refreshed"),
+  editorialSummary: text("editorial_summary").notNull().default(""),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: text("reviewed_at"),
+  publishedAt: text("published_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("quarterly_dossier_update_accession_idx").on(table.ticker, table.accessionNumber),
+  index("quarterly_dossier_update_public_idx").on(table.ticker, table.filedAt),
+  index("quarterly_dossier_update_review_idx").on(table.status, table.filedAt),
+]);
+
 // A claim is the smallest publishable unit in a dossier. The classification
 // prevents an editorial interpretation from being presented as a filed fact.
 export const dossierClaims = sqliteTable("dossier_claims", {

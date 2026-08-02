@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { companyRelationships, dossierClaims, filingFactImports, filingFacts } from "../../../db/schema";
+import { companyRelationships, dossierClaims, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
 import { researchUniverse } from "../../data/universe";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   try {
     const db = getDb();
-    const [facts, claims, relationships, importRows] = await Promise.all([
+    const [facts, claims, relationships, importRows, quarterlyUpdates] = await Promise.all([
       db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
         .orderBy(asc(filingFacts.metricKey), desc(filingFacts.periodEnd)).limit(300),
       db.select().from(dossierClaims).where(and(eq(dossierClaims.ticker, ticker), eq(dossierClaims.status, "published")))
@@ -48,6 +48,8 @@ export async function GET(request: Request) {
         eq(companyRelationships.customerTicker, ticker),
       )).orderBy(desc(companyRelationships.evidenceDate)).limit(100),
       db.select().from(filingFactImports).where(eq(filingFactImports.ticker, ticker)).limit(1),
+      db.select().from(quarterlyDossierUpdates).where(eq(quarterlyDossierUpdates.ticker, ticker))
+        .orderBy(desc(quarterlyDossierUpdates.filedAt)).limit(8),
     ]);
 
     return Response.json({
@@ -87,6 +89,18 @@ export async function GET(request: Request) {
         lastAttemptedAt: importRows[0].lastAttemptedAt,
         lastSuccessAt: importRows[0].lastSuccessAt,
       } : null,
+      quarterlyUpdates: quarterlyUpdates.map((update) => ({
+        id: update.id,
+        accessionNumber: update.accessionNumber,
+        form: update.form,
+        periodEnd: update.periodEnd,
+        filedAt: update.filedAt,
+        sourceUrl: update.sourceUrl,
+        status: update.status,
+        editorialSummary: update.status === "published" ? update.editorialSummary : "",
+        reviewedAt: update.reviewedAt,
+        publishedAt: update.publishedAt,
+      })),
     }, { headers: { "cache-control": "public, max-age=300, s-maxage=900" } });
   } catch (error) {
     console.error(error);
