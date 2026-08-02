@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { authenticatedFetch } from "./supabase-browser";
 
-type Notification = { id: number; kind: string; title: string; detail: string; href: string; readAt: string | null; createdAt: string };
+type Notification = { id: number; kind: string; entityType: string; title: string; detail: string; href: string; readAt: string | null; createdAt: string };
 
 function relativeTime(value: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
@@ -52,5 +52,5 @@ export function NotificationBell({ signedIn }: { signedIn: boolean | null }) {
   }
 
   if (!signedIn) return null;
-  return <details className="notification-bell"><summary aria-label={unread ? `${unread} unread notifications` : "Notifications"}><span>♢</span>{unread > 0 && <em>{unread > 99 ? "99+" : unread}</em>}</summary><div className="notification-popover"><header><div><span className="kicker">NOTIFICATIONS</span><strong>{unread ? `${unread} unread` : "You’re all caught up"}</strong></div>{unread > 0 && <button onClick={() => void markAllRead()}>Mark all read</button>}</header>{notifications.length ? <div className="notification-preview-list">{notifications.map((notification) => <Link className={notification.readAt ? "" : "unread"} href={notification.href} key={notification.id} onClick={() => void markRead(notification)}><i>{notification.kind === "public_message" ? "◎" : "✉"}</i><span><strong>{notification.title}</strong><small>{notification.detail}</small></span><time>{relativeTime(notification.createdAt)}</time></Link>)}</div> : <div className="notification-preview-empty"><span>✓</span><p>No notifications yet.</p></div>}<Link className="notification-view-all" href="/notifications">View all notifications &amp; settings →</Link></div></details>;
+  return <details className="notification-bell"><summary aria-label={unread ? `${unread} unread notifications` : "Notifications"}><span>♢</span>{unread > 0 && <em>{unread > 99 ? "99+" : unread}</em>}</summary><div className="notification-popover"><header><div><span className="kicker">NOTIFICATIONS</span><strong>{unread ? `${unread} unread` : "You’re all caught up"}</strong></div>{unread > 0 && <button onClick={() => void markAllRead()}>Mark all read</button>}</header>{notifications.length ? <div className="notification-preview-list">{notifications.map((notification) => <Link className={notification.readAt ? "" : "unread"} href={notification.href} key={notification.id} onClick={() => void markRead(notification)}><i>{notification.entityType === "earnings_alert" ? "◷" : notification.kind === "public_message" ? "◎" : "✉"}</i><span><strong>{notification.title}</strong><small>{notification.detail}</small></span><time>{relativeTime(notification.createdAt)}</time></Link>)}</div> : <div className="notification-preview-empty"><span>✓</span><p>No notifications yet.</p></div>}<Link className="notification-view-all" href="/notifications">View all notifications &amp; settings →</Link></div></details>;
 }

@@ -88,7 +88,7 @@ export default function Home() {
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ q: search, pageSize: "10" });
-      Promise.all(["listed", "otc"].map((market) => fetch(`/api/universe?market=${market}&${params}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : { companies: [] })))
+      Promise.all(["listed", "otc"].map((market) => fetch(`/api/universe?market=${market}&${params}`, { signal: controller.signal }).then(async (response) => response.ok ? await response.json() as { companies?: Array<{ ticker: string; name: string; sector: string; exchange: string }> } : { companies: [] })))
         .then((payloads) => setCatalogSearch({ query: search, matches: payloads.flatMap((payload) => (payload.companies ?? []).map((company: { ticker: string; name: string; sector: string; exchange: string }) => ({ ticker: company.ticker, name: company.name, sector: company.sector === "Not classified" ? company.exchange : company.sector }))) }))
         .catch(() => undefined);
     }, 180);

@@ -4,7 +4,7 @@ import { notificationEmailAvailable } from "../../email-notifications";
 export const dynamic = "force-dynamic";
 
 function publicNotification(row: Record<string, unknown>) {
-  return { id: row.id, kind: row.kind, title: row.title, detail: row.detail, href: row.href, readAt: row.read_at, createdAt: row.created_at };
+  return { id: row.id, kind: row.kind, entityType: row.entity_type, title: row.title, detail: row.detail, href: row.href, readAt: row.read_at, createdAt: row.created_at };
 }
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     await supabase.from("notification_preferences").upsert({ user_id: profile.user_id }, { onConflict: "user_id", ignoreDuplicates: true });
     const compact = new URL(request.url).searchParams.get("compact") === "1";
     const [notificationsResult, unreadResult, preferenceResult] = await Promise.all([
-      supabase.from("notifications").select("id,kind,title,detail,href,read_at,created_at").eq("user_id", profile.user_id).order("created_at", { ascending: false }).limit(compact ? 6 : 100),
+      supabase.from("notifications").select("id,kind,entity_type,title,detail,href,read_at,created_at").eq("user_id", profile.user_id).order("created_at", { ascending: false }).limit(compact ? 6 : 100),
       supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", profile.user_id).is("read_at", null),
       supabase.from("notification_preferences").select("email_frequency,email_message_preview").eq("user_id", profile.user_id).single(),
     ]);
