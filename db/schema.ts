@@ -309,3 +309,12 @@ export const productFeedback = sqliteTable("product_feedback", {
   index("product_feedback_user_created_idx").on(table.userId, table.createdAt),
   index("product_feedback_status_created_idx").on(table.status, table.createdAt),
 ]);
+
+export const productFeedbackVotes = sqliteTable("product_feedback_votes", {
+  feedbackId: integer("feedback_id").notNull().references(() => productFeedback.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("product_feedback_vote_unique_idx").on(table.feedbackId, table.userId),
+  index("product_feedback_vote_rank_idx").on(table.feedbackId, table.createdAt),
+]);
