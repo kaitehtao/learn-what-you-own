@@ -1157,22 +1157,37 @@ test("separates professional contributor interviews from company management inte
 });
 
 test("links portfolio members to official brokerage login and account-opening destinations", async () => {
-  const [page, brokerageLinks, styles] = await Promise.all([
+  const [page, brokerageLinks, directory, clickRoute, analyticsRoute, adminAnalytics, schema, runtimeSchema, migration, styles] = await Promise.all([
     source("app/portfolio/page.tsx"),
     source("app/portfolio/BrokerageLinks.tsx"),
+    source("app/brokerageDirectory.ts"),
+    source("app/api/brokerage-click/route.ts"),
+    source("app/api/admin/brokerage-analytics/route.ts"),
+    source("app/admin/BrokerageAnalytics.tsx"),
+    source("db/schema.ts"),
+    source("db/runtimeSchema.ts"),
+    source("drizzle/0018_brokerage_referral_tracking.sql"),
     source("app/globals.css"),
   ]);
   assert.match(page, /BrokerageLinks/);
   for (const name of ["E\*TRADE", "Fidelity", "Charles Schwab", "Morgan Stanley", "J\.P\. Morgan", "Interactive Brokers"]) {
-    assert.match(brokerageLinks, new RegExp(name));
+    assert.match(directory, new RegExp(name));
   }
-  assert.match(brokerageLinks, /us\.etrade\.com\/e\/t\/user\/login/);
-  assert.match(brokerageLinks, /digital\.fidelity\.com\/prgw\/digital\/login/);
-  assert.match(brokerageLinks, /client\.schwab\.com\/Login\/SignOn/);
-  assert.match(brokerageLinks, /morganstanley\.com\/online/);
-  assert.match(brokerageLinks, /secure\.chase\.com\/web\/auth/);
-  assert.match(brokerageLinks, /interactivebrokers\.com\/sso\/Login/);
+  assert.match(directory, /BROKERAGE_REFERRAL_ETRADE/);
+  assert.match(directory, /destinationType: referralUrl \? "paid_referral"/);
+  assert.match(brokerageLinks, /api\/brokerage-click\?broker=/);
   assert.match(brokerageLinks, /never asks for, receives, or stores your brokerage username/);
-  assert.match(brokerageLinks, /noopener noreferrer external/);
+  assert.match(brokerageLinks, /Affiliate disclosure/);
+  assert.match(brokerageLinks, /noopener noreferrer sponsored nofollow/);
+  assert.match(clickRoute, /INSERT INTO brokerage_clicks/);
+  assert.match(clickRoute, /crypto\.randomUUID/);
+  assert.doesNotMatch(clickRoute, /user-agent|cf-connecting-ip|portfolio_positions/i);
+  assert.match(clickRoute, /A reporting outage must never trap a member/);
+  assert.match(analyticsRoute, /requireAdmin/);
+  assert.match(analyticsRoute, /paidReferralClicks30d/);
+  assert.match(adminAnalytics, /Actual conversions and compensation/);
+  assert.match(schema, /export const brokerageClicks/);
+  assert.match(runtimeSchema, /ensureBrokerageClickSchema/);
+  assert.match(migration, /PRAGMA optimize/);
   assert.match(styles, /\.brokerage-grid\{display:grid;grid-template-columns:repeat\(3/);
 });
