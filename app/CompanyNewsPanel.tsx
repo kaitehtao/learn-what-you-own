@@ -67,7 +67,7 @@ export function CompanyNewsPanel({ ticker, companyName, newsroomUrl }: { ticker:
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/company-news?ticker=${encodeURIComponent(ticker)}`, { signal: controller.signal })
+    fetch(`/api/company-news?ticker=${encodeURIComponent(ticker)}&summaryFormat=2`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json() as NewsResponse;
         if (!response.ok) throw new Error(payload.error || "News is temporarily unavailable.");
