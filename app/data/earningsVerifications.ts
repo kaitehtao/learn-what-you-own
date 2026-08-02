@@ -38,6 +38,15 @@ const records: OfficialEarningsVerification[] = [
     sourceLabel: "NVIDIA Investor Relations",
     verifiedAt: "2026-07-31",
   },
+  {
+    ticker: "SPCX",
+    date: "2026-08-04",
+    session: "AMC",
+    announcedTime: "3:30 p.m. CT / 4:30 p.m. ET; results after market close",
+    sourceUrl: "https://ir.spacex.com/updates/releases-details/2026/SpaceX-to-Post-Second-Quarter-2026-Results-and-Host-Webcast-on-August-4-2026-2026-g8layJlbFm/default.aspx",
+    sourceLabel: "SpaceX Investor Relations",
+    verifiedAt: "2026-08-01",
+  },
 ];
 
 export const officialEarningsVerifications = new Map(

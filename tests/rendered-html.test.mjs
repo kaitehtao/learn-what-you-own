@@ -280,6 +280,35 @@ test("distinguishes public research from verified-account tools and collects pri
   assert.match(header, /Join free/);
 });
 
+test("calculates a clean private portfolio status from shares, cost, and current quotes", async () => {
+  const [page, client, route, quotes, styles] = await Promise.all([
+    source("app/portfolio/page.tsx"),
+    source("app/portfolio/PortfolioClient.tsx"),
+    source("app/api/portfolio/route.ts"),
+    source("app/market-quotes.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(page, /current market value, cost basis, and unrealized gain or loss/);
+  assert.match(client, /AVERAGE PURCHASE PRICE PER SHARE/);
+  assert.match(client, /ESTIMATED VALUE/);
+  assert.match(client, /TOTAL COST BASIS/);
+  assert.match(client, /UNREALIZED GAIN \/ LOSS/);
+  assert.match(client, /Market value/);
+  assert.match(client, /Gain \/ loss/);
+  assert.match(client, /method: editingId \? "PATCH" : "POST"/);
+  assert.match(route, /POSITION_META_PREFIX/);
+  assert.match(route, /serializeDetails\(notes, averageCost\)/);
+  assert.match(route, /shares \* currentPrice/);
+  assert.match(route, /marketValue - costBasis/);
+  assert.match(route, /export async function PATCH/);
+  assert.match(quotes, /api\/quote/);
+  assert.match(quotes, /lastSalePrice/);
+  assert.match(quotes, /revalidate: 300/);
+  assert.match(styles, /\.portfolio-summary\{/);
+  assert.match(styles, /\.portfolio-table-head/);
+});
+
 test("accepts authenticated product feedback with private history and moderation status", async () => {
   const [page, client, route, migration, layout, account] = await Promise.all([
     source("app/feedback/page.tsx"),
@@ -376,8 +405,9 @@ test("creates private member notifications and opt-in email delivery", async () 
 });
 
 test("shows watchlist earnings dates and creates duplicate-safe seven-day alerts", async () => {
-  const [calendar, watchlistApi, watchlist, alertsRoute, worker, bell, center, emailDelivery, notificationsApi] = await Promise.all([
+  const [calendar, verifications, watchlistApi, watchlist, alertsRoute, worker, bell, center, emailDelivery, notificationsApi] = await Promise.all([
     source("app/earnings-alerts.ts"),
+    source("app/data/earningsVerifications.ts"),
     source("app/api/watchlist/route.ts"),
     source("app/watchlist/WatchlistClient.tsx"),
     source("app/api/internal/earnings-alerts/route.ts"),
@@ -391,6 +421,10 @@ test("shows watchlist earnings dates and creates duplicate-safe seven-day alerts
   assert.match(calendar, /ALERT_WINDOW_DAYS = 7/);
   assert.match(calendar, /api\/analyst[\s\S]*earnings-date/);
   assert.match(calendar, /verification_status: verification \? "company-confirmed"/);
+  assert.match(calendar, /verification\?\.date \?\? providerDate/);
+  assert.match(verifications, /ticker: "SPCX"/);
+  assert.match(verifications, /date: "2026-08-04"/);
+  assert.match(verifications, /SpaceX Investor Relations/);
   assert.match(calendar, /earningsAlertIdentity/);
   assert.match(calendar, /onConflict: "user_id,entity_type,entity_id"/);
   assert.match(watchlistApi, /refreshEarningsCalendar/);
