@@ -925,9 +925,10 @@ test("publishes the founder mission with @Yourhost as host and letter author", a
 });
 
 test("separates company releases from external news on every dossier", async () => {
-  const [panel, route, dossiers, featuredPage, starterPage, ondas, styles] = await Promise.all([
+  const [panel, route, newsText, dossiers, featuredPage, starterPage, ondas, styles] = await Promise.all([
     source("app/CompanyNewsPanel.tsx"),
     source("app/api/company-news/route.ts"),
+    source("app/news-text.ts"),
     source("app/data/featuredDossiers.ts"),
     source("app/FeaturedCompanyDossier.tsx"),
     source("app/company/[ticker]/page.tsx"),
@@ -960,6 +961,9 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /replace\(\/\^http:/);
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /parseCoreWeaveNewsroom/);
+  assert.match(route, /stripNewsHtml/);
+  assert.match(newsText, /export function stripNewsHtml/);
+  assert.match(newsText, /style\|script\|noscript/);
   assert.match(route, /data-content-type=\["'\]press-release/);
   assert.match(route, /const companyReleases = unique/);
   assert.match(route, /const secFilings = unique/);
