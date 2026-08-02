@@ -50,6 +50,7 @@ export function Header() {
           <Link href="/earnings">Earnings</Link>
           <Link href="/research/batches">Research</Link>
           <Link href="/interviews">Interviews</Link>
+          <Link href="/founders-letter">Founder’s Letter</Link>
           <Link href="/contribute">Contribute</Link>
           <Link href="/contributors">Contributors</Link>
           <Link href="/feedback">Feedback</Link>
@@ -80,7 +81,13 @@ export function Header() {
               : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
           </div>
         </nav>
-        <div className="nav-actions"><button className="search-button" aria-label="Search">⌕</button><NotificationBell signedIn={signedIn}/>{signedIn === false ? <><Link className="nav-signin" href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></> : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}</div>
+        <div className="nav-actions">
+          <button className="search-button" aria-label="Search">⌕</button>
+          <NotificationBell signedIn={signedIn}/>
+          {signedIn
+            ? <Link className="nav-cta" href="/account">My account</Link>
+            : <><Link className="nav-signin" href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Create free account</Link></>}
+        </div>
         <button
           className="menu-button"
           type="button"
@@ -88,7 +95,7 @@ export function Header() {
           aria-controls="primary-navigation"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-        >{open ? "×" : "☰"}</button>
+        ><span className="menu-icon" aria-hidden="true">{open ? "×" : "☰"}</span><span className="menu-label">{open ? "Close" : "Menu"}</span></button>
       </div>
     </header>
   );

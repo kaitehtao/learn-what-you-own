@@ -29,9 +29,16 @@ export function AccessComparison() {
             <li>Upvote research priorities and follow other members</li>
             <li>Submit sourced research and product feedback for moderation</li>
           </ul>
-          <Link className="button dark-button" href="/login?mode=signup">Create a free account</Link>
+          <div className="access-account-actions">
+            <Link className="button dark-button" href="/login?mode=signup">Create a free account</Link>
+            <Link href="/login">Already a member? Sign in</Link>
+          </div>
           <small>Your email, phone number, portfolio, watchlist, and notebook are not displayed publicly.</small>
         </article>
+      </div>
+      <div className="access-founder-link">
+        <div><span className="kicker">WHY WE BUILT THIS</span><strong>Ownership should come with understanding.</strong></div>
+        <Link href="/founders-letter">Read the Founder’s Letter <span>→</span></Link>
       </div>
     </section>
   );

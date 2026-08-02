@@ -457,6 +457,8 @@ test("distinguishes public research from verified-account tools and collects pri
   assert.match(comparison, /WITHOUT AN ACCOUNT/);
   assert.match(comparison, /WITH A FREE ACCOUNT/);
   assert.match(comparison, /private watchlists, portfolios, and research notebooks/);
+  assert.match(comparison, /Already a member\? Sign in/);
+  assert.match(comparison, /Read the Founder’s Letter/);
   assert.match(home, /<AccessComparison/);
   assert.match(login, /PHONE NUMBER <em>optional<\/em>/);
   assert.match(login, /does not opt you into marketing texts/);
@@ -464,7 +466,18 @@ test("distinguishes public research from verified-account tools and collects pri
   assert.match(login, /phone_number: phoneNumber/);
   assert.match(onboarding, /sms_marketing_consent: false/);
   assert.match(onboarding, /supabase\.auth\.updateUser/);
-  assert.match(header, /Join free/);
+  assert.match(header, /Create free account/);
+  assert.match(header, /Founder’s Letter/);
+  assert.match(header, /menu-label/);
+});
+
+test("shows the public-vs-member benefits and founder path on every company dossier", async () => {
+  const [featured, starter, ondas] = await Promise.all([
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+  ]);
+  for (const dossier of [featured, starter, ondas]) assert.match(dossier, /<AccessComparison/);
 });
 
 test("calculates a clean private portfolio status from shares, cost, and current quotes", async () => {

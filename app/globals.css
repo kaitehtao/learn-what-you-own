@@ -238,10 +238,12 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
 .workspace-menu>div a{display:block;padding:10px 12px;border-radius:4px;font-size:.9375rem}
 .workspace-menu>div a:hover{background:var(--cream);color:var(--green)}
 .mobile-workspace-links{display:none}
-.menu-button{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:#fff;place-items:center;font-size:21px;color:var(--ink)}
+.menu-button{width:auto;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:22px;background:#fff;place-items:center;grid-auto-flow:column;gap:8px;font-size:21px;color:var(--ink)}
+.menu-label{font-family:var(--font-geist-sans),Arial,sans-serif;font-size:.875rem;font-weight:700}.menu-icon{font-size:18px;line-height:1}
 
 @media(max-width:1480px){
-  .nav-inner nav,.nav-actions{display:none}
+  .nav-inner nav{display:none}
+  .nav-actions{display:flex}
   .menu-button{display:grid;cursor:pointer;line-height:1}
   .nav-inner nav.open{display:flex;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 88px);overflow:auto;background:#fff;flex-direction:column;align-items:stretch;gap:0;padding:12px max(24px,calc((100vw - 1180px)/2)) 22px;border-top:1px solid var(--line);box-shadow:0 18px 35px rgba(16,32,27,.12)}
   .nav-inner nav.open>a{padding:12px 0;border-bottom:1px solid #edf0ed}
@@ -261,7 +263,7 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
   .brand-symbol{width:36px;height:36px;padding:7px}
   .brand-name{font-size:18px}
   .brand-tagline{font-size:.6875rem;letter-spacing:.04em}
-  .menu-button{width:40px;height:40px;flex:0 0 auto}
+  .menu-button{height:40px;flex:0 0 auto;padding:0 12px}
   .nav-inner nav.open{max-height:calc(100vh - 76px);padding-left:14px;padding-right:14px}
   .mobile-workspace-links{grid-template-columns:1fr 1fr}
   .mobile-workspace-links>span{grid-column:1/-1}
@@ -438,3 +440,18 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
 /* Additional official brokerage identities */
 .brokerage-logo.robinhood{background:#050505;color:#c3f53c;letter-spacing:.08em}
 .brokerage-logo.sofi{border-top:4px solid #00a2c7;color:#066a88;letter-spacing:.12em}
+
+/* Explicit account entry and dossier conversion paths */
+.access-account-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.access-account-actions>a:not(.button){color:var(--green);font-size:.9rem;font-weight:750}.access-founder-link{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:25px 28px;border:1px solid var(--line);border-top:0;background:var(--cream)}.access-founder-link>div{display:grid;gap:7px}.access-founder-link strong{font-family:Georgia,serif;font-size:1.25rem;font-weight:400}.access-founder-link>a{color:var(--green);font-weight:750;white-space:nowrap}
+
+@media(max-width:620px){
+  .access-account-actions{align-items:stretch;flex-direction:column}.access-account-actions>a{text-align:center}.access-founder-link{align-items:flex-start;flex-direction:column;padding:22px}
+  .site-header{height:auto}
+  .nav-inner{min-height:76px;flex-wrap:wrap;padding-top:9px;padding-bottom:9px}
+  .brand-tagline{display:none}
+  .nav-actions{order:3;width:100%;justify-content:flex-end;gap:12px;padding-top:9px;border-top:1px solid var(--line)}
+  .nav-actions .search-button,.nav-actions .notification-bell{display:none}
+  .nav-actions .nav-signin{margin-right:auto;font-weight:700}
+  .nav-actions .nav-cta{padding:9px 13px}
+  .nav-inner nav.open{top:100%;max-height:calc(100vh - 124px)}
+}

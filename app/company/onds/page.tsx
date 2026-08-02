@@ -16,6 +16,7 @@ import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "../../CompanyFollowerCount";
 import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 import { StockOwnershipPanel } from "../../StockOwnershipPanel";
+import { AccessComparison } from "../../AccessComparison";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -150,6 +151,7 @@ export default function OndasDossier() {
 
       {source && <div className="source-overlay" onClick={() => setSource(null)}><aside className="source-drawer" onClick={(e) => e.stopPropagation()}><button className="close" onClick={() => setSource(null)}>×</button><span className="kicker">SOURCE {String(source.id).padStart(2,"0")}</span><h2>{source.title}</h2><p className="source-meta">{source.meta}</p><blockquote>{source.excerpt}</blockquote><div className="verification-box"><span>✓</span><div><strong>Approved primary source</strong><p>Reviewed by an editor for provenance and relevance.</p></div></div><button className="button dark-button">Open original source ↗</button></aside></div>}
       <div className="container"><CommunityInsights ticker="ONDS"/></div>
+      <AccessComparison />
     </main>
   );
 }

@@ -16,6 +16,7 @@ import { findCatalogCompany } from "../../../db/companyCatalog";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "../../CompanyFollowerCount";
 import { StockOwnershipPanel } from "../../StockOwnershipPanel";
+import { AccessComparison } from "../../AccessComparison";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
 // after editorial content for the same ticker has been promoted to flagship depth.
@@ -101,5 +102,6 @@ export default async function CompanyStarterPage({
       <CommunityInsights ticker={company.ticker} />
       <div className="coverage-actions"><div><span className="kicker">HELP BUILD THIS DOSSIER</span><h2>Know this business deeply?</h2><p>Submit a fact, source, correction, or question for management. Every contribution is reviewed before publication.</p></div><Link className="button dark-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Start a contribution →</Link></div>
     </section>
+    <AccessComparison />
   </main>;
 }

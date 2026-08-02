@@ -17,6 +17,7 @@ import { ExternalIntelligencePanel } from "./ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "./CompanyFollowerCount";
 import { CompanyMarketSnapshot } from "./CompanyMarketSnapshot";
 import { StockOwnershipPanel } from "./StockOwnershipPanel";
+import { AccessComparison } from "./AccessComparison";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -134,5 +135,6 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     </div>
     {source && <div className="source-overlay" onClick={() => setSourceIndex(null)}><aside className="source-drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setSourceIndex(null)}>×</button><span className="kicker">PRIMARY SOURCE {String((sourceIndex ?? 0) + 1).padStart(2,"0")}</span><h2>{source.title}</h2><p className="source-meta">{source.meta}</p><blockquote>{source.excerpt}</blockquote><div className="verification-box"><span>✓</span><div><strong>Official source</strong><p>Use the original filing or company publication to verify current details.</p></div></div><a className="button dark-button" href={source.href} target="_blank" rel="noreferrer">Open original source ↗</a></aside></div>}
     <div className="container"><CommunityInsights ticker={company.ticker}/></div>
+    <AccessComparison />
   </main>;
 }
