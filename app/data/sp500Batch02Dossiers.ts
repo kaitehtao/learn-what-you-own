@@ -17,6 +17,7 @@ type Profile = {
   peers: string[];
   investorUrl: string;
   newsroomUrl: string;
+  newsroomFeedUrl?: string;
 };
 
 const companyByTicker = new Map(sp500Companies.map((company) => [company.ticker, company]));
@@ -36,6 +37,7 @@ function makeDossier(profile: Profile): FeaturedDossier {
     reviewed: "August 2, 2026",
     completeness: 100,
     newsroomUrl: profile.newsroomUrl,
+    newsroomFeedUrl: profile.newsroomFeedUrl,
     description: profile.description,
     lede: `${name} earns owner value through ${profile.revenueModel.toLowerCase()} The three questions that matter most are ${profile.drivers.slice(0, 3).map((driver) => driver[1].toLowerCase()).join(", ")}.`,
     sells: profile.products,
