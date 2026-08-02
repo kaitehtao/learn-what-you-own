@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 type Role = "member" | "contributor" | "editor" | "admin";
-type Member = { id:string; username:string; displayName:string; role:Role; onboardingComplete:boolean; email:string; verified:boolean; confirmationSentAt:string|null; createdAt:string; lastSignInAt:string|null };
+type Member = { id:string; username:string; displayName:string; role:Role; onboardingComplete:boolean; email:string; verified:boolean; confirmationSentAt:string|null; createdAt:string; lastSignInAt:string|null; credentialSummary:string; credentialStatus:string; hasProfessionalLinks:boolean; linksStatus:string };
 type DailyMetric = { date:string; visitors:number; pageViews:number };
 type TopPage = { path:string; visitors:number; pageViews:number };
 type Audit = { id:number; action:string; detail:Record<string,unknown>; created_at:string };
@@ -96,6 +96,17 @@ export function AdminDashboard() {
     setBusy("");
   }
 
+  async function reviewPublicProfile(member:Member,action:"verify_credentials"|"approve_links"|"reject_links") {
+    const label = action === "verify_credentials" ? "verify these credentials" : action === "approve_links" ? "approve these professional links" : "reject these professional links";
+    if (!window.confirm(`Are you sure you want to ${label} for @${member.username}?`)) return;
+    setBusy(`${action}:${member.id}`); setError(""); setNotice("");
+    const response = await authenticatedFetch("/api/admin/dashboard",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action,userId:member.id})});
+    const result = await response.json() as {error?:string};
+    if (!response.ok) setError(result.error ?? "Unable to review this public profile.");
+    else { setNotice(`@${member.username}'s public profile review was updated.`); await load(); }
+    setBusy("");
+  }
+
   async function deleteMember(member:Member) {
     const confirmation = window.prompt(`This permanently deletes @${member.username} and their private member data. Type DELETE @${member.username} to continue.`);
     if (!confirmation) return;
@@ -126,7 +137,7 @@ export function AdminDashboard() {
       <form className="admin-invite-form" onSubmit={inviteMember}><label>EMAIL<input required type="email" value={invite.email} onChange={event=>setInvite({...invite,email:event.target.value})} placeholder="new.member@example.com"/></label><label>USERNAME <em>optional</em><input minLength={3} maxLength={24} pattern="[A-Za-z0-9_]+" value={invite.username} onChange={event=>setInvite({...invite,username:event.target.value})} placeholder="owner_researcher"/></label><label>DISPLAY NAME <em>optional</em><input maxLength={80} value={invite.displayName} onChange={event=>setInvite({...invite,displayName:event.target.value})} placeholder="Member name"/></label><button disabled={busy==="invite"}>{busy==="invite"?"Sending…":"Invite member →"}</button></form>
       <div className="admin-member-table"><div className="admin-member-labels"><span>MEMBER</span><span>STATUS &amp; VERIFICATION</span><span>JOINED / LAST ACTIVE</span><span>ROLE</span><span>ACTION</span></div>{filtered.map(member=>{
         const memberBusy = busy.includes(member.id);
-        return <div className="admin-member-row" key={member.id}><span><strong>@{member.username}</strong><small>{member.displayName||"No display name"}</small><em>{member.email}</em></span><span><b className={member.verified?"verified":"pending"}>{member.verified?"Verified":"Pending"}</b><small>{member.onboardingComplete?"Onboarded":"Needs onboarding"}</small>{!member.verified&&<div className="admin-verification-actions"><button disabled={memberBusy} onClick={()=>void resendVerification(member)}>{busy===`resend:${member.id}`?"Sending…":"Resend email"}</button><button disabled={memberBusy} onClick={()=>void manuallyVerify(member)}>{busy===`verify:${member.id}`?"Verifying…":"Verify manually"}</button><small>Last sent: {shortDate(member.confirmationSentAt)}</small></div>}</span><span><strong>{shortDate(member.createdAt)}</strong><small>{shortDate(member.lastSignInAt)}</small></span><span><select aria-label={`Role for ${member.username}`} disabled={memberBusy} value={member.role} onChange={event=>void changeRole(member,event.target.value as Role)}>{roles.map(role=><option key={role}>{role}</option>)}</select></span><span><button className="admin-delete-account" disabled={memberBusy} onClick={()=>void deleteMember(member)}>Delete</button></span></div>;
+        return <div className="admin-member-row" key={member.id}><span><strong>@{member.username}</strong><small>{member.displayName||"No display name"}</small><em>{member.email}</em></span><span><b className={member.verified?"verified":"pending"}>{member.verified?"Email verified":"Email pending"}</b><small>{member.onboardingComplete?"Onboarded":"Needs onboarding"}</small>{!member.verified&&<div className="admin-verification-actions"><button disabled={memberBusy} onClick={()=>void resendVerification(member)}>{busy===`resend:${member.id}`?"Sending…":"Resend email"}</button><button disabled={memberBusy} onClick={()=>void manuallyVerify(member)}>{busy===`verify:${member.id}`?"Verifying…":"Verify manually"}</button><small>Last sent: {shortDate(member.confirmationSentAt)}</small></div>}<div className="admin-profile-review"><small>Credentials: {member.credentialStatus}</small>{member.credentialSummary&&member.credentialStatus!=="verified"&&<button disabled={memberBusy} onClick={()=>void reviewPublicProfile(member,"verify_credentials")}>Verify credentials</button>}<small>Links: {member.linksStatus}</small>{member.hasProfessionalLinks&&member.linksStatus!=="approved"&&<><button disabled={memberBusy} onClick={()=>void reviewPublicProfile(member,"approve_links")}>Approve links</button><button disabled={memberBusy} onClick={()=>void reviewPublicProfile(member,"reject_links")}>Reject</button></>}</div></span><span><strong>{shortDate(member.createdAt)}</strong><small>{shortDate(member.lastSignInAt)}</small></span><span><select aria-label={`Role for ${member.username}`} disabled={memberBusy} value={member.role} onChange={event=>void changeRole(member,event.target.value as Role)}>{roles.map(role=><option key={role}>{role}</option>)}</select></span><span><button className="admin-delete-account" disabled={memberBusy} onClick={()=>void deleteMember(member)}>Delete</button></span></div>;
       })}</div>
       {!filtered.length&&<div className="queue-empty">No accounts match that search.</div>}
     </section>

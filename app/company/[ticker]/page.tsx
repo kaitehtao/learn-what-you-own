@@ -15,6 +15,10 @@ import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 
+// Company dossiers evolve continuously. Never serve an earlier generated dossier
+// after editorial content for the same ticker has been promoted to flagship depth.
+export const dynamic = "force-dynamic";
+
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "SPCX") return "SpaceX (Space Exploration Technologies Corp.)";
   if (ticker.toUpperCase() === "TSLA") return "Tesla, Inc.";
