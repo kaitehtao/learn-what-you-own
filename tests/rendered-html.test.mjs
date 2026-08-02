@@ -26,8 +26,9 @@ test("describes homepage search honestly and offers supported examples", async (
 });
 
 test("features the full benchmark dossier set, including the four new companies", async () => {
-  const [home, registry, additions, complements, validator] = await Promise.all([
+  const [home, companyPage, registry, additions, complements, validator] = await Promise.all([
     source("app/page.tsx"),
+    source("app/company/[ticker]/page.tsx"),
     source("app/data/featuredDossiers.ts"),
     source("app/data/additionalFlagshipDossiers.ts"),
     source("app/data/dossierBenchmarkComplements.ts"),
@@ -41,6 +42,7 @@ test("features the full benchmark dossier set, including the four new companies"
 
   assert.match(registry, /Object\.assign\(featuredDossiers, additionalFlagshipDossiers\)/);
   assert.match(registry, /completeDossierBenchmark/);
+  assert.match(companyPage, /export const dynamic = "force-dynamic"/);
   assert.match(complements, /completeness: 100/);
   assert.match(validator, /financialDrivers\.length >= 6/);
   assert.match(validator, /dossier\.risks\.length >= 5/);
