@@ -282,6 +282,37 @@ test("supports public member profiles, follows, and per-message visibility", asy
   assert.match(messageClient, /Also appears on their profile/);
 });
 
+test("lets members add a public biography and validated profile photo", async () => {
+  const [migration, accountRoute, photoRoute, editor, memberRoute, memberClient, styles] = await Promise.all([
+    source("supabase/migrations/20260801090000_public_profile_bio_photo.sql"),
+    source("app/api/account/route.ts"),
+    source("app/api/account/photo/route.ts"),
+    source("app/account/profile/ProfileEditorClient.tsx"),
+    source("app/api/members/[username]/route.ts"),
+    source("app/members/[username]/MemberProfileClient.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(migration, /add column if not exists bio/);
+  assert.match(migration, /add column if not exists avatar_path/);
+  assert.match(migration, /length\(bio\) <= 500/);
+  assert.match(migration, /'profile-photos'/);
+  assert.match(migration, /3145728/);
+  assert.match(accountRoute, /Biography must be 500 characters or fewer/);
+  assert.match(photoRoute, /image\/jpeg/);
+  assert.match(photoRoute, /MAX_PHOTO_BYTES/);
+  assert.match(photoRoute, /requireSupabaseUser/);
+  assert.match(photoRoute, /crypto\.randomUUID/);
+  assert.match(editor, /SHORT BIOGRAPHY/);
+  assert.match(editor, /Maximum 3 MB/);
+  assert.match(editor, /email, phone, portfolio, watchlist, and notebook stay private/);
+  assert.match(memberRoute, /approvedContributions/);
+  assert.match(memberRoute, /publicProfilePhotoUrl/);
+  assert.match(memberClient, /Approved contributions/);
+  assert.match(memberClient, /Edit public profile/);
+  assert.match(styles, /\.profile-editor-form/);
+});
+
 test("distinguishes public research from verified-account tools and collects private phone details", async () => {
   const [comparison, home, login, onboarding, header] = await Promise.all([
     source("app/AccessComparison.tsx"),

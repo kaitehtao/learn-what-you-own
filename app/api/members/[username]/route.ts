@@ -1,4 +1,4 @@
-import { apiError, getSupabaseForRequest } from "../../../supabase-server";
+import { apiError, getSupabaseForRequest, publicProfilePhotoUrl } from "../../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +14,13 @@ export async function GET(request: Request, context: { params: Promise<{ usernam
     if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return Response.json({ error: "Member not found." }, { status: 404 });
     const supabase = getSupabaseForRequest(request);
     const { data: profile, error: profileError } = await supabase.from("profiles")
-      .select("user_id,username,display_name,role,created_at")
+      .select("user_id,username,display_name,role,bio,avatar_path,created_at")
       .ilike("username", username)
       .eq("onboarding_complete", true)
       .single();
     if (profileError || !profile) return Response.json({ error: "Member not found." }, { status: 404 });
 
-    const [{ data: followerRows, error: followersError }, { data: followingRows, error: followingError }, { data: publicMessages, error: messagesError }] = await Promise.all([
+    const [{ data: followerRows, error: followersError }, { data: followingRows, error: followingError }, { data: publicMessages, error: messagesError }, { data: researchRows, error: researchError }] = await Promise.all([
       supabase.from("member_follows")
         .select("created_at,follower:profiles!member_follows_follower_id_fkey(username,display_name)")
         .eq("followed_id", profile.user_id).order("created_at", { ascending: false }).limit(100),
@@ -32,10 +32,15 @@ export async function GET(request: Request, context: { params: Promise<{ usernam
         .eq("recipient_id", profile.user_id).eq("visibility", "public")
         .is("sender_deleted_at", null).is("recipient_deleted_at", null)
         .order("created_at", { ascending: false }).limit(100),
+      supabase.from("contributions")
+        .select("ticker,contribution_type,expertise")
+        .eq("user_id", profile.user_id).eq("status", "approved")
+        .order("created_at", { ascending: false }).limit(250),
     ]);
     if (followersError) throw followersError;
     if (followingError) throw followingError;
     if (messagesError) throw messagesError;
+    if (researchError) throw researchError;
 
     const authorization = request.headers.get("authorization") ?? "";
     let viewerId = "";
@@ -51,7 +56,19 @@ export async function GET(request: Request, context: { params: Promise<{ usernam
     }
 
     return Response.json({
-      profile: { username: profile.username, displayName: profile.display_name, role: profile.role, joinedAt: profile.created_at },
+      profile: {
+        username: profile.username,
+        displayName: profile.display_name,
+        role: profile.role,
+        bio: profile.bio ?? "",
+        avatarUrl: publicProfilePhotoUrl(profile.avatar_path),
+        joinedAt: profile.created_at,
+      },
+      researchActivity: {
+        approvedContributions: researchRows?.length ?? 0,
+        companiesCovered: new Set((researchRows ?? []).map(row => row.ticker)).size,
+        expertise: Array.from(new Set((researchRows ?? []).flatMap(row => String(row.expertise ?? "").split(",").map(value => value.trim()).filter(Boolean)))).slice(0, 6),
+      },
       followerCount: followerRows?.length ?? 0,
       followingCount: followingRows?.length ?? 0,
       followers: (followerRows ?? []).map(row => oneProfile(row.follower as RelatedProfile)).filter(Boolean),

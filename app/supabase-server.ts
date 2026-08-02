@@ -7,9 +7,13 @@ export type SupabaseProfile = {
   display_name: string;
   role: "member" | "contributor" | "editor" | "admin";
   onboarding_complete: boolean;
+  bio: string;
+  avatar_path: string | null;
   created_at: string;
   updated_at: string;
 };
+
+const PROFILE_PHOTO_BUCKET = "profile-photos";
 
 function valueFromEnvironment(name: string) {
   const workerValue = (env as unknown as Record<string, unknown>)[name];
@@ -36,6 +40,15 @@ export function getPublicSupabaseConfig() {
   }
   return { url, publishableKey };
 }
+
+export function publicProfilePhotoUrl(path: string | null | undefined) {
+  if (!path) return null;
+  const { url } = getPublicSupabaseConfig();
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `${url}/storage/v1/object/public/${PROFILE_PHOTO_BUCKET}/${encodedPath}`;
+}
+
+export { PROFILE_PHOTO_BUCKET };
 
 function bearerToken(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
