@@ -1155,3 +1155,24 @@ test("separates professional contributor interviews from company management inte
   assert.match(schema, /professionalInterviews/);
   assert.match(migration, /professional_interview_public_idx/);
 });
+
+test("links portfolio members to official brokerage login and account-opening destinations", async () => {
+  const [page, brokerageLinks, styles] = await Promise.all([
+    source("app/portfolio/page.tsx"),
+    source("app/portfolio/BrokerageLinks.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(page, /BrokerageLinks/);
+  for (const name of ["E\*TRADE", "Fidelity", "Charles Schwab", "Morgan Stanley", "J\.P\. Morgan", "Interactive Brokers"]) {
+    assert.match(brokerageLinks, new RegExp(name));
+  }
+  assert.match(brokerageLinks, /us\.etrade\.com\/e\/t\/user\/login/);
+  assert.match(brokerageLinks, /digital\.fidelity\.com\/prgw\/digital\/login/);
+  assert.match(brokerageLinks, /client\.schwab\.com\/Login\/SignOn/);
+  assert.match(brokerageLinks, /morganstanley\.com\/online/);
+  assert.match(brokerageLinks, /secure\.chase\.com\/web\/auth/);
+  assert.match(brokerageLinks, /interactivebrokers\.com\/sso\/Login/);
+  assert.match(brokerageLinks, /never asks for, receives, or stores your brokerage username/);
+  assert.match(brokerageLinks, /noopener noreferrer external/);
+  assert.match(styles, /\.brokerage-grid\{display:grid;grid-template-columns:repeat\(3/);
+});
