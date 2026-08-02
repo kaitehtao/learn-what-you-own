@@ -15,6 +15,7 @@ import { CompanyNewsPanel } from "../../CompanyNewsPanel";
 import { ExternalIntelligencePanel } from "../../ExternalIntelligencePanel";
 import { CompanyFollowerCount } from "../../CompanyFollowerCount";
 import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
+import { StockOwnershipPanel } from "../../StockOwnershipPanel";
 
 const risks = [
   { title: "Capital intensity & dilution", level: "High", text: "The company may require external capital before operations generate sustainable free cash flow.", signal: "Cash runway below 12 months" },
@@ -61,10 +62,13 @@ export default function OndasDossier() {
         </div>
       </section>
 
-      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
+      <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a><a href="#thesis">Thesis</a><a href="#financials">Financials</a><a href="#risks">Risks</a><a href="#changes">What changed</a><a href="#filings">Filings</a><a href="#ask">Ask AI</a></div></div>
 
       <div className="container market-data-wide">
         <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
+      </div>
+      <div className="container stock-ownership-wide">
+        <StockOwnershipPanel ticker="ONDS" />
       </div>
       <div className="container research-foundation-wide">
         <ResearchFoundationPanel ticker="ONDS" companyName="Ondas Holdings" editorialUpdatedAt="August 1, 2026" />
