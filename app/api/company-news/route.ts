@@ -1,6 +1,7 @@
 import { featuredDossiers } from "../../data/featuredDossiers";
 import { researchUniverse } from "../../data/universe";
 import { findCatalogCompany } from "../../../db/companyCatalog";
+import { getSecCompany } from "../../data/secCompanies.generated";
 
 type NewsItem = {
   title: string;
@@ -21,6 +22,19 @@ type GdeltArticle = {
   sourcecountry?: string;
 };
 
+type OfficialSourceHealth = {
+  source: "company" | "sec";
+  status: "working" | "empty" | "unavailable" | "not-configured" | "not-applicable";
+  records: number;
+  url: string | null;
+};
+
+const verifiedOfficialFeeds: Record<string, string> = {
+  AAPL: "https://www.apple.com/newsroom/rss-feed.rss",
+  MSFT: "https://news.microsoft.com/source/feed/",
+  NVDA: "https://nvidianews.nvidia.com/releases.xml",
+};
+
 function decodeXml(value: string): string {
   return value
     .replace(/^<!\[CDATA\[|\]\]>$/g, "")
@@ -37,10 +51,10 @@ function tag(item: string, name: string): string {
   return decodeXml(item.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${name}>`, "i"))?.[1]?.trim() ?? "");
 }
 
-function parseRss(xml: string): NewsItem[] {
+function parseRss(xml: string, fallbackSource = "Public news source"): NewsItem[] {
   const rssItems = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(([item]) => {
     const title = tag(item, "title").replace(/\s+-\s+[^-]+$/, "").trim();
-    const source = tag(item, "source") || "Public news source";
+    const source = tag(item, "source") || fallbackSource;
     const url = tag(item, "link");
     const publishedAt = tag(item, "pubDate");
     const summary = stripHtml(tag(item, "description"));
@@ -51,21 +65,40 @@ function parseRss(xml: string): NewsItem[] {
     const linkAttributes = entry.match(/<link\b([^>]*\brel=["']alternate["'][^>]*)\/?\s*>/i)?.[1]
       ?? entry.match(/<link\b([^>]*)\/?\s*>/i)?.[1]
       ?? "";
-    const filingType = stripHtml(tag(entry, "filing-type")) || htmlAttribute(entry.match(/<category\b([^>]*)\/?\s*>/i)?.[1] ?? "", "term") || "SEC filing";
+    const filingType = stripHtml(tag(entry, "filing-type"));
     const formName = stripHtml(tag(entry, "form-name"));
     const itemDescription = stripHtml(tag(entry, "items-desc"));
     const summary = stripHtml(tag(entry, "summary"));
+    const isSecFiling = Boolean(filingType || formName || itemDescription);
+    const category = filingType || htmlAttribute(entry.match(/<category\b([^>]*)\/?\s*>/i)?.[1] ?? "", "term");
     return {
-      title: [filingType, formName, itemDescription].filter(Boolean).join(" · "),
+      title: isSecFiling ? [filingType || "SEC filing", formName, itemDescription].filter(Boolean).join(" · ") : stripHtml(tag(entry, "title")),
       url: htmlAttribute(linkAttributes, "href"),
       publishedAt: stripHtml(tag(entry, "updated")) || stripHtml(tag(entry, "filing-date")),
-      source: "SEC EDGAR official filing",
+      source: isSecFiling ? "SEC EDGAR official filing" : fallbackSource,
       summary,
-      category: filingType,
+      category: category || undefined,
     };
   }).filter((item) => item.title && /^https?:\/\//.test(item.url));
 
   return [...rssItems, ...atomItems];
+}
+
+function discoverFeedUrls(html: string, newsroomUrl: string): string[] {
+  const candidates = [
+    ...[...html.matchAll(/<link\b([^>]+)>/gi)].flatMap(([, attributes]) => {
+      const type = htmlAttribute(attributes, "type").toLowerCase();
+      const rel = htmlAttribute(attributes, "rel").toLowerCase();
+      return rel.includes("alternate") && /(rss|atom|xml)/.test(type) ? [htmlAttribute(attributes, "href")] : [];
+    }),
+    ...[...html.matchAll(/<a\b([^>]+)>/gi)].flatMap(([, attributes]) => {
+      const href = htmlAttribute(attributes, "href");
+      return /(?:rss|atom|feed)(?:[./?]|$)/i.test(href) ? [href] : [];
+    }),
+  ];
+  return [...new Set(candidates.flatMap((href) => {
+    try { return [new URL(href, newsroomUrl).toString()]; } catch { return []; }
+  }))].slice(0, 3);
 }
 
 function stripHtml(value: string): string {
@@ -196,12 +229,40 @@ async function gdeltNews(query: string): Promise<NewsItem[]> {
   });
 }
 
-async function officialNews(newsroomUrl: string | null, feedUrl: string | null): Promise<NewsItem[]> {
-  if (feedUrl) return parseRss(await fetchText(feedUrl));
-  if (!newsroomUrl) return [];
-  const html = await fetchText(newsroomUrl);
-  if (new URL(newsroomUrl).hostname.replace(/^www\./, "") === "coreweave.com") return parseCoreWeaveNewsroom(html, newsroomUrl);
-  return parseNewsroomHtml(html, newsroomUrl);
+async function companyOfficialNews(companyName: string, newsroomUrl: string | null, feedUrl: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
+  const source = `${companyName} official newsroom`;
+  const primaryUrl = feedUrl || newsroomUrl;
+  if (!primaryUrl) return { items: [], health: { source: "company", status: "not-configured", records: 0, url: null } };
+  try {
+    if (feedUrl) {
+      const items = parseRss(await fetchText(feedUrl), source);
+      return { items, health: { source: "company", status: items.length ? "working" : "empty", records: items.length, url: feedUrl } };
+    }
+    const html = await fetchText(newsroomUrl!);
+    const hostname = new URL(newsroomUrl!).hostname.replace(/^www\./, "");
+    const direct = hostname === "coreweave.com" ? parseCoreWeaveNewsroom(html, newsroomUrl!) : parseNewsroomHtml(html, newsroomUrl!);
+    if (direct.length) return { items: direct, health: { source: "company", status: "working", records: direct.length, url: newsroomUrl } };
+    for (const discoveredFeed of discoverFeedUrls(html, newsroomUrl!)) {
+      try {
+        const items = parseRss(await fetchText(discoveredFeed), source);
+        if (items.length) return { items, health: { source: "company", status: "working", records: items.length, url: discoveredFeed } };
+      } catch { /* Continue through alternate official feeds. */ }
+    }
+    return { items: [], health: { source: "company", status: "empty", records: 0, url: newsroomUrl } };
+  } catch {
+    return { items: [], health: { source: "company", status: "unavailable", records: 0, url: primaryUrl } };
+  }
+}
+
+async function secOfficialNews(cik: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
+  if (!cik) return { items: [], health: { source: "sec", status: "not-applicable", records: 0, url: null } };
+  const url = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(cik)}&owner=exclude&count=40&output=atom`;
+  try {
+    const items = parseRss(await fetchText(url), "SEC EDGAR official filing").map((item) => ({ ...item, source: "SEC EDGAR official filing", provider: "SEC EDGAR" }));
+    return { items, health: { source: "sec", status: items.length ? "working" : "empty", records: items.length, url } };
+  } catch {
+    return { items: [], health: { source: "sec", status: "unavailable", records: 0, url } };
+  }
 }
 
 function unique(items: NewsItem[], limit: number): NewsItem[] {
@@ -244,7 +305,8 @@ export async function GET(request: Request) {
   const dossier = featuredDossiers[ticker];
   const companyName = catalogCompany?.name || universeCompany?.name || ticker;
   const newsroomUrl = dossier?.newsroomUrl ?? dossier?.sources.find((source) => source.meta.toLowerCase().includes("company"))?.href ?? null;
-  const newsroomFeedUrl = dossier?.newsroomFeedUrl ?? null;
+  const newsroomFeedUrl = dossier?.newsroomFeedUrl ?? verifiedOfficialFeeds[ticker] ?? null;
+  const cik = catalogCompany?.cik || getSecCompany(ticker)?.cik || null;
   const displayQuery = `"${companyName.replace(/\b(INC|INCORPORATED|LTD|PLC|CORP|CORPORATION)\.?\b/gi, "").replace(/\s+/g, " ").trim()}" ${ticker}`;
 
   const publicSources = [
@@ -252,14 +314,16 @@ export async function GET(request: Request) {
     { provider: "Google News", load: () => googleNews(displayQuery) },
     { provider: "GDELT", load: () => gdeltNews(displayQuery) },
   ];
-  const [officialResult, publicResults] = await Promise.all([
-    officialNews(newsroomUrl, newsroomFeedUrl).then(
-      (value) => ({ status: "fulfilled" as const, value }),
-      (reason) => ({ status: "rejected" as const, reason }),
-    ),
+  const [companyOfficial, secOfficial, publicResults] = await Promise.all([
+    companyOfficialNews(companyName, newsroomUrl, newsroomFeedUrl),
+    secOfficialNews(cik),
     Promise.allSettled(publicSources.map((source) => source.load())),
   ]);
-  const official = officialResult.status === "fulfilled" ? unique(officialResult.value, 100) : [];
+  const official = unique([...companyOfficial.items, ...secOfficial.items].sort((left, right) => {
+    const leftTime = new Date(left.publishedAt).valueOf();
+    const rightTime = new Date(right.publishedAt).valueOf();
+    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+  }), 100);
   const officialTitles = new Set(official.map((item) => item.title.toLowerCase()));
   const fulfilledPublicGroups = publicResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
   const publicNews = mergePublicSources(fulfilledPublicGroups, 18)
@@ -275,10 +339,11 @@ export async function GET(request: Request) {
     companyName,
     newsroomUrl,
     official,
+    officialSources: [companyOfficial.health, secOfficial.health],
     public: publicNews,
     providers,
     unavailableProviders,
     updatedAt: new Date().toISOString(),
-    partial: officialResult.status === "rejected" || unavailableProviders.length > 0,
+    partial: [companyOfficial.health, secOfficial.health].some((source) => source.status === "unavailable") || unavailableProviders.length > 0,
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }
