@@ -98,12 +98,13 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
 });
 
 test("publishes flagship-depth SPCX and TSLA owner dossiers with SEC-grounded official archives", async () => {
-  const [registry, spcx, tsla, newsRoute, featured] = await Promise.all([
+  const [registry, spcx, tsla, newsRoute, featured, factsMigration] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/data/spcxDossier.ts"),
     source("app/data/tslaDossier.ts"),
     source("app/api/company-news/route.ts"),
     source("app/FeaturedCompanyDossier.tsx"),
+    source("drizzle/0011_seed-spcx-tsla-sec-facts.sql"),
   ]);
 
   assert.match(registry, /featuredDossiers\.SPCX = spcxDossier/);
@@ -114,16 +115,23 @@ test("publishes flagship-depth SPCX and TSLA owner dossiers with SEC-grounded of
     assert.match(dossier, /financialDrivers: \[/);
     assert.match(dossier, /risks: \[/);
     assert.match(dossier, /comparables: \[/);
+    assert.match(dossier, /performance: \{/);
     assert.match(dossier, /sources: \[/);
   }
   assert.match(spcx, /SpaceX Final IPO Prospectus/);
   assert.match(spcx, /\$20\.737B capex/);
   assert.match(tsla, /Tesla Second-Quarter 2026 Form 10-Q/);
   assert.match(tsla, />\$25B capex expected/);
+  assert.match(spcx, /Return since first close/);
+  assert.match(tsla, /2026 YTD share-price return/);
   assert.match(newsRoute, /<entry\\b\[\\s\\S\]\*\?<\\\/entry>/);
   assert.match(newsRoute, /SEC EDGAR official filing/);
   assert.match(featured, /SpaceX \(Space Exploration Technologies Corp\.\)/);
   assert.match(featured, /Tesla, Inc\./);
+  assert.match(factsMigration, /'SPCX', 'no_compatible_facts'/);
+  assert.match(factsMigration, /'TSLA', 'success'.*272, 14/);
+  assert.match(factsMigration, /'SPCX', 'published'/);
+  assert.match(factsMigration, /'TSLA', 'published'/);
 });
 
 test("adds sector-aware external intelligence with moderated public evidence", async () => {
@@ -513,7 +521,7 @@ test("ranks featured homepage dossiers by verified community research demand", a
     source("supabase/migrations/20260801060000_company_research_demand.sql"),
   ]);
 
-  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "BB", "BE", "BA", "CAT", "CRWV", "ORCL"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
+  for (const ticker of ["AMC", "NVDA", "AAPL", "AMZN", "TSLA", "PLTR", "RKLB", "SPCX", "BB", "BE", "BA", "CAT", "CRWV", "ORCL"]) assert.match(home, new RegExp(`ticker: "${ticker}"`));
   assert.match(home, /Hot companies, ranked by owners/);
   assert.match(home, /toggleDemand/);
   assert.match(home, /viewerVotes/);
