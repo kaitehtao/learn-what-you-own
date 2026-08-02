@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { featuredDossiers } from "../../data/featuredDossiers";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,10 @@ export async function GET() {
 
   const publishedClaims = Number(claims?.total ?? 0);
   const sourcedClaims = Number(claims?.sourced ?? 0);
+  const sourceCountsByTicker = Object.fromEntries(sourceCounts.results.map((row) => [row.ticker, Number(row.count)]));
+  for (const [ticker, dossier] of Object.entries(featuredDossiers)) {
+    sourceCountsByTicker[ticker] = Math.max(sourceCountsByTicker[ticker] ?? 0, new Set(dossier.sources.map((source) => source.href)).size);
+  }
   return Response.json({
     researchableSymbols: Number(catalog?.total ?? 0),
     listedSymbols: Number(catalog?.listed ?? 0),
@@ -50,7 +55,7 @@ export async function GET() {
     publishedClaims,
     sourcedClaims,
     claimSourceCoverage: publishedClaims ? Math.round((sourcedClaims / publishedClaims) * 100) : 0,
-    sourceCountsByTicker: Object.fromEntries(sourceCounts.results.map((row) => [row.ticker, Number(row.count)])),
+    sourceCountsByTicker,
     definitions: {
       researchableSymbols: "Distinct active NYSE, Nasdaq, and OTC symbols in the authoritative D1 companies table.",
       uniquePrimarySources: "Distinct HTTPS evidence documents, with SEC URLs deduplicated by filing accession.",

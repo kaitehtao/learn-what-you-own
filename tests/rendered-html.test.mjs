@@ -43,6 +43,8 @@ test("uses authoritative live homepage coverage and deduplicated primary-source 
   assert.match(statsRoute, /sec-accession:/);
   assert.match(statsRoute, /COUNT\(DISTINCT source_key\)/);
   assert.match(statsRoute, /cd\.status = 'published'/);
+  assert.match(statsRoute, /featuredDossiers/);
+  assert.match(statsRoute, /Math\.max\(sourceCountsByTicker\[ticker\] \?\? 0/);
   assert.match(styles, /\.proof-definition\{/);
 });
 
