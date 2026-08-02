@@ -1,11 +1,43 @@
 import { env } from "cloudflare:workers";
 import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { ensureFeedbackVotingSchema } from "../../../db/runtimeSchema";
 
 export const dynamic = "force-dynamic";
 
 const categories = new Set(["New feature", "Product improvement", "Research coverage", "Bug report", "Accessibility", "Other"]);
 
 export async function GET(request: Request) {
+  const view = new URL(request.url).searchParams.get("view");
+  if (view === "ranked") {
+    try {
+      await ensureFeedbackVotingSchema();
+      let viewerId = "";
+      if (request.headers.get("authorization")) {
+        try { viewerId = (await requireSupabaseUser(request)).profile.user_id; } catch { /* Public board remains readable. */ }
+      }
+      const result = await env.DB.prepare(`
+        SELECT feedback.id,feedback.username,feedback.title,feedback.details,feedback.status,feedback.created_at,
+          COUNT(votes.user_id) AS vote_count,
+          MAX(CASE WHEN votes.user_id=? THEN 1 ELSE 0 END) AS viewer_has_voted
+        FROM product_feedback AS feedback
+        LEFT JOIN product_feedback_votes AS votes ON votes.feedback_id=feedback.id
+        WHERE feedback.category='New feature' AND feedback.status IN ('reviewing','planned','completed')
+        GROUP BY feedback.id
+        ORDER BY vote_count DESC, feedback.created_at DESC
+        LIMIT 100
+      `).bind(viewerId).all<{ id: number; username: string; title: string; details: string; status: string; created_at: string; vote_count: number; viewer_has_voted: number }>();
+      return Response.json({ featureRequests: result.results.map(item => ({
+        id: item.id,
+        username: item.username,
+        title: item.title,
+        details: item.details,
+        status: item.status,
+        createdAt: item.created_at,
+        voteCount: Number(item.vote_count),
+        viewerHasVoted: Boolean(item.viewer_has_voted),
+      })) }, { headers: { "cache-control": "public, max-age=30, s-maxage=60" } });
+    } catch (error) { return apiError(error); }
+  }
   try {
     const { profile } = await requireSupabaseUser(request);
     const result = await env.DB.prepare("SELECT id,category,title,details,status,moderator_note,created_at FROM product_feedback WHERE user_id=? ORDER BY created_at DESC")
