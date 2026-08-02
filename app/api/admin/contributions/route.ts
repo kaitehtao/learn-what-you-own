@@ -2,6 +2,7 @@ import { getDb } from "../../../../db";
 import { companies, companyRelationships, emergingCompanyDossiers } from "../../../../db/schema";
 import { researchUniverse } from "../../../data/universe";
 import { apiError, requireEditor } from "../../../supabase-server";
+import { awardPoints, rewardRules } from "../../../../db/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -172,7 +173,25 @@ export async function PATCH(request: Request) {
     const companyPublished = payload.status === "approved"
       ? await publishCompanyProposal(contribution as Record<string, unknown>, profile.username)
       : false;
-    return Response.json({ ok: true, relationshipPublished, companyPublished });
+    const contributionProfile = (Array.isArray(contribution.profiles) ? contribution.profiles[0] : contribution.profiles) as { username?: string } | null;
+    const contributionType = String(contribution.contribution_type ?? "Contribution");
+    const points = companyPublished ? rewardRules.approvedCompanyDossier
+      : relationshipPublished ? rewardRules.approvedRelationship
+        : /correction/i.test(contributionType) ? rewardRules.approvedCorrection
+          : rewardRules.approvedContribution;
+    const pointsAwarded = payload.status === "approved"
+      ? await awardPoints({
+        userId: String(contribution.user_id),
+        username: contributionProfile?.username ?? "member",
+        eventType: "approved_contribution",
+        sourceType: "contribution",
+        sourceId: String(contribution.id),
+        points,
+        description: `${contributionType} approved by editorial review`,
+        awardedBy: profile.username,
+      })
+      : 0;
+    return Response.json({ ok: true, relationshipPublished, companyPublished, pointsAwarded });
   } catch (error) {
     return apiError(error);
   }
