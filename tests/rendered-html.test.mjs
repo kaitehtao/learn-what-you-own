@@ -77,6 +77,8 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
   assert.match(newsRoute, /indexedOfficialNews/);
   assert.match(newsRoute, /verifiedOfficialNewsrooms/);
   assert.match(newsRoute, /retryOnce/);
+  assert.match(newsRoute, /tradingViewNews/);
+  assert.match(newsRoute, /news-headlines\.tradingview\.com\/headlines/);
   assert.match(newsRoute, /investor\.sandisk\.com\/news-events\/news-releases/);
   assert.match(newsRoute, /ir\.thermofisher\.com\/investors\/news-events\/news\/default\.aspx/);
   assert.match(validator, /official newsroom/);
@@ -920,7 +922,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /External coverage of/);
   assert.match(panel, /INDEPENDENT JOURNALISM/);
   assert.match(panel, /Corporate press-release wires are excluded/);
-  assert.match(panel, /Bing News, Google News, and GDELT/);
+  assert.match(panel, /Bing News, Google News, TradingView, and GDELT/);
   assert.match(panel, /news-provider-filters/);
   assert.match(route, /companyOfficialNews\(companyName, newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /secOfficialNews\(cik\)/);

@@ -22,6 +22,13 @@ type GdeltArticle = {
   sourcecountry?: string;
 };
 
+type TradingViewArticle = {
+  published?: number;
+  source?: string;
+  storyPath?: string;
+  title?: string;
+};
+
 type PalantirPressRelease = {
   Body?: string;
   Headline?: string;
@@ -82,7 +89,7 @@ function tag(item: string, name: string): string {
 function parseRss(xml: string, fallbackSource = "Public news source"): NewsItem[] {
   const rssItems = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(([item]) => {
     const title = tag(item, "title").replace(/\s+-\s+[^-]+$/, "").trim();
-    const source = tag(item, "source") || fallbackSource;
+    const source = tag(item, "source") || tag(item, "dc:creator") || fallbackSource;
     const url = tag(item, "link");
     const publishedAt = tag(item, "pubDate");
     const summary = stripHtml(tag(item, "description"));
@@ -280,14 +287,14 @@ function parsePalantirInvestorReleases(payload: PalantirPressReleaseResponse, in
   });
 }
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(url: string, userAgent = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com", timeoutMs = 8_000): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
       headers: {
         "accept": "application/atom+xml, application/rss+xml, application/xml, text/html;q=0.9, */*;q=0.8",
-        "user-agent": "LearnWhatYouOwn/1.0 research@learnwhatyouown.com",
+        "user-agent": userAgent,
       },
       signal: controller.signal,
     });
@@ -298,14 +305,14 @@ async function fetchText(url: string): Promise<string> {
   }
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
+async function fetchJson<T>(url: string, userAgent = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com", timeoutMs = 8_000): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
       headers: {
         accept: "application/json",
-        "user-agent": "LearnWhatYouOwn/1.0 research@learnwhatyouown.com",
+        "user-agent": userAgent,
       },
       signal: controller.signal,
     });
@@ -333,6 +340,22 @@ async function googleNews(query: string): Promise<NewsItem[]> {
     source: item.source === "Public news source" ? "Google News index" : item.source,
     provider: "Google News",
   }));
+}
+
+async function tradingViewNews(ticker: string, exchange: string): Promise<NewsItem[]> {
+  const params = new URLSearchParams({ category: "stock", lang: "en", symbol: `${exchange}:${ticker}` });
+  const userAgent = "Mozilla/5.0 (compatible; LearnWhatYouOwn/1.0; +https://learnwhatyouown.com)";
+  const payload = await fetchJson<TradingViewArticle[]>(`https://news-headlines.tradingview.com/headlines/?${params}`, userAgent, 12_000);
+  return payload.flatMap((article) => {
+    if (!article.title || !article.storyPath) return [];
+    return [{
+      title: article.title.trim(),
+      url: new URL(article.storyPath, "https://www.tradingview.com").toString(),
+      publishedAt: article.published ? new Date(article.published * 1_000).toISOString() : "",
+      source: article.source || "TradingView indexed publisher",
+      provider: "TradingView",
+    }];
+  });
 }
 
 function gdeltDate(value: string | undefined): string {
@@ -574,10 +597,15 @@ export async function GET(request: Request) {
     .trim();
   const searchAliases: Record<string, string> = { IBM: "IBM", IBKR: "Interactive Brokers", PLD: "Prologis", PLTR: "Palantir", SPCX: "SpaceX" };
   const displayQuery = searchAliases[ticker] ? `${searchAliases[ticker]} ${ticker}` : `"${searchName}" ${ticker}`;
+  const tradingViewExchange = /NASDAQ/i.test(universeCompany?.exchange ?? "") ? "NASDAQ"
+    : /NYSE/i.test(universeCompany?.exchange ?? "") ? "NYSE"
+      : /AMEX|NYSEAMERICAN/i.test(universeCompany?.exchange ?? "") ? "AMEX"
+        : "NASDAQ";
 
   const publicSources = [
     { provider: "Bing News", load: () => retryOnce(() => bingNews(displayQuery)) },
     { provider: "Google News", load: () => retryOnce(() => googleNews(`${displayQuery} when:30d`)) },
+    { provider: "TradingView", load: () => retryOnce(() => tradingViewNews(ticker, tradingViewExchange)) },
     { provider: "GDELT", load: () => gdeltNews(displayQuery) },
   ];
   const [companyOfficial, secOfficial, publicResults] = await Promise.all([
