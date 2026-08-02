@@ -1113,3 +1113,24 @@ test("shows privacy-preserving watchlist follower totals for every company", asy
   assert.match(followerCount, /Watchlist count unavailable/);
   assert.match(watchlistButton, /company-following-change/);
 });
+
+test("awards moderator-approved value and highlights public contributors", async () => {
+  const [rewards, contributionModeration, feedbackModeration, account, leaderboard, schema, migration] = await Promise.all([
+    source("db/rewards.ts"),
+    source("app/api/admin/contributions/route.ts"),
+    source("app/api/admin/feedback/route.ts"),
+    source("app/account/RewardsSummary.tsx"),
+    source("app/contributors/ContributorsClient.tsx"),
+    source("db/schema.ts"),
+    source("drizzle/0016_member_rewards.sql"),
+  ]);
+  assert.match(rewards, /ON CONFLICT\(user_id,event_type,source_type,source_id\) DO NOTHING/);
+  assert.match(contributionModeration, /payload\.status === "approved"/);
+  assert.match(contributionModeration, /awardPoints/);
+  assert.match(feedbackModeration, /feature_planned/);
+  assert.match(feedbackModeration, /feature_completed/);
+  assert.match(account, /currencyNotice/);
+  assert.match(leaderboard, /approvedAwards/);
+  assert.match(schema, /memberRewardLedger/);
+  assert.match(migration, /member_reward_source_unique_idx/);
+});
