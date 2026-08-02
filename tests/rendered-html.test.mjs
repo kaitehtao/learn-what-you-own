@@ -307,6 +307,9 @@ test("calculates a clean private portfolio status from shares, cost, and current
   assert.match(quotes, /revalidate: 300/);
   assert.match(styles, /\.portfolio-summary\{/);
   assert.match(styles, /\.portfolio-table-head/);
+  assert.match(styles, /Resilient member workspace layouts/);
+  assert.match(styles, /@media\(max-width:1180px\)\{\.portfolio-workspace>\.portfolio-layout\{grid-template-columns:1fr\}/);
+  assert.match(styles, /\.portfolio-list,\.portfolio-table,\.portfolio-table \.position-row>\*\{min-width:0\}/);
 });
 
 test("accepts authenticated product feedback with private history and moderation status", async () => {
@@ -429,9 +432,14 @@ test("shows watchlist earnings dates and creates duplicate-safe seven-day alerts
   assert.match(calendar, /onConflict: "user_id,entity_type,entity_id"/);
   assert.match(watchlistApi, /refreshEarningsCalendar/);
   assert.match(watchlistApi, /daysUntilEarnings/);
+  assert.match(watchlistApi, /Earnings alerts could not be prepared while loading the watchlist/);
+  assert.match(calendar, /AbortSignal\.timeout\(4_000\)/);
+  assert.match(calendar, /officialFallbackRecord/);
   assert.match(watchlist, /NEXT EARNINGS/);
   assert.match(watchlist, /7-day alert scheduled/);
   assert.match(watchlist, /Company confirmed/);
+  assert.match(watchlist, /We couldn’t load your watchlist/);
+  assert.match(watchlist, /Try again/);
   assert.match(alertsRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /\/api\/internal\/earnings-alerts/);
   assert.match(worker, /await deliverScheduledDigest/);

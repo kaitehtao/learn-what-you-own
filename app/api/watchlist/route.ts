@@ -14,9 +14,17 @@ export async function GET(request: Request) {
     const { profile, supabase } = await requireSupabaseUser(request);
     const { data, error } = await supabase.from("watchlist_items").select("id,ticker,created_at").eq("user_id", profile.user_id).order("ticker");
     if (error) throw error;
-    const admin = getSupabaseAdminClient();
-    const calendar = await refreshEarningsCalendar(admin, (data ?? []).map((row) => row.ticker));
-    await createDueEarningsAlerts(admin, (data ?? []).map((row) => ({ user_id: profile.user_id, ticker: row.ticker })), calendar);
+    const tickers = (data ?? []).map((row) => row.ticker);
+    const calendar = await refreshEarningsCalendar(tickers);
+
+    // Alert creation is a secondary convenience. A missing notification
+    // dependency must never prevent a member from seeing saved companies.
+    try {
+      const admin = getSupabaseAdminClient();
+      await createDueEarningsAlerts(admin, tickers.map((ticker) => ({ user_id: profile.user_id, ticker })), calendar);
+    } catch (alertError) {
+      console.error("Earnings alerts could not be prepared while loading the watchlist", alertError);
+    }
     return Response.json({
       items: (data ?? []).map((row) => {
         const company = findCompany(row.ticker);

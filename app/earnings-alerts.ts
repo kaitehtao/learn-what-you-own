@@ -78,6 +78,7 @@ export async function fetchNasdaqEarningsDate(tickerValue: string): Promise<Earn
   const response = await fetch(`${NASDAQ_EARNINGS_URL}/${encodeURIComponent(ticker)}/earnings-date`, {
     headers: { accept: "application/json", "user-agent": "Learn What You Own earnings alerts" },
     next: { revalidate: 21_600 },
+    signal: AbortSignal.timeout(4_000),
   });
   if (!response.ok) throw new Error(`Earnings provider returned ${response.status}`);
   const payload = await response.json() as NasdaqEarningsPayload;
@@ -115,7 +116,23 @@ async function mapWithConcurrency<T, R>(values: T[], limit: number, work: (value
   return results;
 }
 
-export async function refreshEarningsCalendar(_admin: SupabaseClient, tickerValues: string[]) {
+function officialFallbackRecord(ticker: string): EarningsCalendarRecord | null {
+  const verification = officialVerification(ticker, null);
+  if (!verification) return null;
+  return {
+    ticker,
+    earnings_date: verification.date,
+    session: verification.session,
+    verification_status: "company-confirmed",
+    announced_time: verification.announcedTime,
+    source_url: verification.sourceUrl,
+    source_label: verification.sourceLabel,
+    provider_text: "Official company announcement",
+    checked_at: new Date().toISOString(),
+  };
+}
+
+export async function refreshEarningsCalendar(tickerValues: string[]) {
   const tickers = [...new Set(tickerValues.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean))];
   const records = new Map<string, EarningsCalendarRecord>();
   if (!tickers.length) return records;
@@ -124,7 +141,7 @@ export async function refreshEarningsCalendar(_admin: SupabaseClient, tickerValu
       return await fetchNasdaqEarningsDate(ticker);
     } catch (caught) {
       console.error(`Unable to refresh earnings date for ${ticker}`, caught);
-      return null;
+      return officialFallbackRecord(ticker);
     }
   });
   const available = refreshed.filter((record): record is EarningsCalendarRecord => Boolean(record));
@@ -196,6 +213,6 @@ export async function refreshAllWatchlistEarningsAlerts(admin: SupabaseClient) {
   const { data: owners, error } = await admin.from("watchlist_items").select("user_id,ticker");
   if (error) throw error;
   const watchlistOwners = (owners ?? []) as WatchlistOwner[];
-  const calendar = await refreshEarningsCalendar(admin, watchlistOwners.map((owner) => owner.ticker));
+  const calendar = await refreshEarningsCalendar(watchlistOwners.map((owner) => owner.ticker));
   return { companiesChecked: calendar.size, ...(await createDueEarningsAlerts(admin, watchlistOwners, calendar)) };
 }
