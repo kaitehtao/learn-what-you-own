@@ -4,6 +4,7 @@ let quarterlySchemaPromise: Promise<unknown> | null = null;
 let feedbackVotingSchemaPromise: Promise<unknown> | null = null;
 let memberRewardsSchemaPromise: Promise<unknown> | null = null;
 let professionalInterviewsSchemaPromise: Promise<unknown> | null = null;
+let brokerageClickSchemaPromise: Promise<unknown> | null = null;
 
 // Manual migrations are packaged with the worker, but an older production D1
 // database can briefly receive new application code before the migration is
@@ -119,4 +120,28 @@ export function ensureProfessionalInterviewsSchema() {
     });
   }
   return professionalInterviewsSchemaPromise;
+}
+
+export function ensureBrokerageClickSchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!brokerageClickSchemaPromise) {
+    brokerageClickSchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS brokerage_clicks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        click_id TEXT NOT NULL,
+        broker_key TEXT NOT NULL,
+        action TEXT NOT NULL CHECK(action IN ('login','open')),
+        destination_type TEXT NOT NULL DEFAULT 'official' CHECK(destination_type IN ('official','paid_referral')),
+        source_path TEXT NOT NULL DEFAULT '/portfolio',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS brokerage_click_id_idx ON brokerage_clicks(click_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS brokerage_click_broker_created_idx ON brokerage_clicks(broker_key,created_at)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS brokerage_click_action_created_idx ON brokerage_clicks(action,created_at)"),
+    ]).catch((error) => {
+      brokerageClickSchemaPromise = null;
+      throw error;
+    });
+  }
+  return brokerageClickSchemaPromise;
 }
