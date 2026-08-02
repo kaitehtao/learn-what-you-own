@@ -53,7 +53,7 @@ export default function OndasDossier() {
           <div><small>FINANCIAL FACTS</small><strong>SEC sourced</strong><span>No analyst estimates</span></div>
           <div><small>RELATIONSHIP MAP</small><strong>Evidence linked</strong><span>Supplier → customer</span></div>
           <div><small>COMMUNITY</small><strong className="positive">Moderated</strong><span>Username attributed</span></div>
-          <div><small>DOSSIER STATUS</small><strong>Living research</strong><span>Verify at the source</span></div>
+          <div><small>DOSSIER LAST UPDATED</small><strong>August 1, 2026</strong><span>Primary-source editorial review</span></div>
         </div>
       </section>
 
@@ -63,7 +63,7 @@ export default function OndasDossier() {
         <MarketDataPanel ticker="ONDS" exchange="NASDAQ" />
       </div>
       <div className="container research-foundation-wide">
-        <ResearchFoundationPanel ticker="ONDS" companyName="Ondas Holdings" />
+        <ResearchFoundationPanel ticker="ONDS" companyName="Ondas Holdings" editorialUpdatedAt="August 1, 2026" />
       </div>
       <div className="container external-intelligence-wide">
         <ExternalIntelligencePanel ticker="ONDS" companyName="Ondas Holdings" sector="Industrials" />
