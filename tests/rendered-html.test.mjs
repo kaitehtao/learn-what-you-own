@@ -508,12 +508,16 @@ test("calculates a clean private portfolio status from shares, cost, and current
   assert.match(layout, /export const dynamic = "force-dynamic"/);
 });
 
-test("accepts authenticated product feedback with private history and moderation status", async () => {
-  const [page, client, route, migration, layout, account] = await Promise.all([
+test("accepts authenticated product feedback with ranked feature requests", async () => {
+  const [page, client, route, voteRoute, migration, rankingMigration, schema, runtimeSchema, layout, account] = await Promise.all([
     source("app/feedback/page.tsx"),
     source("app/feedback/FeedbackClient.tsx"),
     source("app/api/feedback/route.ts"),
+    source("app/api/feedback/vote/route.ts"),
     source("drizzle/0008_product_feedback.sql"),
+    source("drizzle/0015_ranked_feature_requests.sql"),
+    source("db/schema.ts"),
+    source("db/runtimeSchema.ts"),
     source("app/layout.tsx"),
     source("app/account/AccountClient.tsx"),
   ]);
@@ -521,16 +525,57 @@ test("accepts authenticated product feedback with private history and moderation
   assert.match(page, /HELP SHAPE THE PRODUCT/);
   assert.match(client, /New product feedback/);
   assert.match(client, /My feedback history/);
+  assert.match(client, /Feature request/);
+  assert.match(client, /Ranked feature requests/);
+  assert.match(client, /One vote per verified member/);
   assert.match(client, /@Yourhost will review/);
   assert.match(route, /requireSupabaseUser/);
   assert.match(route, /Title must be 8–120 characters/);
   assert.match(route, /Details must be 30–4,000 characters/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `product_feedback`/);
+  assert.match(rankingMigration, /CREATE TABLE IF NOT EXISTS `product_feedback_votes`/);
+  assert.match(rankingMigration, /product_feedback_vote_unique_idx/);
+  assert.match(schema, /export const productFeedbackVotes/);
+  assert.match(runtimeSchema, /ensureFeedbackVotingSchema/);
+  assert.match(route, /view === "ranked"/);
+  assert.match(route, /ORDER BY vote_count DESC/);
+  assert.match(voteRoute, /requireSupabaseUser/);
+  assert.match(voteRoute, /ON CONFLICT\(feedback_id,user_id\) DO NOTHING/);
+  assert.match(voteRoute, /export async function DELETE/);
   assert.match(migration, /`status` IN \('submitted', 'reviewing', 'planned', 'completed', 'declined'\)/);
   assert.match(route, /env\.DB\.prepare/);
   assert.match(route, /WHERE user_id=\?/);
   assert.match(layout, /href="\/feedback"/);
   assert.match(account, /Product feedback/);
+});
+
+test("adds filing-grounded stock ownership to every dossier", async () => {
+  const [panel, route, featured, starter, ondas, styles] = await Promise.all([
+    source("app/StockOwnershipPanel.tsx"),
+    source("app/api/ownership/route.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/company/onds/page.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(panel, /Who owns/);
+  assert.match(panel, /INSTITUTIONAL OWNERSHIP/);
+  assert.match(panel, /ESTIMATED RETAIL \+ OTHER/);
+  assert.match(panel, /PUBLIC TRADABLE FLOAT/);
+  assert.match(panel, /Reporting insiders/);
+  assert.match(panel, /Largest reporting holders/);
+  assert.match(panel, /not a reported SEC retail figure/);
+  assert.match(route, /EntityCommonStockSharesOutstanding/);
+  assert.match(route, /EntityPublicFloat/);
+  assert.match(route, /institutional-holdings/);
+  assert.match(route, /insider-trades\?limit=500/);
+  assert.match(route, /forms=3%2C4%2C5/);
+  assert.match(featured, /StockOwnershipPanel/);
+  assert.match(featured, /href="#ownership"/);
+  assert.match(starter, /StockOwnershipPanel/);
+  assert.match(ondas, /StockOwnershipPanel/);
+  assert.match(styles, /\.ownership-summary-grid/);
+  assert.match(styles, /\.ownership-detail-grid/);
 });
 
 test("keeps investment notebooks private while supporting sourced public handoff", async () => {
@@ -965,6 +1010,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /stripNewsHtml/);
   assert.match(newsText, /export function stripNewsHtml/);
   assert.match(newsText, /style\|script\|noscript/);
+  assert.match(newsText, /prnews_span/);
   assert.match(route, /data-content-type=\["'\]press-release/);
   assert.match(route, /const companyReleases = unique/);
   assert.match(route, /const secFilings = unique/);
