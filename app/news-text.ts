@@ -14,6 +14,11 @@ export function stripNewsHtml(value: string): string {
   const decoded = decodeXml(value);
   return decodeXml(decoded
     .replace(/<(style|script|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    // Some Q4/PR Newswire feeds place stylesheet rules directly in a summary
+    // instead of wrapping them in a <style> element. Remove those rule blocks
+    // before stripping markup so readers never see selectors such as
+    // `.q4default span.prnews_span { ... }` as article copy.
+    .replace(/(?:^|\s)[.#][a-z][^{}\n]{0,240}\{[^{}]{0,3000}\}/gi, " ")
     .replace(/<!--([\s\S]*?)-->/g, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
