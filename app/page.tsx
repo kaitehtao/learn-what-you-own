@@ -8,6 +8,7 @@ import { normalizedTicker, rankedCompanyMatches } from "./data/companySearch";
 import { authenticatedFetch, loginPath } from "./supabase-browser";
 import { AccessComparison } from "./AccessComparison";
 import { followingLabel, type CompanyDemand, type CompanyFollower } from "./company-followers";
+import { formatMarketCap, formatStockPrice, type CompanyMarketSnapshot } from "./market-snapshot";
 
 const companies = [
   { ticker: "AMC", name: "AMC Entertainment", sector: "Theatrical Exhibition", updated: "Today", score: 100, note: "Q2 performance, debt actions, and comparables verified" },
@@ -65,6 +66,7 @@ export default function Home() {
   const [catalogSearch, setCatalogSearch] = useState<{ query: string; matches: SearchMatch[] }>({ query: "", matches: [] });
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
   const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
+  const [marketSnapshots, setMarketSnapshots] = useState<Record<string, CompanyMarketSnapshot | null>>({});
   const localMatches = useMemo(
     () => rankedCompanyMatches(researchUniverse, query).slice(0, 8),
     [query]
@@ -87,6 +89,16 @@ export default function Home() {
       setDemand(Object.fromEntries((payload.companies ?? []).map((item) => [item.ticker, item])));
       setViewerVotes(new Set(payload.viewerVotes ?? []));
     }).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    const tickers = companies.map((company) => company.ticker).join(",");
+    fetch(`/api/market-snapshot?tickers=${encodeURIComponent(tickers)}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = await response.json() as { snapshots?: Record<string, CompanyMarketSnapshot | null> };
+        setMarketSnapshots(payload.snapshots ?? {});
+      })
+      .catch(() => undefined);
   }, []);
   useEffect(() => {
     fetch("/api/site-stats").then(async (response) => {
@@ -216,6 +228,10 @@ export default function Home() {
               </div>
               <h3>{company.name}</h3>
               <p className="ticker-line">{company.ticker} · {company.sector}</p>
+              <div className="card-market-data" aria-label={`${company.ticker} market data`}>
+                <div><small>CURRENT PRICE</small><strong>{marketSnapshots[company.ticker] === undefined ? "Loading…" : formatStockPrice(marketSnapshots[company.ticker]?.price)}</strong></div>
+                <div><small>MARKET CAP</small><strong>{marketSnapshots[company.ticker] === undefined ? "Loading…" : formatMarketCap(marketSnapshots[company.ticker]?.marketCap)}</strong></div>
+              </div>
               <div className="card-update"><span>↗</span><div><small>LATEST UPDATE</small><p>{company.note}</p></div></div>
               <div className="card-meta"><span>{siteStats?.sourceCountsByTicker[company.ticker]?.toLocaleString() ?? "—"} primary sources</span><span>Updated {company.updated}</span></div>
             </Link>
