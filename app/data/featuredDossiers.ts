@@ -1,5 +1,6 @@
 import { additionalFlagshipDossiers } from "./additionalFlagshipDossiers";
 import { completeDossierBenchmark, dossierBenchmarkComplements } from "./dossierBenchmarkComplements";
+import { sp500Batch01Dossiers } from "./sp500Batch01Dossiers";
 
 export type FeaturedDossier = {
   ticker: string;
@@ -547,6 +548,11 @@ featuredDossiers.SPCX = spcxDossier;
 featuredDossiers.TSLA = tslaDossier;
 
 Object.assign(featuredDossiers, additionalFlagshipDossiers);
+Object.assign(featuredDossiers, sp500Batch01Dossiers);
+
+// Alphabet's two S&P 500 share classes represent one underlying company and
+// therefore share the same evidence-linked owner dossier.
+if (featuredDossiers.GOOG) featuredDossiers.GOOGL = { ...featuredDossiers.GOOG, ticker: "GOOGL" };
 
 for (const [ticker, complement] of Object.entries(dossierBenchmarkComplements)) {
   const existing = featuredDossiers[ticker];
