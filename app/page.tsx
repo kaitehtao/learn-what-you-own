@@ -157,7 +157,7 @@ export default function Home() {
         <div className="container hero-inner">
           <div className="eyebrow"><span className="status-dot" /> Public research is free. Your owner workspace is free.</div>
           <h1>Understand what you own.<br /><em>Make the research yours.</em></h1>
-          <p className="hero-copy">Browse every public dossier without an account. Create a free account to track what you own, receive earnings alerts, save evidence, contribute research, and earn recognition.</p>
+          <p className="hero-copy">Browse every public dossier without an account. Create a free account to contribute research, earn rewards, monitor a watchlist, receive earnings alerts, send public and private messages, take notes, and track what you own.</p>
           <div className="hero-account-pitch" aria-label="Free account benefits">
             <div className="hero-account-actions">
               <Link className="hero-primary-cta" href="/login?mode=signup">Create my free account <span>→</span></Link>

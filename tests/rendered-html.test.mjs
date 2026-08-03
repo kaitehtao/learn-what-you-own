@@ -41,6 +41,7 @@ test("leads the homepage with a strong free-account call to action and concrete 
   assert.match(home, /Research notebook/);
   assert.match(home, /Community rewards/);
   assert.match(home, /Your portfolio stays private/);
+  assert.match(home, /contribute research, earn rewards, monitor a watchlist, receive earnings alerts, send public and private messages, take notes, and track what you own/);
   assert.match(styles, /\.hero-account-actions/);
   assert.match(styles, /\.hero-benefit-grid/);
 });
