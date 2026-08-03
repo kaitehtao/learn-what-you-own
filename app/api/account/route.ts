@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { profile, supabase, user } = await requireSupabaseUser(request);
+    const { profile, user } = await requireSupabaseUser(request);
     const payload = await request.json() as { username?: string; displayName?: string; bio?: string; investmentStyle?: string; timeHorizon?: string; expertiseAreas?: string; linkedinUrl?: string; websiteUrl?: string; credentialSummary?: string };
     const username = String(payload.username ?? "").trim();
     const displayName = String(payload.displayName ?? "").trim();
@@ -54,13 +54,14 @@ export async function PATCH(request: Request) {
     if (investmentStyle.length > 160 || timeHorizon.length > 80 || expertiseAreas.length > 240 || credentialSummary.length > 240) {
       return Response.json({ error: "One or more public profile fields are too long." }, { status: 400 });
     }
-    const { error } = await supabase.rpc("update_own_profile", {
+    const admin = getSupabaseAdminClient();
+    const { error } = await admin.rpc("server_update_own_profile", {
+      actor_user_id: user.id,
       new_username: username,
       new_display_name: (displayName || username).slice(0, 80),
     });
     if (error?.code === "23505") return Response.json({ error: "That username is already taken." }, { status: 409 });
     if (error) throw error;
-    const admin = getSupabaseAdminClient();
     const linksChanged = linkedinUrl !== profile.linkedin_url || websiteUrl !== profile.website_url;
     const credentialChanged = credentialSummary !== profile.credential_summary;
     const { data: publicProfile, error: publicProfileError } = await admin.from("profiles")

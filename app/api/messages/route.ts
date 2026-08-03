@@ -1,4 +1,4 @@
-import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../supabase-server";
 import { deliverImmediateMessageEmail } from "../../email-notifications";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ const messageSelection = "id,sender_id,recipient_id,subject,body,visibility,read
 
 export async function GET(request: Request) {
   try {
-    const { profile, supabase } = await requireSupabaseUser(request);
+    const { profile } = await requireSupabaseUser(request);
     if (!profile.onboarding_complete) return Response.json({ error: "Complete your username before using messages." }, { status: 403 });
     const params = new URL(request.url).searchParams;
     const recipientQuery = (params.get("recipients") ?? "").trim().replace(/[^A-Za-z0-9_]/g, "").slice(0, 24);
@@ -83,7 +83,8 @@ export async function POST(request: Request) {
     if (subject.length < 1 || subject.length > 120) return Response.json({ error: "Subject must be between 1 and 120 characters." }, { status: 400 });
     if (body.length < 1 || body.length > 5000) return Response.json({ error: "Message must be between 1 and 5,000 characters." }, { status: 400 });
 
-    const { data, error } = await supabase.rpc("send_member_message", {
+    const { data, error } = await getSupabaseAdminClient().rpc("server_send_member_message", {
+      actor_user_id: profile.user_id,
       recipient_username: recipientUsername,
       message_subject: subject,
       message_body: body,
@@ -106,10 +107,13 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { supabase } = await requireSupabaseUser(request);
+    const { profile } = await requireSupabaseUser(request);
     const payload = await request.json() as { id?: number };
     if (!Number.isInteger(payload.id) || Number(payload.id) < 1) return Response.json({ error: "Choose a valid message." }, { status: 400 });
-    const { data, error } = await supabase.rpc("mark_private_message_read", { message_id: payload.id });
+    const { data, error } = await getSupabaseAdminClient().rpc("server_mark_private_message_read", {
+      actor_user_id: profile.user_id,
+      target_message_id: payload.id,
+    });
     if (error) return Response.json({ error: error.message }, { status: 404 });
     return Response.json({ message: data });
   } catch (error) {
@@ -119,10 +123,13 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { supabase } = await requireSupabaseUser(request);
+    const { profile } = await requireSupabaseUser(request);
     const payload = await request.json() as { id?: number };
     if (!Number.isInteger(payload.id) || Number(payload.id) < 1) return Response.json({ error: "Choose a valid message." }, { status: 400 });
-    const { error } = await supabase.rpc("delete_private_message", { message_id: payload.id });
+    const { error } = await getSupabaseAdminClient().rpc("server_delete_private_message", {
+      actor_user_id: profile.user_id,
+      target_message_id: payload.id,
+    });
     if (error) return Response.json({ error: error.message }, { status: 404 });
     return Response.json({ deleted: true });
   } catch (error) {

@@ -414,9 +414,10 @@ test("keeps private messages between verified sender and recipient accounts", as
   assert.match(migration, /revoke all on public\.private_messages from anon, authenticated/);
   assert.match(migration, /grant execute on function public\.send_private_message/);
   assert.match(route, /requireSupabaseUser/);
-  assert.match(route, /send_member_message/);
-  assert.match(route, /mark_private_message_read/);
-  assert.match(route, /delete_private_message/);
+  assert.match(route, /server_send_member_message/);
+  assert.match(route, /server_mark_private_message_read/);
+  assert.match(route, /server_delete_private_message/);
+  assert.match(route, /getSupabaseAdminClient/);
   assert.doesNotMatch(route, /user\.email|profile\.email/);
   assert.match(client, /Member correspondence/);
   assert.match(client, /Send private message/);

@@ -2,7 +2,9 @@ import { fetchNasdaqQuotes } from "../../market-quotes";
 
 export const dynamic = "force-dynamic";
 
-const MAX_TICKERS = 30;
+// Each ticker uses two Nasdaq requests. Keep the batch below the Cloudflare
+// Workers subrequest limit and return partial results before the client gives up.
+const MAX_TICKERS = 20;
 
 function requestedTickers(request: Request) {
   const url = new URL(request.url);

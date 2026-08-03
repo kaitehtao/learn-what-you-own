@@ -1,4 +1,5 @@
 const NASDAQ_QUOTE_URL = "https://api.nasdaq.com/api/quote";
+const NASDAQ_REQUEST_TIMEOUT_MS = 1800;
 
 type NasdaqQuotePayload = {
   data?: {
@@ -53,6 +54,7 @@ export async function fetchNasdaqQuote(tickerValue: string): Promise<MarketQuote
   const requestOptions = {
     headers: { accept: "application/json", "user-agent": "Learn What You Own market data" },
     next: { revalidate: 300 },
+    signal: AbortSignal.timeout(NASDAQ_REQUEST_TIMEOUT_MS),
   } as const;
   const [quoteResponse, summaryResponse] = await Promise.all([
     fetch(`${NASDAQ_QUOTE_URL}/${encodeURIComponent(ticker)}/info?assetclass=stocks`, requestOptions),
@@ -78,17 +80,12 @@ export async function fetchNasdaqQuote(tickerValue: string): Promise<MarketQuote
 export async function fetchNasdaqQuotes(tickerValues: string[]) {
   const tickers = [...new Set(tickerValues.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean))];
   const quotes = new Map<string, MarketQuote>();
-  let cursor = 0;
-  async function worker() {
-    while (cursor < tickers.length) {
-      const ticker = tickers[cursor++];
+  await Promise.all(tickers.map(async (ticker) => {
       try {
         quotes.set(ticker, await fetchNasdaqQuote(ticker));
       } catch (error) {
         console.error(`Unable to load quote for ${ticker}`, error);
       }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(8, tickers.length) }, () => worker()));
+  }));
   return quotes;
 }
