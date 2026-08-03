@@ -810,6 +810,8 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(digestRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /America\/Los_Angeles/);
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
+  assert.match(worker, /handler\.fetch\(new Request/);
+  assert.doesNotMatch(worker, /await fetch\(`\$\{siteUrl\}\/api\/internal\/sec-facts-refresh/);
   assert.match(worker, /\/api\/notifications\/email-digest/);
   assert.match(viteConfig, /0 15,16 \* \* \*/);
   assert.match(header, /NotificationBell/);

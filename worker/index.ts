@@ -43,43 +43,33 @@ export function isPacificDigestHour(scheduledTime: number) {
   return localHour === DIGEST_HOUR;
 }
 
-async function deliverScheduledDigest(env: Env) {
+async function runScheduledEndpoint(env: Env, ctx: ExecutionContext, pathname: string, userAgent: string) {
   if (!env.NOTIFICATION_CRON_SECRET) throw new Error("NOTIFICATION_CRON_SECRET is not configured");
   const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
-  const response = await fetch(`${siteUrl}/api/notifications/email-digest`, {
+  // Invoke the application inside the same Worker deployment. A public
+  // self-request can cross a custom-domain or deployment boundary and compare
+  // different secret revisions, causing scheduled work to fail with 401.
+  return handler.fetch(new Request(`${siteUrl}${pathname}`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
-      "user-agent": "learn-what-you-own-daily-digest/1.0",
+      "user-agent": userAgent,
     },
-  });
+  }), env, ctx);
+}
 
+async function deliverScheduledDigest(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/notifications/email-digest", "learn-what-you-own-daily-digest/1.0");
   if (!response.ok) throw new Error(`Daily digest endpoint returned ${response.status}`);
 }
 
-async function refreshScheduledSecFacts(env: Env) {
-  if (!env.NOTIFICATION_CRON_SECRET) throw new Error("A scheduled-task secret is not configured");
-  const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
-  const response = await fetch(`${siteUrl}/api/internal/sec-facts-refresh`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
-      "user-agent": "learn-what-you-own-sec-refresh/1.0",
-    },
-  });
+async function refreshScheduledSecFacts(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/sec-facts-refresh", "learn-what-you-own-sec-refresh/1.0");
   if (!response.ok) throw new Error(`SEC facts refresh endpoint returned ${response.status}`);
 }
 
-async function refreshScheduledEarningsAlerts(env: Env) {
-  if (!env.NOTIFICATION_CRON_SECRET) throw new Error("A scheduled-task secret is not configured");
-  const siteUrl = (env.NOTIFICATION_SITE_URL || "https://learnwhatyouown.com").replace(/\/$/, "");
-  const response = await fetch(`${siteUrl}/api/internal/earnings-alerts`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.NOTIFICATION_CRON_SECRET}`,
-      "user-agent": "learn-what-you-own-earnings-alerts/1.0",
-    },
-  });
+async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/earnings-alerts", "learn-what-you-own-earnings-alerts/1.0");
   if (!response.ok) throw new Error(`Earnings alert endpoint returned ${response.status}`);
 }
 
@@ -119,10 +109,10 @@ const worker = {
     // per day. The member digest and earnings alerts still run only at 08:00
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
-      await refreshScheduledSecFacts(env);
+      await refreshScheduledSecFacts(env, ctx);
       if (!isPacificDigestHour(controller.scheduledTime)) return;
-      await refreshScheduledEarningsAlerts(env);
-      await deliverScheduledDigest(env);
+      await refreshScheduledEarningsAlerts(env, ctx);
+      await deliverScheduledDigest(env, ctx);
     })());
   },
 };
