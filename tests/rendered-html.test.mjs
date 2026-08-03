@@ -714,6 +714,13 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(styles, /\.ownership-summary-grid/);
   assert.match(styles, /\.ownership-detail-grid/);
+  assert.match(styles, /\.insider-transaction-table>a\{grid-template-columns:minmax\(220px,2fr\)/);
+  assert.match(styles, /\.mobile-field-label\{display:none\}/);
+  assert.match(styles, /\.insider-transaction-table \.ownership-table-head\{display:none\}/);
+  assert.match(styles, /\.ownership-detail-grid>section\{min-width:0\}/);
+  assert.match(panel, /transactionKind="purchase"/);
+  assert.match(panel, /transactionKind="sale"/);
+  assert.match(panel, /mobile-field-label/);
 });
 
 test("keeps investment notebooks private while supporting sourced public handoff", async () => {

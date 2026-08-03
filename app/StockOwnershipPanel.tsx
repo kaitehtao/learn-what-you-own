@@ -60,16 +60,16 @@ function dateLabel(value: string | undefined) {
   return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function InsiderTransactionTable({ rows, emptyLabel, fallbackUrl }: { rows: InsiderTransaction[]; emptyLabel: string; fallbackUrl: string }) {
+function InsiderTransactionTable({ rows, emptyLabel, fallbackUrl, transactionKind }: { rows: InsiderTransaction[]; emptyLabel: string; fallbackUrl: string; transactionKind: "purchase" | "sale" }) {
   if (!rows.length) return <div className="ownership-state compact"><strong>{emptyLabel}</strong><p>Other Forms 3, 4, and 5 may still report grants, option exercises, gifts, tax withholding, conversions, or position changes.</p></div>;
-  return <div className="ownership-table insider-transaction-table">
+  return <div className={`ownership-table insider-transaction-table ${transactionKind}`}>
     <div className="ownership-table-head"><span>Insider</span><span>Date</span><span>Shares</span><span>Price</span><span>Reported value</span></div>
     {rows.map((row, index) => <a href={row.sourceUrl || fallbackUrl} target="_blank" rel="noreferrer" key={`${row.name}-${row.date}-${row.transactionType}-${index}`}>
-      <span><strong>{row.name}</strong><small>{row.relation} · {row.transactionType}{row.securityTitle ? ` · ${row.securityTitle}` : ""}</small></span>
-      <span>{dateLabel(row.date)}</span>
-      <span>{compact(row.shares)}</span>
-      <span>{row.price ? compact(row.price, true) : "Not reported"}</span>
-      <span>{row.value ? compact(row.value, true) : "Not reported"}</span>
+      <span className="insider-transaction-person"><small className="mobile-field-label">Insider</small><strong>{row.name}</strong><small>{row.relation} · {row.transactionType}{row.securityTitle ? ` · ${row.securityTitle}` : ""}</small></span>
+      <span><small className="mobile-field-label">Date</small>{dateLabel(row.date)}</span>
+      <span><small className="mobile-field-label">Shares</small>{compact(row.shares)}</span>
+      <span><small className="mobile-field-label">Price</small>{row.price ? compact(row.price, true) : "Not reported"}</span>
+      <span><small className="mobile-field-label">Reported value</small>{row.value ? compact(row.value, true) : "Not reported"}</span>
     </a>)}
   </div>;
 }
@@ -104,8 +104,8 @@ export function StockOwnershipPanel({ ticker }: { ticker: string }) {
         <div className="ownership-subheading"><div><small>INSIDER TRANSACTIONS</small><h3 id={`insider-transactions-${ticker.toLowerCase()}`}>Purchases and sales, separated</h3></div><span>{data.insiderTransactions?.filingsReviewed ?? 0} SEC filings · {data.insiderTransactions?.transactionRecordsReviewed ?? 0} transactions</span></div>
         {data.insiderSource && <div className={`ownership-state compact${data.insiderSource.status === "unavailable" ? " error" : ""}`}><strong>{data.insiderSource.provider}: {data.insiderSource.status === "available" ? "ownership filings loaded" : data.insiderSource.status === "no_filings" ? "no recent ownership filings indexed" : "temporarily unavailable"}</strong><p>{data.insiderSource.message}</p></div>}
         <div className="ownership-transaction-grid">
-          <section><div className="ownership-transaction-title purchase"><strong>Insider purchases</strong><span>{data.insiderTransactions?.purchases.length ?? 0} reported</span></div><InsiderTransactionTable rows={data.insiderTransactions?.purchases ?? []} emptyLabel={data.insiderSource?.status === "unavailable" ? "Purchase data could not be retrieved from the SEC." : "No SEC transactions coded P were found in the reviewed filings."} fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
-          <section><div className="ownership-transaction-title sale"><strong>Insider sales</strong><span>{data.insiderTransactions?.sales.length ?? 0} reported</span></div><InsiderTransactionTable rows={data.insiderTransactions?.sales ?? []} emptyLabel={data.insiderSource?.status === "unavailable" ? "Sale data could not be retrieved from the SEC." : "No SEC transactions coded S were found in the reviewed filings."} fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
+          <section><div className="ownership-transaction-title purchase"><strong>Insider purchases</strong><span>{data.insiderTransactions?.purchases.length ?? 0} reported</span></div><InsiderTransactionTable transactionKind="purchase" rows={data.insiderTransactions?.purchases ?? []} emptyLabel={data.insiderSource?.status === "unavailable" ? "Purchase data could not be retrieved from the SEC." : "No SEC transactions coded P were found in the reviewed filings."} fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
+          <section><div className="ownership-transaction-title sale"><strong>Insider sales</strong><span>{data.insiderTransactions?.sales.length ?? 0} reported</span></div><InsiderTransactionTable transactionKind="sale" rows={data.insiderTransactions?.sales ?? []} emptyLabel={data.insiderSource?.status === "unavailable" ? "Sale data could not be retrieved from the SEC." : "No SEC transactions coded S were found in the reviewed filings."} fallbackUrl={data.insiderTransactions?.secSourceUrl ?? data.insiders?.secSourceUrl ?? "https://www.sec.gov/edgar/search/"} /></section>
         </div>
         <div className="ownership-transaction-note"><p>{data.insiderTransactions?.methodology ?? "Only transactions explicitly labeled as purchases or sales are placed in these tables."}</p>{data.insiderTransactions && <span>{data.insiderTransactions.otherCount} other or unclassified filing rows excluded from purchase and sale totals.</span>}</div>
       </section>
