@@ -3,6 +3,7 @@ import { researchUniverse } from "../../data/universe";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
 import { stripNewsHtml } from "../../news-text";
+import type { SecSubmissions } from "../../data/secShareFacts";
 
 type NewsItem = {
   title: string;
@@ -69,6 +70,13 @@ const verifiedOfficialNewsrooms: Record<string, string> = {
   TJX: "https://investor.tjx.com/investors/press-releases",
   TMO: "https://ir.thermofisher.com/investors/news-events/news/default.aspx",
   TXN: "https://www.ti.com/about-ti/newsroom.html",
+};
+
+const verifiedOfficialStructuredSources: Record<string, string> = {
+  // Dell's public newsroom is rendered from an AEM JSON model. The HTML
+  // landing page does not contain the release cards, so parse the issuer's
+  // own structured model instead of reporting a false empty archive.
+  DELL: "https://www.dell.com/en-us/dt/corporate/newsroom.model.json",
 };
 
 function decodeXml(value: string): string {
@@ -227,6 +235,36 @@ function parseCoreWeaveNewsroom(html: string, newsroomUrl: string): NewsItem[] {
       readingMinutes: Number.isFinite(readingMinutes) && readingMinutes > 0 ? readingMinutes : undefined,
     };
   }).filter((item) => item.title && /^https:\/\//.test(item.url));
+}
+
+function parseDellAemNewsroom(payload: unknown): NewsItem[] {
+  const items: NewsItem[] = [];
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object") return;
+    const record = value as Record<string, unknown>;
+    const text = record.text && typeof record.text === "object" ? record.text as Record<string, unknown> : null;
+    const link = record.link && typeof record.link === "object" ? record.link as Record<string, unknown> : null;
+    const title = typeof text?.title === "string" ? stripHtml(text.title) : "";
+    const publishedAt = typeof text?.label === "string" ? releaseDate(text.label) : "";
+    const url = typeof link?.url === "string" ? link.url : "";
+    if (title && publishedAt && /\/newsroom\/announcements\/detailpage\.press-releases/i.test(url)) {
+      items.push({
+        title,
+        publishedAt,
+        url,
+        source: "Dell Technologies official newsroom",
+        summary: "Company-published release indexed from Dell Technologies' official newsroom data model.",
+        category: "Company press release",
+        provider: "Dell AEM newsroom",
+      });
+    }
+    for (const nested of Object.values(record)) {
+      if (Array.isArray(nested)) nested.forEach(visit);
+      else if (nested && typeof nested === "object") visit(nested);
+    }
+  };
+  visit(payload);
+  return unique(items.sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 100);
 }
 
 function parsePalantirNewsroom(html: string, newsroomUrl: string): NewsItem[] {
@@ -463,11 +501,16 @@ async function indexedOfficialNews(companyName: string, newsroomUrl: string): Pr
   }), 30);
 }
 
-async function companyOfficialNews(companyName: string, newsroomUrl: string | null, feedUrl: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
+async function companyOfficialNews(ticker: string, companyName: string, newsroomUrl: string | null, feedUrl: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
   const source = `${companyName} official newsroom`;
   const primaryUrl = feedUrl || newsroomUrl;
   if (!primaryUrl) return { items: [], health: { source: "company", status: "not-configured", records: 0, url: null } };
   try {
+    const structuredSource = verifiedOfficialStructuredSources[ticker];
+    if (structuredSource) {
+      const items = ticker === "DELL" ? parseDellAemNewsroom(await fetchJson<unknown>(structuredSource)) : [];
+      if (items.length) return { items, health: { source: "company", status: "working", records: items.length, url: structuredSource } };
+    }
     if (newsroomUrl && new URL(newsroomUrl).hostname.replace(/^www\./, "") === "investors.palantir.com") {
       const items = await palantirOfficialNews(newsroomUrl);
       return { items, health: { source: "company", status: items.length ? "working" : "empty", records: items.length, url: newsroomUrl } };
@@ -516,9 +559,25 @@ async function companyOfficialNews(companyName: string, newsroomUrl: string | nu
 
 async function secOfficialNews(cik: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
   if (!cik) return { items: [], health: { source: "sec", status: "not-applicable", records: 0, url: null } };
-  const url = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(cik)}&owner=exclude&count=40&output=atom`;
+  const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
   try {
-    const items = parseRss(await fetchText(url), "SEC EDGAR official filing").map((item) => ({ ...item, source: "SEC EDGAR official filing", provider: "SEC EDGAR" }));
+    const payload = await fetchJson<SecSubmissions>(url);
+    const recent = payload.filings?.recent;
+    const items = (recent?.form ?? []).slice(0, 100).flatMap((form, index): NewsItem[] => {
+      const accession = recent?.accessionNumber?.[index] ?? "";
+      const primaryDocument = recent?.primaryDocument?.[index] ?? "";
+      if (!accession || !primaryDocument) return [];
+      const archiveRoot = `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accession.replaceAll("-", "")}`;
+      return [{
+        title: `SEC ${form}${recent?.reportDate?.[index] ? ` · Period ${recent.reportDate[index]}` : ""}`,
+        url: `${archiveRoot}/${primaryDocument}`,
+        publishedAt: recent?.filingDate?.[index] ?? "",
+        source: "SEC EDGAR official filing",
+        summary: `Official ${form} filing submitted by the issuer to the SEC.`,
+        category: form,
+        provider: "SEC EDGAR submissions",
+      }];
+    });
     return { items, health: { source: "sec", status: items.length ? "working" : "empty", records: items.length, url } };
   } catch {
     return { items: [], health: { source: "sec", status: "unavailable", records: 0, url } };
@@ -608,7 +667,7 @@ export async function GET(request: Request) {
     { provider: "GDELT", load: () => gdeltNews(displayQuery) },
   ];
   const [companyOfficial, secOfficial, publicResults] = await Promise.all([
-    companyOfficialNews(companyName, newsroomUrl, newsroomFeedUrl),
+    companyOfficialNews(ticker, companyName, newsroomUrl, newsroomFeedUrl),
     secOfficialNews(cik),
     Promise.allSettled(publicSources.map((source) => source.load())),
   ]);

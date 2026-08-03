@@ -25,8 +25,26 @@ type OwnershipData = {
     methodology: string;
   };
   insiders?: { people: Array<{ name: string; relation: string; latestDate: string; latestTransaction: string; reportedShares: number; sourceUrl: string }>; displayedPeople: number; transactionRecordsReviewed: number; filingsReviewed: number; availableRecords: number | null; sourceUrl: string; secSourceUrl: string };
+  beneficialOwnership?: {
+    status: "available" | "no_proxy" | "awaiting_extraction" | "unavailable";
+    form: string;
+    filingDate: string;
+    asOfDate: string;
+    sourceUrl: string;
+    securityClasses: string[];
+    people: Array<{
+      name: string;
+      category: string;
+      holdings: Array<{ securityClass: string; shares: number | null; sharesDisplay: string; percent: number | null; percentDisplay: string }>;
+      totalPercent: number | null;
+      totalPercentDisplay: string;
+      sourceUrl: string;
+    }>;
+    methodology: string;
+    error: string | null;
+  };
   insiderSource?: { status: "available" | "no_filings" | "unavailable"; provider: string; message: string; error: string | null };
-  sourceStatus?: { sec: boolean; secDirectFiling?: boolean; institutional13F: boolean; insiderFilings: boolean };
+  sourceStatus?: { sec: boolean; secDirectFiling?: boolean; institutional13F: boolean; insiderFilings: boolean; proxyOwnership?: boolean };
   updatedAt?: string;
   error?: string;
 };
@@ -80,6 +98,26 @@ function InsiderTransactionTable({ rows, emptyLabel, fallbackUrl, transactionKin
   </div>;
 }
 
+function BeneficialOwnershipTable({ data }: { data: NonNullable<OwnershipData["beneficialOwnership"]> }) {
+  if (data.status !== "available" || !data.people.length) {
+    const message = data.status === "unavailable"
+      ? "The latest proxy could not be retrieved from SEC EDGAR. This is a source failure, not a zero-ownership result."
+      : data.status === "awaiting_extraction"
+        ? "A definitive proxy was found, but its ownership table could not be extracted confidently. Open the filing to review the source table."
+        : "No definitive proxy statement was found in the issuer's current SEC submissions index.";
+    return <div className={`ownership-state compact${data.status === "unavailable" ? " error" : ""}`}><strong>{message}</strong><p><a href={data.sourceUrl} target="_blank" rel="noreferrer">Open SEC proxy source ↗</a></p></div>;
+  }
+  return <div className="ownership-table proxy-ownership-table">
+    <div className="ownership-table-head"><span>Beneficial owner</span><span>Proxy-reported holdings</span><span>All-class ownership</span><span>Snapshot</span></div>
+    {data.people.map((person, index) => <a href={person.sourceUrl || data.sourceUrl} target="_blank" rel="noreferrer" key={`${person.name}-${index}`}>
+      <span><small className="mobile-field-label">Beneficial owner</small><strong>{person.name}</strong><small>{person.category}</small></span>
+      <span className="proxy-holdings"><small className="mobile-field-label">Proxy-reported holdings</small>{person.holdings.map((holding) => <small key={holding.securityClass}><b>{holding.securityClass}:</b> {holding.sharesDisplay} shares · {holding.percentDisplay}</small>)}</span>
+      <span><small className="mobile-field-label">All-class ownership</small><strong>{person.totalPercentDisplay}</strong></span>
+      <span><small className="mobile-field-label">Snapshot</small>{dateLabel(data.asOfDate)}</span>
+    </a>)}
+  </div>;
+}
+
 export function StockOwnershipPanel({ ticker }: { ticker: string }) {
   const [data, setData] = useState<OwnershipData | null>(null);
   const [error, setError] = useState("");
@@ -97,7 +135,7 @@ export function StockOwnershipPanel({ ticker }: { ticker: string }) {
   }, [ticker]);
 
   return <section className="stock-ownership" id="ownership">
-    <div className="stock-ownership-heading"><div><span className="kicker">STOCK OWNERSHIP</span><h2>Who owns {ticker.toUpperCase()}?</h2><p>SEC facts, quarterly Form 13F holdings, and Forms 3, 4, and 5 are kept in separate evidence layers so reported ownership is not confused with an estimate.</p></div>{data?.updatedAt && <span>Refreshed {dateLabel(data.updatedAt)}</span>}</div>
+    <div className="stock-ownership-heading"><div><span className="kicker">STOCK OWNERSHIP</span><h2>Who owns {ticker.toUpperCase()}?</h2><p>SEC proxy ownership, quarterly Form 13F holdings, and Forms 3, 4, and 5 are kept in separate evidence layers so a dated ownership snapshot is not confused with later transactions or estimates.</p></div>{data?.updatedAt && <span>Refreshed {dateLabel(data.updatedAt)}</span>}</div>
     {!data && !error ? <div className="ownership-state">Loading ownership filings…</div> : error ? <div className="ownership-state error">{error}</div> : data && !data.available ? <div className="ownership-state"><strong>Public ownership data is not available.</strong><p>{data.reason}</p></div> : data && <>
       <div className="ownership-summary-grid">
         <article><small>SHARES OUTSTANDING</small><strong>{data.sharesOutstanding ? compact(data.sharesOutstanding.value) : data.sourceStatus?.secDirectFiling ? "Not yet filed" : "Not available"}</strong><span>{data.sharesOutstanding ? `${data.sharesOutstanding.sourceLabel ?? `SEC ${data.sharesOutstanding.form}`} · ${dateLabel(data.sharesOutstanding.asOf)}` : data.sharesOutstandingReason ?? "Standardized SEC fact unavailable"}</span>{data.sharesOutstanding && <a href={data.sharesOutstanding.sourceUrl} target="_blank" rel="noreferrer">Open source ↗</a>}</article>
@@ -106,6 +144,11 @@ export function StockOwnershipPanel({ ticker }: { ticker: string }) {
         <article><small>PUBLIC TRADABLE FLOAT</small><strong>{data.publicTradableFloat ? compact(data.publicTradableFloat.value, true) : "Not available"}</strong><span>{data.publicTradableFloat ? `SEC-filed non-affiliate market value · ${dateLabel(data.publicTradableFloat.asOf)}` : "Issuer did not expose a standardized public-float fact"}</span>{data.publicTradableFloat && <a href={data.publicTradableFloat.sourceUrl} target="_blank" rel="noreferrer">Open filing ↗</a>}</article>
       </div>
       <div className="ownership-methodology"><strong>How to read this section</strong><p>{data.estimatedRetailOther?.methodology ?? "A retail estimate is shown only when a current institutional percentage is available."}</p><p>SEC public float is a filed market value of non-affiliate equity, not a current share count. Institutional totals are delayed quarterly filings and can include reporting overlap. Insider transactions are filing events—not investment recommendations—and the reported date, transaction code, price, and post-transaction position should be reviewed together.</p></div>
+      {data.beneficialOwnership && <section className="proxy-ownership-section" aria-labelledby={`proxy-ownership-${ticker.toLowerCase()}`}>
+        <div className="ownership-subheading"><div><small>SEC PROXY OWNERSHIP</small><h3 id={`proxy-ownership-${ticker.toLowerCase()}`}>Beneficial owners and management</h3></div><span>{data.beneficialOwnership.form || "Proxy"} filed {dateLabel(data.beneficialOwnership.filingDate)}</span></div>
+        <BeneficialOwnershipTable data={data.beneficialOwnership} />
+        <div className="ownership-transaction-note"><p>{data.beneficialOwnership.methodology}</p><a href={data.beneficialOwnership.sourceUrl} target="_blank" rel="noreferrer">Open exact SEC proxy ↗</a></div>
+      </section>}
       <section className="insider-transactions-section" aria-labelledby={`insider-transactions-${ticker.toLowerCase()}`}>
         <div className="ownership-subheading"><div><small>INSIDER TRANSACTIONS</small><h3 id={`insider-transactions-${ticker.toLowerCase()}`}>Purchases and sales, separated</h3></div><span>{data.insiderTransactions?.filingsReviewed ?? 0} SEC filings · {data.insiderTransactions?.transactionRecordsReviewed ?? 0} transactions</span></div>
         {data.insiderSource && <div className={`ownership-state compact${data.insiderSource.status === "unavailable" ? " error" : ""}`}><strong>{data.insiderSource.provider}: {data.insiderSource.status === "available" ? "ownership filings loaded" : data.insiderSource.status === "no_filings" ? "no recent ownership filings indexed" : "temporarily unavailable"}</strong><p>{data.insiderSource.message}</p></div>}

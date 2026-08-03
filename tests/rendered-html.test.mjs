@@ -749,6 +749,8 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(panel, /No SEC transactions coded S were found/);
   assert.match(panel, /this is not a zero-activity result/);
   assert.match(panel, /Reporting insiders/);
+  assert.match(panel, /Beneficial owners and management/);
+  assert.match(panel, /Open exact SEC proxy/);
   assert.match(panel, /Largest reporting holders/);
   assert.match(panel, /not a reported SEC retail figure/);
   assert.match(shareFacts, /EntityCommonStockSharesOutstanding/);
@@ -761,6 +763,9 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(route, /institutional-holdings/);
   assert.match(route, /secOwnershipDocuments/);
   assert.match(route, /parseSecOwnershipXml/);
+  assert.match(route, /parseSecProxyOwnershipHtml/);
+  assert.match(route, /latestProxyFiling/);
+  assert.match(route, /beneficialOwnership:/);
   assert.match(route, /temporarily unavailable\. This does not mean the company has no insider activity/);
   assert.match(route, /purchases: insiderPurchases/);
   assert.match(route, /sales: insiderSales/);
@@ -772,6 +777,7 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(styles, /\.ownership-summary-grid/);
   assert.match(styles, /\.ownership-detail-grid/);
+  assert.match(styles, /\.proxy-ownership-table/);
   assert.match(styles, /\.insider-transaction-table>a\{grid-template-columns:minmax\(220px,2fr\)/);
   assert.match(styles, /@media\(min-width:1101px\)\{\.ownership-table\.insider-transaction-table>a\{grid-template-columns:minmax\(220px,2fr\)/);
   assert.match(styles, /\.mobile-field-label\{display:none\}/);
@@ -1270,7 +1276,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /Bing News, Google News, TradingView, and GDELT/);
   assert.match(panel, /news-provider-filters/);
   assert.match(panel, /summaryFormat=2/);
-  assert.match(route, /companyOfficialNews\(companyName, newsroomUrl, newsroomFeedUrl\)/);
+  assert.match(route, /companyOfficialNews\(ticker, companyName, newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /secOfficialNews\(cik\)/);
   assert.match(route, /officialSources: \[companyOfficial\.health, secOfficial\.health\]/);
   assert.match(route, /news\.microsoft\.com\/source\/feed/);
@@ -1285,6 +1291,9 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(route, /replace\(\/\^http:/);
   assert.match(route, /parseNewsroomHtml/);
   assert.match(route, /parseCoreWeaveNewsroom/);
+  assert.match(route, /parseDellAemNewsroom/);
+  assert.match(route, /corporate\/newsroom\.model\.json/);
+  assert.match(route, /data\.sec\.gov\/submissions/);
   assert.match(route, /stripNewsHtml/);
   assert.match(newsText, /export function stripNewsHtml/);
   assert.match(newsText, /style\|script\|noscript/);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { aggregateSecReportingInsiders, parseSecOwnershipXml, recentOwnershipFilings, secTransactionDirection } from "../app/data/secOwnership";
+import { latestProxyFiling, parseSecProxyOwnershipHtml } from "../app/data/secProxyOwnership";
 import type { SecSubmissions } from "../app/data/secShareFacts";
 
 const submissions: SecSubmissions = { filings: { recent: {
@@ -56,4 +57,37 @@ test("parses SEC ownership codes into purchases, sales, and other activity", () 
   assert.equal(parsed.transactions[2]?.transactionType, "Grant, award, or other acquisition (A)");
   assert.equal(secTransactionDirection("M"), "other");
   assert.deepEqual(aggregateSecReportingInsiders([parsed]).map((owner) => owner.name), ["Price Penry W"]);
+});
+
+test("parses the latest definitive proxy into beneficial-owner holdings without merging security classes", () => {
+  const proxySubmissions: SecSubmissions = { filings: { recent: {
+    form: ["DEF 14A", "4"],
+    accessionNumber: ["0001193125-26-226734", "0001534034-26-000003"],
+    primaryDocument: ["d132444ddef14a.htm", "form4.xml"],
+    filingDate: ["2026-05-15", "2026-07-13"],
+    reportDate: ["2026-06-25", "2026-07-09"],
+  } } };
+  const filing = latestProxyFiling("0001571996", proxySubmissions);
+  assert.ok(filing);
+  assert.equal(filing.sourceUrl, "https://www.sec.gov/Archives/edgar/data/1571996/000119312526226734/d132444ddef14a.htm");
+  const proxy = `
+    <p>Security Ownership of Certain Beneficial Owners and Management</p>
+    <p>The following table presents as of April 27, 2026 certain information regarding beneficial ownership.</p>
+    <table>
+      <tr><th></th><th>Class A Common Stock</th><th>Class B Common Stock</th><th>Class C Common Stock</th><th>Percentage Ownership of All Outstanding Dell Technologies Common Stock</th></tr>
+      <tr><th>Name of Beneficial Owner</th><th>Number</th><th>Percent</th><th>Number</th><th>Percent</th><th>Number</th><th>Percent</th><th>Percent</th></tr>
+      <tr><td>Executive Officers and Directors:</td></tr>
+      <tr><td>Michael S. Dell<sup>(1)</sup></td><td>246,834,081</td><td>89.2%</td><td>—</td><td>—</td><td>18,840,608</td><td>5.8%</td><td>40.9%</td></tr>
+      <tr><td>Jeffrey W. Clarke<sup>(3)</sup></td><td>—</td><td>—</td><td>—</td><td>—</td><td>1,826,802</td><td>*</td><td>*</td></tr>
+    </table>`;
+  const parsed = parseSecProxyOwnershipHtml(proxy, filing);
+  assert.equal(parsed.asOfDate, "April 27, 2026");
+  assert.deepEqual(parsed.securityClasses, ["Class A Common Stock", "Class B Common Stock", "Class C Common Stock"]);
+  assert.equal(parsed.people.length, 2);
+  assert.equal(parsed.people[0]?.name, "Michael S. Dell");
+  assert.equal(parsed.people[0]?.category, "Executive Officers and Directors");
+  assert.equal(parsed.people[0]?.holdings[0]?.shares, 246_834_081);
+  assert.equal(parsed.people[0]?.holdings[2]?.shares, 18_840_608);
+  assert.equal(parsed.people[0]?.totalPercentDisplay, "40.9%");
+  assert.equal(parsed.people[1]?.holdings[2]?.percentDisplay, "Less than 1%");
 });

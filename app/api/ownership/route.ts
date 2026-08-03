@@ -1,6 +1,7 @@
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
 import { aggregateSecReportingInsiders, parseSecOwnershipXml, recentOwnershipFilings, type ParsedSecOwnershipFiling, type SecInsiderTransaction } from "../../data/secOwnership";
+import { latestProxyFiling, parseSecProxyOwnershipHtml } from "../../data/secProxyOwnership";
 import { latestShareFiling, latestSharesOutstanding, sharesFromInlineFiling, type SecCompanyFacts, type SecSubmissions } from "../../data/secShareFacts";
 import { researchUniverse } from "../../data/universe";
 
@@ -86,6 +87,13 @@ async function secOwnershipDocuments(cik: string, submissions: SecSubmissions, u
   return { parsed, availableRecords, selectedFilings: filings.length, failedFilings };
 }
 
+async function secProxyOwnershipDocument(cik: string, submissions: SecSubmissions, userAgent: string) {
+  const filing = latestProxyFiling(cik, submissions);
+  if (!filing) return { filing: null, parsed: null };
+  const html = await fetchText(filing.sourceUrl, userAgent, 15_000);
+  return { filing, parsed: parseSecProxyOwnershipHtml(html, filing) };
+}
+
 export async function GET(request: Request) {
   const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) return Response.json({ error: "Choose a valid ticker." }, { status: 400 });
@@ -130,16 +138,27 @@ export async function GET(request: Request) {
   const holderRows = institutional?.holdingsTransactions?.table?.rows ?? [];
   const secInsiderSourceUrl = `https://www.sec.gov/edgar/search/#/ciks=${cik}&category=custom&forms=3%2C4%2C5`;
   let ownership: Awaited<ReturnType<typeof secOwnershipDocuments>> | null = null;
+  let proxyOwnership: Awaited<ReturnType<typeof secProxyOwnershipDocument>> | null = null;
   let ownershipError = "";
+  let proxyOwnershipError = "";
   if (submissions) {
-    try {
-      ownership = await secOwnershipDocuments(cik, submissions, secAgent);
-    } catch (error) {
-      ownershipError = error instanceof Error ? error.message : "SEC ownership filings could not be retrieved.";
-      console.error(`Direct SEC ownership import failed for ${ticker}.`, error);
+    const [ownershipResult, proxyResult] = await Promise.allSettled([
+      secOwnershipDocuments(cik, submissions, secAgent),
+      secProxyOwnershipDocument(cik, submissions, secAgent),
+    ]);
+    if (ownershipResult.status === "fulfilled") ownership = ownershipResult.value;
+    else {
+      ownershipError = ownershipResult.reason instanceof Error ? ownershipResult.reason.message : "SEC ownership filings could not be retrieved.";
+      console.error(`Direct SEC ownership import failed for ${ticker}.`, ownershipResult.reason);
+    }
+    if (proxyResult.status === "fulfilled") proxyOwnership = proxyResult.value;
+    else {
+      proxyOwnershipError = proxyResult.reason instanceof Error ? proxyResult.reason.message : "The latest SEC proxy could not be retrieved.";
+      console.error(`Direct SEC proxy ownership import failed for ${ticker}.`, proxyResult.reason);
     }
   } else {
     ownershipError = "SEC submissions are temporarily unavailable.";
+    proxyOwnershipError = "SEC submissions are temporarily unavailable.";
   }
   const parsedOwnership = ownership?.parsed ?? [];
   const insiderTransactions = parsedOwnership.flatMap((filing) => filing.transactions)
@@ -157,6 +176,12 @@ export async function GET(request: Request) {
     : ownershipStatus === "no_filings"
       ? "The SEC submissions index returned no recent Forms 3, 4, or 5 for this issuer."
       : `Parsed ${parsedOwnership.length} recent SEC ownership filings directly from EDGAR.`;
+  const proxyFiling = proxyOwnership?.filing ?? null;
+  const parsedProxy = proxyOwnership?.parsed ?? null;
+  const proxyStatus = proxyOwnershipError
+    ? "unavailable"
+    : !proxyFiling ? "no_proxy"
+      : parsedProxy?.people.length ? "available" : "awaiting_extraction";
 
   return Response.json({
     ticker,
@@ -199,8 +224,19 @@ export async function GET(request: Request) {
       sourceUrl: secInsiderSourceUrl,
       secSourceUrl: secInsiderSourceUrl,
     },
+    beneficialOwnership: {
+      status: proxyStatus,
+      form: proxyFiling?.form ?? "",
+      filingDate: proxyFiling?.filingDate ?? "",
+      asOfDate: parsedProxy?.asOfDate ?? proxyFiling?.reportDate ?? "",
+      sourceUrl: proxyFiling?.sourceUrl ?? `https://www.sec.gov/edgar/search/#/ciks=${cik}&category=custom&forms=DEF%2014A%2CDEF%2014C`,
+      securityClasses: parsedProxy?.securityClasses ?? [],
+      people: parsedProxy?.people ?? [],
+      methodology: "The latest definitive SEC proxy statement is parsed as a dated beneficial-ownership snapshot. It is separate from Forms 3, 4, and 5 transaction activity and should not be treated as a live position after the proxy's stated ownership date.",
+      error: proxyOwnershipError || null,
+    },
     insiderSource: { status: ownershipStatus, provider: "SEC EDGAR", message: ownershipMessage, error: ownershipError || null },
-    sourceStatus: { sec: secResult.status === "fulfilled", secDirectFiling: directFilingChecked, institutional13F: institutionalResult.status === "fulfilled", insiderFilings: ownershipStatus !== "unavailable" },
+    sourceStatus: { sec: secResult.status === "fulfilled", secDirectFiling: directFilingChecked, institutional13F: institutionalResult.status === "fulfilled", insiderFilings: ownershipStatus !== "unavailable", proxyOwnership: proxyStatus !== "unavailable" },
     updatedAt: new Date().toISOString(),
   }, { headers: { "cache-control": "public, max-age=1800, stale-while-revalidate=21600" } });
 }
