@@ -14,8 +14,12 @@ const SCHEDULED_REFRESH_LIMIT = 8;
 
 function secretValue() {
   const bindings = env as unknown as Record<string, unknown>;
-  const value = bindings.SCHEDULED_TASK_SECRET || bindings.NOTIFICATION_CRON_SECRET;
-  return typeof value === "string" && value ? value : process.env.SCHEDULED_TASK_SECRET || process.env.NOTIFICATION_CRON_SECRET;
+  // The production scheduler and the other scheduled routes use
+  // NOTIFICATION_CRON_SECRET. Keep the legacy name only as a local fallback;
+  // preferring it in production rejects the Worker's valid bearer token when
+  // both secrets exist with different historical values.
+  const value = bindings.NOTIFICATION_CRON_SECRET || bindings.SCHEDULED_TASK_SECRET;
+  return typeof value === "string" && value ? value : process.env.NOTIFICATION_CRON_SECRET || process.env.SCHEDULED_TASK_SECRET;
 }
 
 export async function POST(request: Request) {
