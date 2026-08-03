@@ -226,6 +226,34 @@ test("publishes only moderated relationship research to the D1 graph", async () 
   assert.match(supabaseMigration, /company_to_customer/);
 });
 
+test("moderates public research reports, earnings models, and collaborative Google Sheets", async () => {
+  const [client, contributionRoute, uploadRoute, publicAssetRoute, moderation, community, migration] = await Promise.all([
+    source("app/contribute/ContributionClient.tsx"),
+    source("app/api/contributions/route.ts"),
+    source("app/api/contributions/assets/route.ts"),
+    source("app/api/contribution-assets/[id]/route.ts"),
+    source("app/admin/ModerationClient.tsx"),
+    source("app/CommunityInsights.tsx"),
+    source("supabase/migrations/20260802010000_public_contribution_research_assets.sql"),
+  ]);
+
+  assert.match(client, /Earnings model/);
+  assert.match(client, /Research report/);
+  assert.match(client, /GOOGLE SHEET URL/);
+  assert.match(uploadRoute, /contributionAssetDescriptor/);
+  assert.match(uploadRoute, /20 MB or smaller/);
+  assert.match(contributionRoute, /normalizeGoogleSheetUrl/);
+  assert.match(contributionRoute, /status === "approved"/);
+  assert.match(publicAssetRoute, /contribution\.status !== "approved"/);
+  assert.match(moderation, /Review uploaded file/);
+  assert.match(moderation, /Review collaborative Google Sheet/);
+  assert.match(community, /sandbox="allow-scripts allow-same-origin allow-forms allow-popups"/);
+  assert.match(community, /COMMUNITY RESEARCH ASSET/);
+  assert.match(migration, /public = false/);
+  assert.match(migration, /contribution-research-assets/);
+  assert.match(migration, /editor.*admin/);
+});
+
 test("renders the research foundation on featured, starter, and ONDS dossier pages", async () => {
   const [panel, featured, starter, ondas] = await Promise.all([
     source("app/ResearchFoundationPanel.tsx"),

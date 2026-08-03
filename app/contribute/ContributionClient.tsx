@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
 
-const contributionTypes = ["Factual correction","Thesis update","Industry observation","External dataset observation","Competitive analysis","Financial model","Question for management","Supplier / customer relationship","Upcoming IPO dossier","Private company dossier"];
+const contributionTypes = ["Factual correction","Thesis update","Industry observation","External dataset observation","Competitive analysis","Financial model","Earnings model","Research report","Question for management","Supplier / customer relationship","Upcoming IPO dossier","Private company dossier"];
 const companyProposalTypes = ["Upcoming IPO dossier", "Private company dossier"];
 type Submission = { id:number; ticker:string; contributionType:string; claim:string; status:string; moderationNote:string; createdAt:string };
+type ResearchAssetUpload = { type:string; title:string; storagePath:string; fileName:string; mimeType:string; fileSize:number };
 
 const emptyForm = {
   ticker: "ONDS",
@@ -33,6 +34,9 @@ const emptyForm = {
   companyWebsite: "",
   roadshowTitle: "",
   roadshowSourceUrl: "",
+  researchAssetTitle: "",
+  googleSheetUrl: "",
+  collaborationNotes: "",
 };
 
 export function ContributionClient({ initialTicker, initialType, initialDraft }: { initialTicker?: string; initialType?: string; initialDraft?: { claim?: string; whyItMatters?: string; sourceUrl?: string } }) {
@@ -44,6 +48,8 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
   const [busy, setBusy] = useState(false);
   const [roadshowFile, setRoadshowFile] = useState<File | null>(null);
   const [roadshowInputKey, setRoadshowInputKey] = useState(0);
+  const [researchFile, setResearchFile] = useState<File | null>(null);
+  const [researchInputKey, setResearchInputKey] = useState(0);
 
   const load = useCallback(async () => {
     const response = await authenticatedFetch("/api/contributions");
@@ -77,6 +83,7 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
     setBusy(true);
     setError("");
     let uploadedPath = "";
+    let researchAsset: ResearchAssetUpload | null = null;
     if (roadshowFile && form.contributionType === "Upcoming IPO dossier") {
       if (roadshowFile.type !== "application/pdf" || roadshowFile.size > 20 * 1024 * 1024) {
         setError("Roadshow uploads must be PDF files no larger than 20 MB.");
@@ -98,13 +105,44 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
         return;
       }
     }
-    const payload = { ...form, roadshowStoragePath: uploadedPath };
+    const supportsResearchAsset = ["Financial model", "Earnings model", "Research report"].includes(form.contributionType);
+    if (researchFile && supportsResearchAsset) {
+      const expectedType = form.contributionType === "Research report" ? "research_report" : "earnings_model";
+      const formData = new FormData();
+      formData.set("assetType", expectedType);
+      formData.set("file", researchFile);
+      const uploadResponse = await authenticatedFetch("/api/contributions/assets", { method: "POST", body: formData });
+      const uploadData = await uploadResponse.json() as { asset?: ResearchAssetUpload; error?: string };
+      if (!uploadResponse.ok || !uploadData.asset) {
+        if (uploadedPath) {
+          const supabase = await getSupabaseBrowserClient();
+          await supabase.storage.from("roadshow-materials").remove([uploadedPath]);
+        }
+        setError(uploadData.error ?? "Unable to upload the research file.");
+        setBusy(false);
+        return;
+      }
+      researchAsset = uploadData.asset;
+    }
+    const payload = {
+      ...form,
+      roadshowStoragePath: uploadedPath,
+      researchAssetType: researchAsset?.type ?? "",
+      researchAssetTitle: form.researchAssetTitle.trim() || researchAsset?.title || "",
+      researchAssetStoragePath: researchAsset?.storagePath ?? "",
+      researchAssetFileName: researchAsset?.fileName ?? "",
+      researchAssetMimeType: researchAsset?.mimeType ?? "",
+      researchAssetFileSize: researchAsset?.fileSize ?? 0,
+    };
     const response = await authenticatedFetch("/api/contributions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
     const data = await response.json() as { error?: string };
     if (!response.ok) {
       if (uploadedPath) {
         const supabase = await getSupabaseBrowserClient();
         await supabase.storage.from("roadshow-materials").remove([uploadedPath]);
+      }
+      if (researchAsset?.storagePath) {
+        await authenticatedFetch("/api/contributions/assets", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ storagePath: researchAsset.storagePath }) });
       }
       setError(data.error ?? "Unable to submit your contribution.");
       setBusy(false);
@@ -114,12 +152,17 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
     setForm({...emptyForm, ticker: form.ticker, contributionType: form.contributionType});
     setRoadshowFile(null);
     setRoadshowInputKey((value) => value + 1);
+    setResearchFile(null);
+    setResearchInputKey((value) => value + 1);
     await load();
     setBusy(false);
   }
 
   const isCompanyProposal = companyProposalTypes.includes(form.contributionType);
   const isIpoProposal = form.contributionType === "Upcoming IPO dossier";
+  const isResearchAssetContribution = ["Financial model", "Earnings model", "Research report"].includes(form.contributionType);
+  const isResearchReport = form.contributionType === "Research report";
+  const isEarningsModel = form.contributionType === "Earnings model";
 
   return <section className="container contribute-layout">
     <aside><span className="kicker">CONTRIBUTION TYPES</span>{contributionTypes.map((item,index)=><button type="button" className={form.contributionType===item?"active":""} onClick={()=>setForm({...form,contributionType:item})} key={item}><span>{String(index+1).padStart(2,"0")}</span>{item}</button>)}<div className="contributor-standard"><strong>Submitting as @{username}</strong><p>Be specific. Cite primary evidence. Separate fact from interpretation. Disclose your position and conflicts.</p></div></aside>
@@ -136,6 +179,14 @@ export function ContributionClient({ initialTicker, initialType, initialDraft }:
         </div>}
         <label>{isCompanyProposal?"DOSSIER SUMMARY":"MAIN CLAIM OR CORRECTION"}<textarea required minLength={20} value={form.claim} onChange={(e)=>setForm({...form,claim:e.target.value})} placeholder={isCompanyProposal?"Describe the business, products, customers, funding or offering status, and what is directly verified.":"State one specific, verifiable claim."} /></label>
         <label>WHY IT MATTERS<textarea required minLength={20} value={form.whyItMatters} onChange={(e)=>setForm({...form,whyItMatters:e.target.value})} placeholder={isCompanyProposal?"Explain why this company belongs in the research universe and what an investor should monitor.":"Explain how this evidence changes—or does not change—the owner’s understanding."} /></label>
+        {isResearchAssetContribution&&<div className="research-asset-upload">
+          <div><strong>{isResearchReport?"Publish a sourced research report":"Share an earnings model"}</strong><p>{isResearchReport?"Upload a PDF for editorial review. The file remains private until approved.":"Upload XLSX/CSV, embed a Google Sheet, or provide both. Approved worksheets can be reviewed and collectively maintained by the community."}</p></div>
+          <label>PUBLIC TITLE<input required={isResearchReport||isEarningsModel||Boolean(form.googleSheetUrl)||Boolean(researchFile)} value={form.researchAssetTitle} onChange={(e)=>setForm({...form,researchAssetTitle:e.target.value})} placeholder={isResearchReport?"FCEL operating review — August 2026":"FCEL quarterly earnings model"}/></label>
+          <label>{isResearchReport?"UPLOAD PDF · MAX 20 MB":"UPLOAD XLSX OR CSV · MAX 20 MB"}<input key={researchInputKey} required={isResearchReport||(isEarningsModel&&!form.googleSheetUrl)} type="file" accept={isResearchReport?"application/pdf,.pdf":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,.xlsx,.csv"} onChange={(e)=>setResearchFile(e.target.files?.[0]??null)}/></label>
+          {!isResearchReport&&<label>GOOGLE SHEET URL · OPTIONAL<input type="url" value={form.googleSheetUrl} onChange={(e)=>setForm({...form,googleSheetUrl:e.target.value})} placeholder="https://docs.google.com/spreadsheets/d/…/edit"/><small>Set sharing permissions in Google first. The website never receives your Google credentials.</small></label>}
+          {!isResearchReport&&<label>COLLABORATION NOTES<textarea value={form.collaborationNotes} onChange={(e)=>setForm({...form,collaborationNotes:e.target.value})} placeholder="Describe editable tabs, assumptions, version conventions, and how contributors should propose changes."/></label>}
+          {!isResearchReport&&<div className="sheet-sharing-note"><strong>Community editing is controlled by Google.</strong><p>Use Google’s Share settings to choose view, comment, or edit access. Editors will verify the sheet and sharing level before publication.</p></div>}
+        </div>}
         {form.contributionType === "Supplier / customer relationship" && <div className="relationship-contribution-fields">
           <div className="relationship-form-intro"><strong>Describe one directional business relationship</strong><p>A relationship becomes a public graph connection only after an editor confirms it in an SEC filing or official company source.</p></div>
           <div className="form-grid"><label>RELATED ORGANIZATION<input required value={form.relatedCompany} onChange={(e)=>setForm({...form,relatedCompany:e.target.value})} placeholder="Full legal or commonly disclosed name" /></label><label>RELATED PUBLIC TICKER · OPTIONAL<input value={form.relatedTicker} onChange={(e)=>setForm({...form,relatedTicker:e.target.value.toUpperCase()})} placeholder="Leave blank if private" /></label></div>

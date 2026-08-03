@@ -6,7 +6,8 @@ export type SecMetricDefinition = {
 };
 
 // Concepts are ordered from the modern, broadly used tag to common legacy
-// alternatives. Importers choose the first concept that contains usable facts.
+// alternatives. Importers merge equivalent concepts and prefer the first one
+// when the same reporting period appears under multiple tags.
 export const secMetricDefinitions: SecMetricDefinition[] = [
   { key: "revenue", label: "Revenue", concepts: ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet"], preferredUnits: ["USD"] },
   { key: "gross_profit", label: "Gross profit", concepts: ["GrossProfit"], preferredUnits: ["USD"] },
@@ -73,45 +74,52 @@ export function normalizeCompanyFacts(cik: string, payload: SecCompanyFacts): No
   const normalized: NormalizedFilingFact[] = [];
 
   for (const definition of secMetricDefinitions) {
-    let selected: { taxonomy: string; concept: string; label: string; unit: string; facts: CompanyFactUnit[] } | null = null;
+    type Candidate = { taxonomy: string; concept: string; label: string; unit: string; conceptPriority: number; fact: CompanyFactUnit };
+    const candidates: Candidate[] = [];
 
     for (const taxonomy of ["us-gaap", "ifrs-full", "dei"]) {
       const taxonomyFacts = payload.facts?.[taxonomy];
       if (!taxonomyFacts) continue;
-      for (const concept of definition.concepts) {
+      definition.concepts.forEach((concept, conceptPriority) => {
         const conceptFacts = taxonomyFacts[concept];
-        if (!conceptFacts?.units) continue;
+        if (!conceptFacts?.units) return;
         const unit = definition.preferredUnits.find((candidate) => conceptFacts.units?.[candidate]?.length)
           ?? Object.keys(conceptFacts.units)[0];
-        if (!unit || !conceptFacts.units[unit]?.length) continue;
-        selected = { taxonomy, concept, label: definition.label, unit, facts: conceptFacts.units[unit] };
-        break;
-      }
-      if (selected) break;
+        if (!unit || !conceptFacts.units[unit]?.length) return;
+        candidates.push(...conceptFacts.units[unit].map((fact) => ({ taxonomy, concept, label: definition.label, unit, conceptPriority, fact })));
+      });
+      if (candidates.length) break;
     }
 
-    if (!selected) continue;
-    const latestByPeriod = new Map<string, CompanyFactUnit>();
-    for (const fact of selected.facts) {
+    if (!candidates.length) continue;
+    const latestByPeriod = new Map<string, Candidate>();
+    for (const candidate of candidates) {
+      const { fact } = candidate;
       if (typeof fact.val !== "number" || !Number.isFinite(fact.val) || !fact.end || !fact.filed || !fact.accn) continue;
       if (!fact.form || !["10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "40-F/A"].includes(fact.form)) continue;
       const fiscalPeriod = fact.fp ?? (fact.form.startsWith("10-K") || fact.form.startsWith("20-F") || fact.form.startsWith("40-F") ? "FY" : "Q");
       const key = `${fact.end}|${fiscalPeriod}`;
       const current = latestByPeriod.get(key);
-      if (!current || (current.filed ?? "") < fact.filed) latestByPeriod.set(key, fact);
+      const newerFiling = !current || (current.fact.filed ?? "") < fact.filed;
+      const sameFilingPreferredConcept = current?.fact.filed === fact.filed && candidate.conceptPriority < current.conceptPriority;
+      const sameConceptLongerDuration = current?.fact.filed === fact.filed
+        && candidate.conceptPriority === current.conceptPriority
+        && (fact.start ?? "9999-12-31") < (current.fact.start ?? "9999-12-31");
+      if (newerFiling || sameFilingPreferredConcept || sameConceptLongerDuration) latestByPeriod.set(key, candidate);
     }
 
     const facts = [...latestByPeriod.values()]
-      .sort((a, b) => (b.end ?? "").localeCompare(a.end ?? ""))
+      .sort((a, b) => (b.fact.end ?? "").localeCompare(a.fact.end ?? ""))
       .slice(0, 20);
-    for (const fact of facts) {
+    for (const candidate of facts) {
+      const { fact } = candidate;
       normalized.push({
         metricKey: definition.key,
-        taxonomy: selected.taxonomy,
-        concept: selected.concept,
-        label: selected.label,
+        taxonomy: candidate.taxonomy,
+        concept: candidate.concept,
+        label: candidate.label,
         value: fact.val!,
-        unit: selected.unit,
+        unit: candidate.unit,
         periodStart: fact.start ?? null,
         periodEnd: fact.end!,
         fiscalYear: fact.fy ?? null,

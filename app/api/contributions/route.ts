@@ -1,15 +1,17 @@
 import { researchUniverse } from "../../data/universe";
-import { apiError, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
+import { CONTRIBUTION_RESEARCH_BUCKET, normalizeGoogleSheetUrl } from "../../contribution-research-assets";
+import { apiError, getSupabaseAdminClient, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
-const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "External dataset observation", "Competitive analysis", "Financial model", "Question for management", "Supplier / customer relationship", "Upcoming IPO dossier", "Private company dossier"];
+const allowedTypes = ["Factual correction", "Thesis update", "Industry observation", "External dataset observation", "Competitive analysis", "Financial model", "Earnings model", "Research report", "Question for management", "Supplier / customer relationship", "Upcoming IPO dossier", "Private company dossier"];
 const relationshipDirections = ["supplier_to_company", "company_to_customer"];
 const relationshipMaterialities = ["named", "material", "strategic", "unknown"];
 const relationshipEvidenceClasses = ["direct_disclosure", "corroborated", "inferred"];
 
 function mapContribution(row: Record<string, unknown>) {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const sheet = normalizeGoogleSheetUrl(String(row.google_sheet_url ?? ""));
   return {
     id: row.id,
     ticker: row.ticker,
@@ -39,6 +41,14 @@ function mapContribution(row: Record<string, unknown>) {
     companyWebsite: row.company_website,
     roadshowTitle: row.roadshow_title,
     roadshowUrl: row.roadshow_storage_path ? `/api/roadshows/${row.id}` : row.roadshow_source_url,
+    researchAssetType: row.research_asset_type,
+    researchAssetTitle: row.research_asset_title,
+    researchAssetFileName: row.research_asset_file_name,
+    researchAssetFileSize: row.research_asset_file_size,
+    researchAssetUrl: row.research_asset_storage_path && row.status === "approved" ? `/api/contribution-assets/${row.id}` : null,
+    googleSheetUrl: sheet?.viewUrl ?? null,
+    googleSheetEmbedUrl: sheet?.embedUrl ?? null,
+    collaborationNotes: row.collaboration_notes,
     status: row.status,
     moderationNote: row.moderation_note,
     createdAt: row.created_at,
@@ -97,6 +107,43 @@ export async function POST(request: Request) {
     if (claim.length < 20 || whyItMatters.length < 20) return Response.json({ error: "Explain the claim and why it matters in at least 20 characters each." }, { status: 400 });
     try { new URL(sourceUrl); } catch { return Response.json({ error: "Enter a valid source URL." }, { status: 400 }); }
     if (!evidenceDate || !positionDisclosure) return Response.json({ error: "Evidence date and position disclosure are required." }, { status: 400 });
+    const supportsResearchAsset = ["Financial model", "Earnings model", "Research report"].includes(contributionType);
+    const researchAssetType = String(payload.researchAssetType ?? "");
+    const researchAssetTitle = String(payload.researchAssetTitle ?? "").trim().slice(0, 200);
+    const researchAssetStoragePath = String(payload.researchAssetStoragePath ?? "").trim();
+    const researchAssetFileName = String(payload.researchAssetFileName ?? "").trim().slice(0, 240);
+    const researchAssetMimeType = String(payload.researchAssetMimeType ?? "").trim();
+    const researchAssetFileSize = Number(payload.researchAssetFileSize ?? 0);
+    const googleSheetInput = String(payload.googleSheetUrl ?? "").trim();
+    const googleSheet = normalizeGoogleSheetUrl(googleSheetInput);
+    const collaborationNotes = String(payload.collaborationNotes ?? "").trim().slice(0, 1500);
+    if (!supportsResearchAsset && (researchAssetStoragePath || googleSheetInput)) {
+      return Response.json({ error: "Files and collaborative worksheets are available for financial models, earnings models, and research reports." }, { status: 400 });
+    }
+    if (googleSheetInput && !googleSheet) {
+      return Response.json({ error: "Use a valid Google Sheets URL from docs.google.com/spreadsheets." }, { status: 400 });
+    }
+    if ((researchAssetStoragePath || googleSheet) && !researchAssetTitle) {
+      return Response.json({ error: "Add a clear public title for the research file or worksheet." }, { status: 400 });
+    }
+    if (researchAssetStoragePath) {
+      const expectedType = contributionType === "Research report" ? "research_report" : "earnings_model";
+      const allowedMimes = expectedType === "research_report"
+        ? ["application/pdf"]
+        : ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"];
+      if (!researchAssetStoragePath.startsWith(`${profile.user_id}/`) || researchAssetStoragePath.includes("..")
+        || researchAssetType !== expectedType || !researchAssetTitle || !researchAssetFileName
+        || !allowedMimes.includes(researchAssetMimeType) || !Number.isInteger(researchAssetFileSize)
+        || researchAssetFileSize < 1 || researchAssetFileSize > 20 * 1024 * 1024) {
+        return Response.json({ error: "The uploaded research file metadata is invalid." }, { status: 400 });
+      }
+    }
+    if (contributionType === "Research report" && !researchAssetStoragePath) {
+      return Response.json({ error: "Upload a PDF research report before submitting." }, { status: 400 });
+    }
+    if (contributionType === "Earnings model" && !researchAssetStoragePath && !googleSheet) {
+      return Response.json({ error: "Upload an XLSX/CSV model or add a collaborative Google Sheets URL." }, { status: 400 });
+    }
     const isRelationship = contributionType === "Supplier / customer relationship";
     const companyStage = contributionType === "Upcoming IPO dossier" ? "upcoming_ipo" : contributionType === "Private company dossier" ? "private" : "";
     const proposedExchange = String(payload.proposedExchange ?? "").trim().slice(0, 80);
@@ -171,11 +218,27 @@ export async function POST(request: Request) {
         roadshow_storage_path: roadshowStoragePath || null,
         roadshow_source_url: roadshowSourceUrl || null,
       } : {}),
+      ...(supportsResearchAsset ? {
+        research_asset_type: researchAssetStoragePath ? researchAssetType : googleSheet ? "earnings_model" : null,
+        research_asset_title: researchAssetStoragePath || googleSheet ? researchAssetTitle : null,
+        research_asset_storage_path: researchAssetStoragePath || null,
+        research_asset_file_name: researchAssetStoragePath ? researchAssetFileName : null,
+        research_asset_mime_type: researchAssetStoragePath ? researchAssetMimeType : null,
+        research_asset_file_size: researchAssetStoragePath ? researchAssetFileSize : null,
+        google_sheet_url: googleSheet?.viewUrl ?? null,
+        collaboration_notes: collaborationNotes || null,
+      } : {}),
     };
     const { data, error } = await supabase.from("contributions").insert(contributionRecord).select("*").single();
     if (error) {
+      if (researchAssetStoragePath) {
+        await getSupabaseAdminClient().storage.from(CONTRIBUTION_RESEARCH_BUCKET).remove([researchAssetStoragePath]);
+      }
       if ((isRelationship || isCompanyProposal) && (error.code === "PGRST204" || error.message.includes("relationship_") || error.message.includes("proposed_") || error.message.includes("roadshow_"))) {
         return Response.json({ error: "This submission workflow is temporarily unavailable while the database upgrade is applied." }, { status: 503 });
+      }
+      if (supportsResearchAsset && (error.code === "PGRST204" || error.message.includes("research_asset_") || error.message.includes("google_sheet_"))) {
+        return Response.json({ error: "Research uploads are temporarily unavailable while the database upgrade is applied." }, { status: 503 });
       }
       throw error;
     }

@@ -36,6 +36,13 @@ function mapRow(row: Record<string, unknown>) {
     companyWebsite: row.company_website,
     roadshowTitle: row.roadshow_title,
     roadshowUrl: row.roadshow_storage_path ? `/api/admin/roadshows/${row.id}` : row.roadshow_source_url,
+    researchAssetType: row.research_asset_type,
+    researchAssetTitle: row.research_asset_title,
+    researchAssetFileName: row.research_asset_file_name,
+    researchAssetFileSize: row.research_asset_file_size,
+    researchAssetUrl: row.research_asset_storage_path ? `/api/admin/contribution-assets/${row.id}` : null,
+    googleSheetUrl: row.google_sheet_url,
+    collaborationNotes: row.collaboration_notes,
     evidenceDate: row.evidence_date,
     createdAt: row.created_at,
   };
