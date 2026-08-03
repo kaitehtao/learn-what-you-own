@@ -155,9 +155,23 @@ export default function Home() {
         <div className="hero-orbit orbit-one" />
         <div className="hero-orbit orbit-two" />
         <div className="container hero-inner">
-          <div className="eyebrow"><span className="status-dot" /> Research for owners, not traders</div>
-          <h1>Know the business.<br /><em>Own with conviction.</em></h1>
-          <p className="hero-copy">A living, evidence-linked owner’s manual for every company you own—or are curious enough to study.</p>
+          <div className="eyebrow"><span className="status-dot" /> Public research is free. Your owner workspace is free.</div>
+          <h1>Understand what you own.<br /><em>Make the research yours.</em></h1>
+          <p className="hero-copy">Browse every public dossier without an account. Create a free account to track what you own, receive earnings alerts, save evidence, contribute research, and earn recognition.</p>
+          <div className="hero-account-pitch" aria-label="Free account benefits">
+            <div className="hero-account-actions">
+              <Link className="hero-primary-cta" href="/login?mode=signup">Create my free account <span>→</span></Link>
+              <Link className="hero-secondary-cta" href="/companies">Browse public dossiers</Link>
+            </div>
+            <p className="hero-account-proof">Free to join <span>·</span> No credit card <span>·</span> Your portfolio stays private</p>
+            <div className="hero-benefit-grid">
+              <div><strong>Watchlists + portfolio</strong><span>Track holdings privately</span></div>
+              <div><strong>Earnings alerts</strong><span>Know what is coming</span></div>
+              <div><strong>Research notebook</strong><span>Save claims and sources</span></div>
+              <div><strong>Community rewards</strong><span>Earn points for value</span></div>
+            </div>
+          </div>
+          <div className="hero-search-divider"><span>Or search the public research universe</span></div>
           <div className="search-shell">
             <span className="search-icon">⌕</span>
             <input

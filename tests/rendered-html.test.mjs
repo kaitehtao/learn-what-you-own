@@ -25,6 +25,24 @@ test("describes homepage search honestly and offers supported examples", async (
   assert.match(search, /company\.memberships/);
 });
 
+test("leads the homepage with a strong free-account call to action and concrete benefits", async () => {
+  const [home, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(home, /Create my free account/);
+  assert.match(home, /href="\/login\?mode=signup"/);
+  assert.match(home, /Browse public dossiers/);
+  assert.match(home, /Watchlists \+ portfolio/);
+  assert.match(home, /Earnings alerts/);
+  assert.match(home, /Research notebook/);
+  assert.match(home, /Community rewards/);
+  assert.match(home, /Your portfolio stays private/);
+  assert.match(styles, /\.hero-account-actions/);
+  assert.match(styles, /\.hero-benefit-grid/);
+});
+
 test("features the full benchmark dossier set, including the four new companies", async () => {
   const [home, companyPage, registry, additions, complements, validator] = await Promise.all([
     source("app/page.tsx"),
