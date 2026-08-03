@@ -1,11 +1,10 @@
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
+import { latestShareFiling, latestSharesOutstanding, sharesFromInlineFiling, type SecCompanyFacts, type SecSubmissions } from "../../data/secShareFacts";
 import { researchUniverse } from "../../data/universe";
 
 export const dynamic = "force-dynamic";
 
-type SecFact = { val?: number; end?: string; filed?: string; form?: string; accn?: string };
-type SecCompanyFacts = { facts?: Record<string, Record<string, { units?: Record<string, SecFact[]> }>> };
 type InstitutionalRow = { ownerName?: string; date?: string; sharesHeld?: string; sharesChange?: string; sharesChangePCT?: string; marketValue?: string; url?: string };
 type NasdaqInstitutional = { data?: { ownershipSummary?: { SharesOutstandingPCT?: { value?: string }; ShareoutstandingTotal?: { value?: string } }; activePositions?: { rows?: Array<{ positions?: string; holders?: string; shares?: string }> }; holdingsTransactions?: { institutionalHolders?: string; sharesHeld?: string; table?: { rows?: InstitutionalRow[] } } } };
 type InsiderRow = { insider?: string; relation?: string; lastDate?: string; transactionType?: string; ownType?: string; sharesTraded?: string; lastPrice?: string; sharesHeld?: string; url?: string };
@@ -18,16 +17,6 @@ function latestFact(payload: SecCompanyFacts, taxonomy: string, concept: string,
     .sort((left, right) => (right.filed ?? "").localeCompare(left.filed ?? "") || (right.end ?? "").localeCompare(left.end ?? ""))[0] ?? null;
 }
 
-// Most issuers expose the cover-page share count under the DEI taxonomy, but
-// some valid filers (including Dell) publish the same point-in-time fact as the
-// US-GAAP CommonStockSharesOutstanding concept. Keep the preferred DEI value,
-// then fall back to US-GAAP so the ownership card and filing-history cards do
-// not disagree simply because the issuer chose a different standard tag.
-function latestSharesOutstanding(payload: SecCompanyFacts) {
-  return latestFact(payload, "dei", "EntityCommonStockSharesOutstanding", "shares")
-    ?? latestFact(payload, "us-gaap", "CommonStockSharesOutstanding", "shares");
-}
-
 async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000, extraHeaders: Record<string, string> = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -35,6 +24,16 @@ async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000, 
     const response = await fetch(url, { headers: { accept: "application/json, text/plain, */*", "user-agent": userAgent, ...extraHeaders }, signal: controller.signal });
     if (!response.ok) throw new Error(`Ownership source returned ${response.status}.`);
     return await response.json() as T;
+  } finally { clearTimeout(timeout); }
+}
+
+async function fetchText(url: string, userAgent: string, timeoutMs = 12_000): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { headers: { accept: "text/html,application/xhtml+xml", "user-agent": userAgent }, signal: controller.signal });
+    if (!response.ok) throw new Error(`SEC filing returned ${response.status}.`);
+    return await response.text();
   } finally { clearTimeout(timeout); }
 }
 
@@ -123,7 +122,20 @@ export async function GET(request: Request) {
   ]);
 
   const sec = secResult.status === "fulfilled" ? secResult.value : null;
-  const shares = sec ? latestSharesOutstanding(sec) : null;
+  let shares = sec ? latestSharesOutstanding(sec) : null;
+  let directFilingChecked = false;
+  if (!shares) {
+    try {
+      const submissions = await fetchJson<SecSubmissions>(`https://data.sec.gov/submissions/CIK${cik}.json`, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com");
+      const filing = latestShareFiling(cik, submissions);
+      if (filing) {
+        directFilingChecked = true;
+        shares = sharesFromInlineFiling(await fetchText(filing.sourceUrl, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com"), filing);
+      }
+    } catch (error) {
+      console.error(`Direct SEC share-count fallback failed for ${ticker}.`, error);
+    }
+  }
   const publicFloat = sec ? latestFact(sec, "dei", "EntityPublicFloat", "USD") : null;
   const institutional = institutionalResult.status === "fulfilled" ? institutionalResult.value.data : null;
   const institutionalPct = numberFrom(institutional?.ownershipSummary?.SharesOutstandingPCT?.value);
@@ -141,9 +153,12 @@ export async function GET(request: Request) {
   return Response.json({
     ticker,
     available: true,
-    sharesOutstanding: shares ? { value: shares.val, asOf: shares.end, filedAt: shares.filed, form: shares.form, sourceLabel: `SEC ${shares.form}`, sourceUrl: secFilingUrl(cik, shares.accn) }
+    sharesOutstanding: shares ? { value: shares.val, asOf: shares.end, filedAt: shares.filed, form: shares.form, sourceLabel: `SEC ${shares.form}`, sourceUrl: shares.sourceUrl || secFilingUrl(cik, shares.accn), sourceTaxonomy: shares.taxonomy, sourceConcept: shares.concept }
       : summarizedSharesOutstanding !== null ? { value: summarizedSharesOutstanding * 1_000_000, asOf: holderRows.map((row) => row.date ?? "").sort().at(-1) ?? "", filedAt: "", form: "13F-derived", sourceLabel: "Public ownership summary", sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${ticker.toLowerCase()}/institutional-holdings` }
         : null,
+    sharesOutstandingReason: shares || summarizedSharesOutstanding !== null ? null : directFilingChecked
+      ? "The latest SEC filing does not expose a standardized point-in-time total; no weighted-average or estimated share count was substituted."
+      : "A standardized point-in-time SEC share count is not currently available.",
     publicTradableFloat: publicFloat ? { value: publicFloat.val, unit: "USD", asOf: publicFloat.end, filedAt: publicFloat.filed, form: publicFloat.form, sourceUrl: secFilingUrl(cik, publicFloat.accn), methodology: "SEC-reported market value of voting and non-voting common equity held by non-affiliates." } : null,
     institutional: institutionalPct === null ? null : {
       percent: institutionalPct,
@@ -172,7 +187,7 @@ export async function GET(request: Request) {
       sourceUrl: insiderSourceUrl,
       secSourceUrl: secInsiderSourceUrl,
     },
-    sourceStatus: { sec: secResult.status === "fulfilled", institutional13F: institutionalResult.status === "fulfilled", insiderFilings: insiderResult.status === "fulfilled" },
+    sourceStatus: { sec: secResult.status === "fulfilled", secDirectFiling: directFilingChecked, institutional13F: institutionalResult.status === "fulfilled", insiderFilings: insiderResult.status === "fulfilled" },
     updatedAt: new Date().toISOString(),
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=3600" } });
 }

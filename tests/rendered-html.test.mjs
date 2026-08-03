@@ -570,9 +570,10 @@ test("accepts authenticated product feedback with ranked feature requests", asyn
 });
 
 test("adds filing-grounded stock ownership to every dossier", async () => {
-  const [panel, route, featured, starter, ondas, styles] = await Promise.all([
+  const [panel, route, shareFacts, featured, starter, ondas, styles] = await Promise.all([
     source("app/StockOwnershipPanel.tsx"),
     source("app/api/ownership/route.ts"),
+    source("app/data/secShareFacts.ts"),
     source("app/FeaturedCompanyDossier.tsx"),
     source("app/company/[ticker]/page.tsx"),
     source("app/company/onds/page.tsx"),
@@ -590,9 +591,12 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(panel, /Reporting insiders/);
   assert.match(panel, /Largest reporting holders/);
   assert.match(panel, /not a reported SEC retail figure/);
-  assert.match(route, /EntityCommonStockSharesOutstanding/);
-  assert.match(route, /CommonStockSharesOutstanding/);
+  assert.match(shareFacts, /EntityCommonStockSharesOutstanding/);
+  assert.match(shareFacts, /CommonStockSharesOutstanding/);
+  assert.match(shareFacts, /NumberOfSharesOutstanding/);
+  assert.match(shareFacts, /sharesFromInlineFiling/);
   assert.match(route, /latestSharesOutstanding/);
+  assert.match(route, /sourceConcept: shares\.concept/);
   assert.match(route, /EntityPublicFloat/);
   assert.match(route, /institutional-holdings/);
   assert.match(route, /insider-trades\?limit=500/);

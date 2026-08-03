@@ -20,7 +20,7 @@ export const secMetricDefinitions: SecMetricDefinition[] = [
   { key: "total_liabilities", label: "Total liabilities", concepts: ["Liabilities"], preferredUnits: ["USD"] },
   { key: "stockholders_equity", label: "Stockholders’ equity", concepts: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"], preferredUnits: ["USD"] },
   { key: "long_term_debt", label: "Long-term debt", concepts: ["LongTermDebtCurrent", "LongTermDebtNoncurrent"], preferredUnits: ["USD"] },
-  { key: "shares_outstanding", label: "Common shares outstanding", concepts: ["CommonStockSharesOutstanding"], preferredUnits: ["shares"] },
+  { key: "shares_outstanding", label: "Common shares outstanding", concepts: ["CommonStockSharesOutstanding", "NumberOfSharesOutstanding", "EntityCommonStockSharesOutstanding"], preferredUnits: ["shares"] },
   { key: "diluted_shares", label: "Diluted weighted-average shares", concepts: ["WeightedAverageNumberOfDilutedSharesOutstanding"], preferredUnits: ["shares"] },
   { key: "stock_based_compensation", label: "Stock-based compensation", concepts: ["ShareBasedCompensation"], preferredUnits: ["USD"] },
 ];
@@ -75,7 +75,7 @@ export function normalizeCompanyFacts(cik: string, payload: SecCompanyFacts): No
   for (const definition of secMetricDefinitions) {
     let selected: { taxonomy: string; concept: string; label: string; unit: string; facts: CompanyFactUnit[] } | null = null;
 
-    for (const taxonomy of ["us-gaap", "ifrs-full"]) {
+    for (const taxonomy of ["us-gaap", "ifrs-full", "dei"]) {
       const taxonomyFacts = payload.facts?.[taxonomy];
       if (!taxonomyFacts) continue;
       for (const concept of definition.concepts) {
