@@ -11,21 +11,33 @@ test("calculates one consistent operating-company comparison from current market
     fact("revenue", 100),
     fact("revenue", 80, "2024-12-31"),
     fact("gross_profit", 40),
+    fact("operating_income", 12),
+    fact("depreciation_amortization", 3),
     fact("net_income", 10),
     fact("operating_cash_flow", 20),
     fact("capital_expenditures", 5),
     fact("cash", 30, "2026-03-31", "Q1"),
     fact("long_term_debt", 10, "2026-03-31", "Q1"),
+    fact("total_assets", 150, "2026-03-31", "Q1"),
+    fact("current_assets", 50, "2026-03-31", "Q1"),
+    fact("total_liabilities", 60, "2026-03-31", "Q1"),
+    fact("current_liabilities", 25, "2026-03-31", "Q1"),
+    fact("stockholders_equity", 90, "2026-03-31", "Q1"),
   ], 200);
 
   assert.equal(summary.enterpriseValue, 180);
   assert.equal(summary.evToRevenue, 1.8);
+  assert.equal(summary.ebitda, 15);
+  assert.equal(summary.evToEbitda, 12);
   assert.equal(summary.priceToEarnings, 20);
   assert.equal(summary.freeCashFlow, 15);
   assert.equal(summary.priceToFreeCashFlow, 200 / 15);
   assert.equal(summary.revenueGrowth, 0.25);
   assert.equal(summary.grossMargin, 0.4);
   assert.equal(summary.netCash, 20);
+  assert.equal(summary.currentRatio, 2);
+  assert.equal(summary.cashToDebt, 3);
+  assert.equal(summary.liabilitiesToAssets, 0.4);
   assert.equal(summary.coverage, "complete");
 });
 

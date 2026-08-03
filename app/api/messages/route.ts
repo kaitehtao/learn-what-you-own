@@ -30,7 +30,7 @@ const messageSelection = "id,sender_id,recipient_id,subject,body,visibility,read
 
 export async function GET(request: Request) {
   try {
-    const { profile } = await requireSupabaseUser(request);
+    const { profile, supabase } = await requireSupabaseUser(request);
     if (!profile.onboarding_complete) return Response.json({ error: "Complete your username before using messages." }, { status: 403 });
     const params = new URL(request.url).searchParams;
     const recipientQuery = (params.get("recipients") ?? "").trim().replace(/[^A-Za-z0-9_]/g, "").slice(0, 24);
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { profile, supabase } = await requireSupabaseUser(request);
+    const { profile } = await requireSupabaseUser(request);
     if (!profile.onboarding_complete) return Response.json({ error: "Complete your username before sending messages." }, { status: 403 });
     const payload = await request.json() as { recipientUsername?: string; subject?: string; body?: string; visibility?: string };
     const recipientUsername = String(payload.recipientUsername ?? "").trim();

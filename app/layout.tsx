@@ -51,6 +51,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/otc">OTC / Pink Market</Link>
                 <Link href="/earnings">Earnings calendar</Link>
                 <Link href="/insider-activity">Insider buys &amp; sells</Link>
+                <Link href="/comps">Build a comp table</Link>
                 <Link href="/emerging-companies">IPOs &amp; private companies</Link>
                 <Link href="/interviews">Interviews</Link>
                 <Link href="/founders-letter">Founder’s Letter</Link>

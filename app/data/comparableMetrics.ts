@@ -12,18 +12,30 @@ export type ComparableMetricSummary = {
   marketCap: number | null;
   enterpriseValue: number | null;
   revenue: number | null;
+  operatingIncome: number | null;
+  depreciationAmortization: number | null;
+  ebitda: number | null;
   netIncome: number | null;
   freeCashFlow: number | null;
   cash: number | null;
   reportedDebt: number | null;
   netCash: number | null;
   evToRevenue: number | null;
+  evToEbitda: number | null;
   priceToEarnings: number | null;
   priceToFreeCashFlow: number | null;
   cashToMarketCap: number | null;
   debtToMarketCap: number | null;
   revenueGrowth: number | null;
   grossMargin: number | null;
+  totalAssets: number | null;
+  totalLiabilities: number | null;
+  stockholdersEquity: number | null;
+  currentRatio: number | null;
+  cashToDebt: number | null;
+  debtToEquity: number | null;
+  liabilitiesToAssets: number | null;
+  netDebtToEbitda: number | null;
   fundamentalsAsOf: string | null;
   sourceUrl: string | null;
   coverage: "complete" | "partial" | "awaiting-filing-data";
@@ -66,6 +78,12 @@ export function summarizeComparableMetrics(
   const netIncome = latestAnnualFacts(facts, "net_income").find((fact) => !revenue || fact.periodEnd === revenue.periodEnd)
     ?? latestAnnualFacts(facts, "net_income")[0]
     ?? null;
+  const operatingIncome = latestAnnualFacts(facts, "operating_income").find((fact) => !revenue || fact.periodEnd === revenue.periodEnd)
+    ?? latestAnnualFacts(facts, "operating_income")[0]
+    ?? null;
+  const depreciationAmortization = latestAnnualFacts(facts, "depreciation_amortization").find((fact) => !revenue || fact.periodEnd === revenue.periodEnd)
+    ?? latestAnnualFacts(facts, "depreciation_amortization")[0]
+    ?? null;
   const operatingCashFlow = latestAnnualFacts(facts, "operating_cash_flow").find((fact) => !revenue || fact.periodEnd === revenue.periodEnd)
     ?? latestAnnualFacts(facts, "operating_cash_flow")[0]
     ?? null;
@@ -76,10 +94,19 @@ export function summarizeComparableMetrics(
     ?? null;
   const cash = latestBalanceFact(facts, "cash");
   const debt = latestBalanceFact(facts, "long_term_debt");
+  const totalAssets = latestBalanceFact(facts, "total_assets");
+  const currentAssets = latestBalanceFact(facts, "current_assets");
+  const totalLiabilities = latestBalanceFact(facts, "total_liabilities");
+  const currentLiabilities = latestBalanceFact(facts, "current_liabilities");
+  const stockholdersEquity = latestBalanceFact(facts, "stockholders_equity");
   const freeCashFlow = operatingCashFlow && capitalExpenditures
     ? operatingCashFlow.value - Math.abs(capitalExpenditures.value)
     : null;
   const netCash = cash && debt ? cash.value - debt.value : null;
+  const netDebt = netCash == null ? null : -netCash;
+  const ebitda = operatingIncome && depreciationAmortization
+    ? operatingIncome.value + Math.abs(depreciationAmortization.value)
+    : null;
   const enterpriseValue = marketCap != null && cash && debt
     ? marketCap + debt.value - cash.value
     : null;
@@ -89,12 +116,16 @@ export function summarizeComparableMetrics(
     marketCap,
     enterpriseValue,
     revenue: revenue?.value ?? null,
+    operatingIncome: operatingIncome?.value ?? null,
+    depreciationAmortization: depreciationAmortization?.value ?? null,
+    ebitda,
     netIncome: netIncome?.value ?? null,
     freeCashFlow,
     cash: cash?.value ?? null,
     reportedDebt: debt?.value ?? null,
     netCash,
     evToRevenue: safeRatio(enterpriseValue, revenue?.value ?? null),
+    evToEbitda: safeRatio(enterpriseValue, ebitda),
     priceToEarnings: safeRatio(marketCap, netIncome?.value ?? null),
     priceToFreeCashFlow: safeRatio(marketCap, freeCashFlow),
     cashToMarketCap: safeRatio(cash?.value ?? null, marketCap),
@@ -103,6 +134,14 @@ export function summarizeComparableMetrics(
       ? null
       : (revenue!.value / priorRevenue!.value) - 1,
     grossMargin: safeRatio(grossProfit?.value ?? null, revenue?.value ?? null),
+    totalAssets: totalAssets?.value ?? null,
+    totalLiabilities: totalLiabilities?.value ?? null,
+    stockholdersEquity: stockholdersEquity?.value ?? null,
+    currentRatio: safeRatio(currentAssets?.value ?? null, currentLiabilities?.value ?? null),
+    cashToDebt: safeRatio(cash?.value ?? null, debt?.value ?? null),
+    debtToEquity: safeRatio(debt?.value ?? null, stockholdersEquity?.value ?? null),
+    liabilitiesToAssets: safeRatio(totalLiabilities?.value ?? null, totalAssets?.value ?? null),
+    netDebtToEbitda: netDebt != null && netDebt > 0 ? safeRatio(netDebt, ebitda) : null,
     fundamentalsAsOf: revenue?.periodEnd ?? cash?.periodEnd ?? debt?.periodEnd ?? null,
     sourceUrl: revenue?.sourceUrl ?? cash?.sourceUrl ?? debt?.sourceUrl ?? null,
     coverage: availableCoreFacts === 3 ? "complete" : availableCoreFacts ? "partial" : "awaiting-filing-data",

@@ -114,6 +114,37 @@ test("standardizes comparable analysis across every completed dossier", async ()
   assert.match(styles, /@media\(max-width:480px\)/);
 });
 
+test("lets investors build, sort, share, and export custom ten-company comp tables", async () => {
+  const [page, builder, api, metrics, secMetrics, navigation, layout, styles] = await Promise.all([
+    source("app/comps/page.tsx"),
+    source("app/comps/CompTableBuilder.tsx"),
+    source("app/api/comp-table/route.ts"),
+    source("app/data/comparableMetrics.ts"),
+    source("app/data/secMetrics.ts"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(page, /Add up to ten tickers/);
+  assert.match(builder, /const MAX_TICKERS = 10/);
+  assert.match(builder, /EV \/ EBITDA/);
+  assert.match(builder, /Sort by/);
+  assert.match(builder, /Copy share link/);
+  assert.match(builder, /Export CSV/);
+  assert.match(builder, /Valuation/);
+  assert.match(builder, /Balance sheet/);
+  assert.match(api, /no more than ten tickers/);
+  assert.match(api, /SEC-reported operating income plus SEC-reported depreciation and amortization/);
+  assert.match(metrics, /evToEbitda/);
+  assert.match(metrics, /currentRatio/);
+  assert.match(secMetrics, /depreciation_amortization/);
+  assert.match(secMetrics, /current_assets/);
+  assert.match(navigation, /href="\/comps"/);
+  assert.match(layout, /Build a comp table/);
+  assert.match(styles, /\.custom-comp-table/);
+  assert.match(styles, /position:sticky;left:0/);
+});
+
 test("loads homepage market data with one cached Nasdaq bulk request", async () => {
   const [quotes, route, favicon, serviceWorker] = await Promise.all([
     source("app/market-quotes.ts"),
