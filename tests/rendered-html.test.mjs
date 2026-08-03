@@ -91,6 +91,22 @@ test("shows current stock price and market capitalization on detailed dossiers a
   assert.match(quotes, /MarketCap/);
 });
 
+test("loads homepage market data with one cached Nasdaq bulk request", async () => {
+  const [quotes, route, favicon, serviceWorker] = await Promise.all([
+    source("app/market-quotes.ts"),
+    source("app/api/market-snapshot/route.ts"),
+    source("app/favicon.ico/route.ts"),
+    source("public/sw.js"),
+  ]);
+  assert.match(quotes, /api\/screener\/stocks/);
+  assert.match(quotes, /fetchNasdaqScreenerQuotes/);
+  assert.match(quotes, /replaceAll\("\."\s*,\s*"\/"\)/);
+  assert.match(quotes, /AbortSignal\.timeout/);
+  assert.match(route, /const MAX_TICKERS = 20/);
+  assert.match(favicon, /image\/svg\+xml/);
+  assert.match(serviceWorker, /self\.clients\.claim/);
+});
+
 test("enforces the AMC dossier standard across completed dossiers and keeps company releases separate from SEC filings", async () => {
   const [newsRoute, newsPanel, upgrades, validator, migration, styles] = await Promise.all([
     source("app/api/company-news/route.ts"),

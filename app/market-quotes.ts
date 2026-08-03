@@ -1,5 +1,7 @@
 const NASDAQ_QUOTE_URL = "https://api.nasdaq.com/api/quote";
-const NASDAQ_REQUEST_TIMEOUT_MS = 1800;
+const NASDAQ_SCREENER_URL = "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=25&offset=0&download=true";
+const NASDAQ_REQUEST_TIMEOUT_MS = 5000;
+const NASDAQ_SCREENER_TIMEOUT_MS = 6500;
 
 type NasdaqQuotePayload = {
   data?: {
@@ -21,6 +23,17 @@ type NasdaqSummaryPayload = {
         value?: string;
       } | null;
     } | null;
+  } | null;
+};
+
+type NasdaqScreenerPayload = {
+  data?: {
+    rows?: Array<{
+      symbol?: string;
+      name?: string;
+      lastsale?: string;
+      marketCap?: string;
+    }> | null;
   } | null;
 };
 
@@ -77,8 +90,44 @@ export async function fetchNasdaqQuote(tickerValue: string): Promise<MarketQuote
   };
 }
 
+async function fetchNasdaqScreenerQuotes(tickers: string[]) {
+  const response = await fetch(NASDAQ_SCREENER_URL, {
+    headers: { accept: "application/json", "user-agent": "Learn What You Own market data" },
+    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(NASDAQ_SCREENER_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Quote provider returned ${response.status}`);
+  const payload = await response.json() as NasdaqScreenerPayload;
+  const requested = new Map(tickers.map((ticker) => [ticker.replaceAll(".", "/"), ticker]));
+  const quotes = new Map<string, MarketQuote>();
+  for (const row of payload.data?.rows ?? []) {
+    const providerTicker = String(row.symbol ?? "").toUpperCase();
+    const ticker = requested.get(providerTicker);
+    if (!ticker) continue;
+    quotes.set(ticker, {
+      ticker,
+      companyName: row.name ?? ticker,
+      price: priceFromDisplay(row.lastsale),
+      marketCap: marketCapFromDisplay(row.marketCap),
+      asOf: "Latest available Nasdaq quote",
+      marketStatus: "Latest market data",
+      isRealTime: false,
+      sourceLabel: "Nasdaq market activity",
+      sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(ticker.toLowerCase().replaceAll(".", "-"))}`,
+    });
+  }
+  return quotes;
+}
+
 export async function fetchNasdaqQuotes(tickerValues: string[]) {
   const tickers = [...new Set(tickerValues.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean))];
+  if (tickers.length > 1) {
+    try {
+      return await fetchNasdaqScreenerQuotes(tickers);
+    } catch (error) {
+      console.error("Unable to load bulk market snapshots", error);
+    }
+  }
   const quotes = new Map<string, MarketQuote>();
   await Promise.all(tickers.map(async (ticker) => {
       try {
