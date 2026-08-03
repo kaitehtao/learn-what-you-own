@@ -1,11 +1,12 @@
 import { featuredDossiers } from "../app/data/featuredDossiers";
-import { sp500DossierBatch01, sp500DossierBatch02 } from "../app/data/sp500DossierBatches";
+import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03 } from "../app/data/sp500DossierBatches";
+import { legacyCompletedTickers } from "../app/data/legacyCompleteDossiers";
 import { researchUniverse } from "../app/data/universe";
 
 const requiredTickers = Object.keys(featuredDossiers).sort();
 
 const failures: string[] = [];
-const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02];
+const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02, ...sp500DossierBatch03];
 const universeTickers = new Set(researchUniverse.map((company) => company.ticker));
 const markupLeakPattern = /q4default|<\/?(?:style|script|html|body)\b|\bfont-(?:size|family)\s*:|\blist-style-type\s*:|\{\s*(?:color|margin|padding)\s*:/i;
 
@@ -22,7 +23,10 @@ function dossierText(dossier: object) {
   return JSON.stringify(dossier);
 }
 
-if (rankedSpxCompanies.length !== 100) failures.push(`S&P 500 program: expected 100 ranked companies, found ${rankedSpxCompanies.length}`);
+if (rankedSpxCompanies.length !== 200) failures.push(`S&P 500 program: expected 200 ranked companies, found ${rankedSpxCompanies.length}`);
+for (const ticker of legacyCompletedTickers) {
+  if (!featuredDossiers[ticker]) failures.push(`${ticker}: legacy/starter record was not upgraded to the complete dossier registry`);
+}
 for (let index = 0; index < rankedSpxCompanies.length; index += 1) {
   const company = rankedSpxCompanies[index];
   if (company.rank !== index + 1) failures.push(`${company.ticker}: expected rank ${index + 1}, found ${company.rank}`);
@@ -71,10 +75,26 @@ for (const ticker of requiredTickers) {
     ["official newsroom", Boolean(dossier.newsroomUrl || dossier.newsroomFeedUrl)],
     ["SEC source", dossier.sources.some((source) => source.href.includes("sec.gov"))],
     ["company source", dossier.sources.some((source) => !source.href.includes("sec.gov"))],
+    ["filing and call evidence ledger", Boolean(dossier.evidenceReview)],
   ] as const;
 
   for (const [label, passed] of checks) {
     if (!passed) failures.push(`${ticker}: insufficient ${label}`);
+  }
+
+  if (dossier.evidenceReview) {
+    const evidenceLinks = [
+      ["10-K", dossier.evidenceReview.annualFilingsUrl, "10-K"],
+      ["10-Q", dossier.evidenceReview.quarterlyFilingsUrl, "10-Q"],
+      ["8-K earnings", dossier.evidenceReview.earningsUpdatesUrl, "8-K"],
+      ["proxy", dossier.evidenceReview.proxyFilingsUrl, "DEF"],
+      ["official call materials", dossier.evidenceReview.officialMaterialsUrl, ""],
+    ] as const;
+    for (const [label, url, requiredToken] of evidenceLinks) {
+      if (!isHttpUrl(url)) failures.push(`${ticker}: invalid ${label} evidence URL ${url}`);
+      if (requiredToken && !decodeURIComponent(url).toUpperCase().includes(requiredToken)) failures.push(`${ticker}: ${label} evidence URL does not target the required form`);
+    }
+    if (dossier.evidenceReview.transcriptPolicy.length < 100) failures.push(`${ticker}: incomplete transcript provenance policy`);
   }
 
   const sourceUrls = new Set<string>();
@@ -106,4 +126,4 @@ if (failures.length > 0) {
   throw new Error(`Flagship dossier benchmark failed:\n${failures.join("\n")}`);
 }
 
-console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). Every dossier has complete owner research sections, a valid last-reviewed date, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);
+console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). The first 200 S&P 500 companies are ranked by descending market capitalization, all 10 legacy records are upgraded, and every dossier has complete owner research sections, a filing/call evidence ledger, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);

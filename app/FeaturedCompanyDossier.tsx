@@ -71,7 +71,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
       <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
     </div>
     <div className="container earnings-calls-wide">
-      <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} />
+      <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.evidenceReview?.officialMaterialsUrl ?? dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} earningsUpdatesUrl={dossier.evidenceReview?.earningsUpdatesUrl} transcriptPolicy={dossier.evidenceReview?.transcriptPolicy} />
     </div>
     <div className="container company-news-wide">
       <CompanyNewsPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} newsroomUrl={dossier.newsroomUrl} />
@@ -96,6 +96,17 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         </section>}
         <section className="dossier-section" id="thesis">
           <div className="section-title"><div><span className="section-number">{sectionNumber(2)}</span><h2>The investment debate</h2></div><span className="reviewed">Balanced thesis</span></div>
+          {dossier.evidenceReview && <div className="dossier-evidence-ledger">
+            <div><span className="kicker">FILING &amp; CALL EVIDENCE LEDGER</span><h3>Verify the bull and bear case against the latest primary record</h3><p>{dossier.evidenceReview.transcriptPolicy}</p></div>
+            <nav>
+              <a href={dossier.evidenceReview.annualFilingsUrl} target="_blank" rel="noreferrer"><small>ANNUAL</small><strong>10-K filings</strong><em>Open SEC ↗</em></a>
+              <a href={dossier.evidenceReview.quarterlyFilingsUrl} target="_blank" rel="noreferrer"><small>QUARTERLY</small><strong>10-Q filings</strong><em>Open SEC ↗</em></a>
+              <a href={dossier.evidenceReview.earningsUpdatesUrl} target="_blank" rel="noreferrer"><small>EARNINGS</small><strong>8-K updates</strong><em>Open SEC ↗</em></a>
+              <a href={dossier.evidenceReview.officialMaterialsUrl} target="_blank" rel="noreferrer"><small>COMMENTARY</small><strong>Official call materials</strong><em>Open company ↗</em></a>
+              <a href={dossier.evidenceReview.proxyFilingsUrl} target="_blank" rel="noreferrer"><small>GOVERNANCE</small><strong>Proxy filings</strong><em>Open SEC ↗</em></a>
+            </nav>
+            <span>Evidence ledger reviewed {dossier.evidenceReview.reviewedAt}</span>
+          </div>}
           <div className="debate-grid">
             <div className="bull-card"><span className="debate-label">WHY OWN IT</span><h3>{dossier.bullTitle}</h3><ul>{dossier.bull.map(item => <li key={item}>{item}</li>)}</ul><button onClick={() => setSourceIndex(1)}>Open company sources →</button></div>
             <div className="bear-card"><span className="debate-label">WHY NOT OWN IT</span><h3>{dossier.bearTitle}</h3><ul>{dossier.bear.map(item => <li key={item}>{item}</li>)}</ul><button onClick={() => setSourceIndex(0)}>Open risk disclosures →</button></div>

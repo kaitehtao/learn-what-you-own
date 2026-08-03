@@ -59,7 +59,7 @@ test("shows current stock price and market capitalization on detailed dossiers a
     source("app/market-quotes.ts"),
   ]);
   assert.match(featured, /<CompanyMarketSnapshot ticker=\{company\.ticker\}/);
-  assert.match(ondas, /<CompanyMarketSnapshot ticker="ONDS"/);
+  assert.match(ondas, /<FeaturedCompanyDossier company=\{company\} dossier=\{dossier\}/);
   assert.match(snapshot, /CURRENT STOCK PRICE/);
   assert.match(snapshot, /MARKET CAPITALIZATION/);
   assert.match(home, /className="card-market-data"/);
@@ -110,11 +110,12 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
   assert.match(styles, /\.admin-verification-actions button\{width:100%/);
 });
 
-test("publishes the first 100 S&P 500 companies in descending market-cap dossier batches", async () => {
-  const [registry, batch01Dossiers, batch02Dossiers, batches, page, navigation, secCompanies] = await Promise.all([
+test("publishes the first 200 S&P 500 companies in descending market-cap dossier batches", async () => {
+  const [registry, batch01Dossiers, batch02Dossiers, batch03Dossiers, batches, page, navigation, secCompanies] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/data/sp500Batch01Dossiers.ts"),
     source("app/data/sp500Batch02Dossiers.ts"),
+    source("app/data/sp500Batch03Dossiers.ts"),
     source("app/data/sp500DossierBatches.ts"),
     source("app/research/batches/page.tsx"),
     source("app/ui.tsx"),
@@ -123,6 +124,7 @@ test("publishes the first 100 S&P 500 companies in descending market-cap dossier
 
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch01Dossiers\)/);
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch02Dossiers\)/);
+  assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch03Dossiers\)/);
   assert.match(registry, /featuredDossiers\.GOOGL/);
   for (const ticker of ["AVGO", "BRK.B", "LLY", "MU", "JPM", "WMT", "V", "XOM", "JNJ", "MA", "INTC", "ABBV", "CSCO", "BAC", "COST", "AMAT", "CVX", "UNH", "KO", "LRCX", "GE"]) {
     assert.match(batch01Dossiers, new RegExp(`ticker: "${ticker.replace(".", "\\.")}"`));
@@ -130,12 +132,15 @@ test("publishes the first 100 S&P 500 companies in descending market-cap dossier
   for (const ticker of ["PG", "NFLX", "RTX", "PANW", "GEV", "ANET", "TMO", "IBM", "CRWD", "DIS", "QCOM", "UBER", "LMT", "ISRG", "SPGI", "NOW", "MO"]) {
     assert.match(batch02Dossiers, new RegExp(`ticker:\s*"${ticker}"`));
   }
+  for (const ticker of ["FTNT", "HWM", "ADBE", "ABNB", "VRT", "HOOD", "REGN", "DLR", "SNPS", "NKE", "NXPI", "O"]) {
+    assert.match(batch03Dossiers, new RegExp(`"${ticker}"`));
+  }
   assert.match(batches, /\[30, "GE", "GE Aerospace"/);
   assert.match(batches, /"PG", "HD", "MS", "MRK", "NFLX"/);
   assert.match(batches, /rank: index \+ 31/);
   assert.match(batches, /sp500DossierBatchAsOf = "July 30, 2026"/);
-  assert.match(page, /One hundred companies/);
-  assert.match(page, /Batches 01–02 · 100 companies complete/);
+  assert.match(page, /Two hundred companies/);
+  assert.match(page, /Batches 01–03 · 200 companies complete/);
   assert.match(page, /Alphabet’s two share classes share one company dossier/);
   assert.match(navigation, /href="\/research\/batches">Research/);
   assert.match(secCompanies, /normalizedTicker === "XOM"/);
@@ -216,7 +221,8 @@ test("renders the research foundation on featured, starter, and ONDS dossier pag
   assert.match(featured, /editorialUpdatedAt=\{dossier\.reviewed/);
   assert.match(featured, /DOSSIER LAST UPDATED/);
   assert.match(starter, /<ResearchFoundationPanel/);
-  assert.match(ondas, /editorialUpdatedAt="August 1, 2026"/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
+  assert.match(ondas, /featuredDossiers\.ONDS/);
 });
 
 test("publishes flagship-depth SPCX and TSLA owner dossiers with SEC-grounded official archives", async () => {
@@ -277,7 +283,7 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(panel, /VERIFY BEFORE PUBLISHING/);
   assert.match(featured, /<ExternalIntelligencePanel/);
   assert.match(starter, /<ExternalIntelligencePanel/);
-  assert.match(ondas, /<ExternalIntelligencePanel/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(contributionClient, /External dataset observation/);
   assert.match(contributionClient, /CITE SOURCE OF SUBMITTED INFORMATION/);
   assert.match(contributionClient, /CITE PRIMARY COMPANY OR SEC SOURCE/);
@@ -477,7 +483,8 @@ test("shows the public-vs-member benefits and founder path on every company doss
     source("app/company/[ticker]/page.tsx"),
     source("app/company/onds/page.tsx"),
   ]);
-  for (const dossier of [featured, starter, ondas]) assert.match(dossier, /<AccessComparison/);
+  for (const dossier of [featured, starter]) assert.match(dossier, /<AccessComparison/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
 });
 
 test("calculates a clean private portfolio status from shares, cost, and current quotes", async () => {
@@ -595,7 +602,7 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(featured, /StockOwnershipPanel/);
   assert.match(featured, /href="#ownership"/);
   assert.match(starter, /StockOwnershipPanel/);
-  assert.match(ondas, /StockOwnershipPanel/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(styles, /\.ownership-summary-grid/);
   assert.match(styles, /\.ownership-detail-grid/);
 });
@@ -888,7 +895,7 @@ test("provides full primary-source dossiers for all homepage companies", async (
   assert.match(dossiers, /Tesla 2025 Form 10-K/);
   assert.match(featuredPage, /ResearchDemandButton/);
   assert.match(starterPage, /ResearchDemandButton/);
-  assert.match(ondas, /ResearchDemandButton/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
 });
 
 test("publishes complete primary-source owner dossiers for AMC and RCL", async () => {
@@ -1046,7 +1053,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(dossiers, /rclinvestor\.com\/press-releases/);
   assert.match(featuredPage, /href="#news"/);
   assert.match(starterPage, /CompanyNewsPanel/);
-  assert.match(ondas, /CompanyNewsPanel/);
+  assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(styles, /\.company-news-grid\{display:grid;grid-template-columns:minmax\(0,1\.35fr\)/);
   assert.match(styles, /\.official-news-list article/);
 });

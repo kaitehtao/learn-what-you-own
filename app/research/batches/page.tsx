@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Header } from "../../ui";
-import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatchAsOf, sp500DossierBatchSource, type DossierBatchCompany } from "../../data/sp500DossierBatches";
+import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatchAsOf, sp500DossierBatchSource, type DossierBatchCompany } from "../../data/sp500DossierBatches";
 
 function money(value: number) {
   if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -30,9 +30,9 @@ export default function ResearchBatchesPage() {
     <section className="research-batch-hero">
       <div className="container">
         <span className="kicker">S&amp;P 500 DOSSIER PROGRAM</span>
-        <h1>One hundred companies.<br/>One owner standard.</h1>
+        <h1>Two hundred companies.<br/>One owner standard.</h1>
         <p>We are building complete, evidence-linked owner dossiers in descending market-cap order. Alphabet’s two share classes share one company dossier.</p>
-        <div className="research-batch-proof"><strong>Batches 01–02 · 100 companies complete</strong><span>Market capitalization snapshot: {sp500DossierBatchAsOf}</span><a href={sp500DossierBatchSource} target="_blank" rel="noreferrer">Nasdaq source ↗</a></div>
+        <div className="research-batch-proof"><strong>Batches 01–03 · 200 companies complete</strong><span>Plus 10 upgraded legacy records · Market-cap snapshot: {sp500DossierBatchAsOf}</span><a href={sp500DossierBatchSource} target="_blank" rel="noreferrer">Nasdaq source ↗</a></div>
       </div>
     </section>
     <section className="container research-batch-section">
@@ -42,7 +42,11 @@ export default function ResearchBatchesPage() {
     <section className="container research-batch-section">
       <header><div><span className="kicker">BATCH 02</span><h2>Ranks 31–100 by market cap</h2></div><p>Seventy additional companies researched with the same financial-driver, risk, monitoring, comparables, SEC, and official-company source requirements.</p></header>
       <BatchList companies={sp500DossierBatch02} />
-      <aside className="research-batch-method"><strong>How ranking works</strong><p>Companies are ordered by the Nasdaq Stock Screener market-cap snapshot. Multiple listed share classes of the same operating company are consolidated into one research dossier; GOOG and GOOGL therefore share Alphabet research.</p></aside>
+    </section>
+    <section className="container research-batch-section">
+      <header><div><span className="kicker">BATCH 03</span><h2>Ranks 101–200 by market cap</h2></div><p>One hundred additional dossiers use the same evidence ledger: 10-K, 10-Q, earnings-related 8-K, proxy, official management commentary, balanced bull and bear hypotheses, comparables, and quarterly monitoring.</p></header>
+      <BatchList companies={sp500DossierBatch03} />
+      <aside className="research-batch-method"><strong>How ranking and evidence work</strong><p>Companies are ordered by the Nasdaq Stock Screener market-cap snapshot. Multiple listed share classes of the same operating company are consolidated into one research dossier; GOOG and GOOGL therefore share Alphabet research. An issuer-published transcript is preferred; otherwise the dossier points owners to the official webcast, prepared remarks, earnings release, filed exhibits, and SEC reports, with third-party transcripts labeled secondary.</p></aside>
     </section>
   </main>;
 }

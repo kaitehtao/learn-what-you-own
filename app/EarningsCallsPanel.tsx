@@ -1,6 +1,8 @@
 type EarningsCallsPanelProps = {
   ticker: string;
   investorRelationsUrl?: string;
+  earningsUpdatesUrl?: string;
+  transcriptPolicy?: string;
 };
 import { SaveToNotebookButton } from "./SaveToNotebookButton";
 
@@ -18,15 +20,14 @@ const verifiedYahooTranscripts: Record<string, { url: string; label: string }> =
   },
 };
 
-export function EarningsCallsPanel({ ticker, investorRelationsUrl }: EarningsCallsPanelProps) {
+export function EarningsCallsPanel({ ticker, investorRelationsUrl, earningsUpdatesUrl, transcriptPolicy }: EarningsCallsPanelProps) {
   const symbol = ticker.toUpperCase();
   const verifiedYahooTranscript = verifiedYahooTranscripts[symbol];
   const yahooUrl = verifiedYahooTranscript?.url ?? `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/earnings-calls/`;
-  const podcastUrl = `https://podcasts.apple.com/us/search?term=${encodeURIComponent(`${symbol} earnings call`)}`;
-  const officialSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${symbol} investor relations earnings call webcast`)}`;
   const verifiedArchive = verifiedCallArchives[symbol];
-  const officialTranscriptUrl = verifiedArchive?.transcripts ?? investorRelationsUrl ?? officialSearchUrl;
-  const officialAudioUrl = verifiedArchive?.audio ?? podcastUrl;
+  const secEarningsUrl = earningsUpdatesUrl ?? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(symbol)}&type=8-K&owner=exclude&count=40`;
+  const officialTranscriptUrl = verifiedArchive?.transcripts ?? investorRelationsUrl ?? secEarningsUrl;
+  const officialAudioUrl = verifiedArchive?.audio ?? investorRelationsUrl ?? secEarningsUrl;
 
   return <section className="earnings-calls-panel" id="earnings-calls">
     <div className="earnings-calls-heading">
@@ -39,12 +40,12 @@ export function EarningsCallsPanel({ ticker, investorRelationsUrl }: EarningsCal
         <span>01</span><div><small>PRIMARY SOURCE · COMPANY IR</small><strong>{verifiedArchive ? "Read official transcripts and quarterly materials" : investorRelationsUrl ? "Open company earnings materials" : "Find company-published transcripts"}</strong><p>{verifiedArchive ? `Open ${symbol}’s verified investor-relations results archive.` : "Look for transcripts, prepared remarks, releases, and presentations published by the company."}</p></div><em>Open IR ↗</em>
       </a>
       <a href={officialAudioUrl} target="_blank" rel="noreferrer">
-        <span>02</span><div><small>{verifiedArchive ? "PRIMARY SOURCE · COMPANY IR" : "CALL AUDIO"}</small><strong>{verifiedArchive ? "Listen to the official webcast or replay" : "Listen to earnings calls"}</strong><p>{verifiedArchive ? `Open ${symbol}’s verified company event and webcast archive.` : `Find available ${symbol} earnings-call recordings in Apple Podcasts.`}</p></div><em>Listen ↗</em>
+        <span>02</span><div><small>{verifiedArchive || investorRelationsUrl ? "PRIMARY SOURCE · COMPANY IR" : "PRIMARY SOURCE · SEC"}</small><strong>{verifiedArchive || investorRelationsUrl ? "Open the official webcast, replay, or prepared remarks" : "Open earnings-related current reports"}</strong><p>{verifiedArchive || investorRelationsUrl ? `Use ${symbol}’s company-published call materials to evaluate management commentary.` : `Use ${symbol}’s 8-K record for official earnings releases and filed exhibits.`}</p></div><em>Open source ↗</em>
       </a>
       <a href={yahooUrl} target="_blank" rel="noreferrer">
         <span>03</span><div><small>SECONDARY SOURCE · YAHOO / QUARTR</small><strong>{verifiedYahooTranscript ? `Read the ${verifiedYahooTranscript.label} printed transcript` : "Open the earnings-call transcript archive"}</strong><p>{verifiedYahooTranscript ? `Open the complete speaker-by-speaker ${symbol} transcript directly.` : `Go directly to ${symbol}’s dedicated Yahoo Finance earnings-calls page for available transcripts.`}</p></div><em>{verifiedYahooTranscript ? "Read transcript ↗" : "Open calls ↗"}</em>
       </a>
     </div>
-    <p className="earnings-call-note">Transcripts can contain transcription errors. Verify material claims against the audio, earnings release, and SEC filings.</p>
+    <p className="earnings-call-note">{transcriptPolicy ?? "Third-party transcripts can contain transcription errors. Verify material claims against the official webcast, earnings release, filed exhibits, and SEC reports."}</p>
   </section>;
 }
