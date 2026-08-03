@@ -717,6 +717,11 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(styles, /\.insider-transaction-table>a\{grid-template-columns:minmax\(220px,2fr\)/);
   assert.match(styles, /\.mobile-field-label\{display:none\}/);
   assert.match(styles, /\.insider-transaction-table \.ownership-table-head\{display:none\}/);
+  assert.match(panel, /insider-transaction-role/);
+  assert.match(panel, /insider-transaction-description/);
+  assert.match(panel, /Security:/);
+  assert.match(styles, /@media\(max-width:1100px\)\{\.ownership-transaction-note/);
+  assert.match(styles, /@media\(max-width:430px\)\{\.insider-transaction-table>a\{grid-template-columns:1fr\}/);
   assert.match(styles, /\.ownership-detail-grid>section\{min-width:0\}/);
   assert.match(panel, /transactionKind="purchase"/);
   assert.match(panel, /transactionKind="sale"/);

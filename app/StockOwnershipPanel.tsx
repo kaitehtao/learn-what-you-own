@@ -65,7 +65,13 @@ function InsiderTransactionTable({ rows, emptyLabel, fallbackUrl, transactionKin
   return <div className={`ownership-table insider-transaction-table ${transactionKind}`}>
     <div className="ownership-table-head"><span>Insider</span><span>Date</span><span>Shares</span><span>Price</span><span>Reported value</span></div>
     {rows.map((row, index) => <a href={row.sourceUrl || fallbackUrl} target="_blank" rel="noreferrer" key={`${row.name}-${row.date}-${row.transactionType}-${index}`}>
-      <span className="insider-transaction-person"><small className="mobile-field-label">Insider</small><strong>{row.name}</strong><small>{row.relation} · {row.transactionType}{row.securityTitle ? ` · ${row.securityTitle}` : ""}</small></span>
+      <span className="insider-transaction-person">
+        <small className="mobile-field-label">Insider</small>
+        <strong>{row.name}</strong>
+        <small className="insider-transaction-role">{row.relation}</small>
+        <small className="insider-transaction-description">{row.transactionType}</small>
+        {row.securityTitle && <small className="insider-transaction-security">Security: {row.securityTitle}</small>}
+      </span>
       <span><small className="mobile-field-label">Date</small>{dateLabel(row.date)}</span>
       <span><small className="mobile-field-label">Shares</small>{compact(row.shares)}</span>
       <span><small className="mobile-field-label">Price</small>{row.price ? compact(row.price, true) : "Not reported"}</span>
