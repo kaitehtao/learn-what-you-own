@@ -1408,6 +1408,8 @@ test("publishes a responsive cross-company SEC insider activity research screen"
   assert.match(client, /Trailing 365 days/);
   assert.match(client, /Grants, gifts, option exercises/);
   assert.match(publicApi, /getSecInsiderActivity/);
+  assert.match(publicApi, /learn-what-you-own\.kaitehtao\.workers\.dev/);
+  assert.match(client, /source=canonical-worker/);
   assert.match(refreshApi, /refreshSecInsiderActivityBatch/);
   assert.match(repository, /master\.\$\{dateValue\.replaceAll/);
   assert.match(repository, /\^\(3\|3\\\/A\|4\|4\\\/A\|5\|5\\\/A\)\$/);

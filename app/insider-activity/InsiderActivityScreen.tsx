@@ -87,7 +87,7 @@ export function InsiderActivityScreen() {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/insider-activity?period=${period}`)
+    fetch(`/api/insider-activity?period=${period}&source=canonical-worker`)
       .then(async (response) => {
         const body = await response.json() as ActivityResponse;
         if (!response.ok) throw new Error(body.error ?? "Unable to load SEC insider activity.");
