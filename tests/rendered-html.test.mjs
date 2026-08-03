@@ -725,8 +725,9 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(styles, /@media\(max-width:430px\)\{\.insider-transaction-table>a\{grid-template-columns:1fr\}/);
   assert.match(styles, /\.ownership-detail-grid>section\{min-width:0\}/);
   assert.match(styles, /@media\(max-width:1400px\)\{\.ownership-detail-grid\{grid-template-columns:1fr\}\}/);
-  assert.match(styles, /@media\(max-width:700px\)\{\.ownership-detail-grid \.ownership-table\{overflow:visible\}/);
+  assert.match(styles, /@media\(max-width:1100px\)\{\.ownership-detail-grid \.ownership-table\{overflow:visible\}/);
   assert.match(styles, /\.ownership-detail-grid \.ownership-table>a\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);min-width:0/);
+  assert.match(styles, /\.ownership-table-head,\.ownership-table>a\{display:grid;grid-template-columns:minmax\(0,1\.5fr\) minmax\(0,\.8fr\) minmax\(0,\.9fr\) minmax\(0,\.8fr\);gap:12px;min-width:0/);
   assert.match(panel, /Latest reported shares<\/small>/);
   assert.match(panel, /Reported shares<\/small>/);
   assert.match(panel, /transactionKind="purchase"/);
@@ -1108,6 +1109,17 @@ test("publishes a complete filing-grounded CoreWeave ownership dossier", async (
   assert.match(dossiers, /Crusoe/);
   assert.match(dossiers, /Second-quarter results · August 11/);
   assert.match(featuredPage, /CoreWeave, Inc\./);
+  assert.match(featuredPage, /View \{comparableSourceLabel\(item\.sourceUrl\)\} ↗/);
+  assert.match(featuredPage, /Third-party financial metrics are shown only as dated, attributed reference snapshots/);
+});
+
+test("keeps dossier comparables readable across desktop and mobile widths", async () => {
+  const styles = await source("app/globals.css");
+
+  assert.match(styles, /grid-template-columns:minmax\(140px,\.8fr\) minmax\(0,1fr\) minmax\(0,1fr\) minmax\(0,1\.45fr\);min-width:0/);
+  assert.match(styles, /@media\(max-width:900px\)[\s\S]*?\.comparables-table>a\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /@media\(max-width:620px\)\{\.comparables-table>a\{grid-template-columns:1fr\}/);
+  assert.match(styles, /\.comparables-table>a>span\{min-width:0;[^}]*overflow-wrap:anywhere/);
 });
 
 test("publishes a complete filing-grounded Oracle ownership dossier", async () => {

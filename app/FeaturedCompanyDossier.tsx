@@ -37,6 +37,11 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
   const source = sourceIndex === null ? null : dossier.sources[sourceIndex];
   const hasPerformance = Boolean(dossier.performance);
   const hasComparables = Boolean(dossier.comparables?.length);
+  const comparableSourceLabel = (sourceUrl: string) => sourceUrl.includes("stockanalysis.com")
+    ? "StockAnalysis"
+    : sourceUrl.includes("sec.gov")
+      ? "SEC filing"
+      : "primary source";
   const sectionNumber = (base: number) => String(base + (hasPerformance ? 1 : 0) + (hasComparables && base >= 4 ? 1 : 0)).padStart(2, "0");
 
   return <main className="dossier-page">
@@ -121,7 +126,8 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         {dossier.comparables?.length ? <section className="dossier-section" id="comparables">
           <div className="section-title"><div><span className="section-number">{String(4 + (hasPerformance ? 1 : 0)).padStart(2, "0")}</span><h2>Competitors &amp; comparables</h2></div><span className="reviewed">Valuation needs capital-structure context</span></div>
           <p className="comparables-intro">Public and private competitors are not automatically true valuation peers. Compare operating model, geography, leverage, leases, profitability, and share count before comparing multiples.</p>
-          <div className="comparables-table"><div className="comparables-head"><span>Company</span><span>Relationship</span><span>Valuation snapshot</span><span>Financial status</span></div>{dossier.comparables.map(item => <a href={item.sourceUrl} target="_blank" rel="noreferrer" key={item.name}><span><strong>{item.name}</strong><small>{item.ticker} · {item.ownership}</small></span><span>{item.relationship}</span><span>{item.valuation}</span><span>{item.financialStatus}<em> Source ↗</em></span></a>)}</div>
+          <div className="comparables-table"><div className="comparables-head"><span>Company</span><span>Relationship</span><span>Valuation snapshot</span><span>Financial status</span></div>{dossier.comparables.map(item => <a href={item.sourceUrl} target="_blank" rel="noreferrer" key={item.name}><span><b className="comparables-field-label">Company</b><strong>{item.name}</strong><small>{item.ticker} · {item.ownership}</small></span><span><b className="comparables-field-label">Relationship</b>{item.relationship}</span><span><b className="comparables-field-label">Valuation snapshot</b>{item.valuation}</span><span><b className="comparables-field-label">Financial status</b>{item.financialStatus}<em>View {comparableSourceLabel(item.sourceUrl)} ↗</em></span></a>)}</div>
+          <p className="comparables-source-note">Third-party financial metrics are shown only as dated, attributed reference snapshots. Review the linked source and the company’s SEC filings before relying on a comparison.</p>
         </section> : null}
         <section className="dossier-section" id="risks">
           <div className="section-title"><div><span className="section-number">{sectionNumber(4)}</span><h2>Risks worth monitoring</h2></div><span className="reviewed">Ranked by owner significance</span></div>
