@@ -1,12 +1,12 @@
 import { featuredDossiers } from "../app/data/featuredDossiers";
-import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03 } from "../app/data/sp500DossierBatches";
+import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatch04 } from "../app/data/sp500DossierBatches";
 import { legacyCompletedTickers } from "../app/data/legacyCompleteDossiers";
 import { researchUniverse } from "../app/data/universe";
 
 const requiredTickers = Object.keys(featuredDossiers).sort();
 
 const failures: string[] = [];
-const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02, ...sp500DossierBatch03];
+const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02, ...sp500DossierBatch03, ...sp500DossierBatch04];
 const universeTickers = new Set(researchUniverse.map((company) => company.ticker));
 const markupLeakPattern = /q4default|<\/?(?:style|script|html|body)\b|\bfont-(?:size|family)\s*:|\blist-style-type\s*:|\{\s*(?:color|margin|padding)\s*:/i;
 
@@ -23,7 +23,7 @@ function dossierText(dossier: object) {
   return JSON.stringify(dossier);
 }
 
-if (rankedSpxCompanies.length !== 200) failures.push(`S&P 500 program: expected 200 ranked companies, found ${rankedSpxCompanies.length}`);
+if (rankedSpxCompanies.length !== 300) failures.push(`S&P 500 program: expected 300 ranked companies, found ${rankedSpxCompanies.length}`);
 for (const ticker of legacyCompletedTickers) {
   if (!featuredDossiers[ticker]) failures.push(`${ticker}: legacy/starter record was not upgraded to the complete dossier registry`);
 }
@@ -126,4 +126,4 @@ if (failures.length > 0) {
   throw new Error(`Flagship dossier benchmark failed:\n${failures.join("\n")}`);
 }
 
-console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). The first 200 S&P 500 companies are ranked by descending market capitalization, all 10 legacy records are upgraded, and every dossier has complete owner research sections, a filing/call evidence ledger, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);
+console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). The first 300 S&P 500 dossier-program companies are ranked by descending market capitalization after excluding already-complete legacy records, all 10 legacy records are upgraded, and every dossier has complete owner research sections, a filing/call evidence ledger, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);

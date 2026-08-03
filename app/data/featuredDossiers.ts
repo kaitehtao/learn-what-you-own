@@ -3,6 +3,7 @@ import { completeDossierBenchmark, dossierBenchmarkComplements } from "./dossier
 import { sp500Batch01Dossiers } from "./sp500Batch01Dossiers";
 import { sp500Batch02Dossiers } from "./sp500Batch02Dossiers";
 import { sp500Batch03Dossiers } from "./sp500Batch03Dossiers";
+import { sp500Batch04Dossiers } from "./sp500Batch04Dossiers";
 import { legacyCompleteDossiers } from "./legacyCompleteDossiers";
 import { applyEvidenceStandard } from "./structuredDossierFactory";
 import { fcelDossier } from "./fcelDossier";
@@ -566,6 +567,7 @@ Object.assign(featuredDossiers, sp500Batch01Dossiers);
 Object.assign(featuredDossiers, sp500Batch02Dossiers);
 Object.assign(featuredDossiers, legacyCompleteDossiers);
 Object.assign(featuredDossiers, sp500Batch03Dossiers);
+Object.assign(featuredDossiers, sp500Batch04Dossiers);
 featuredDossiers.FCEL = fcelDossier;
 
 // Alphabet's two S&P 500 share classes represent one underlying company and

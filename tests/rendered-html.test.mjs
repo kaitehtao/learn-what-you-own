@@ -131,12 +131,13 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
   assert.match(styles, /\.admin-verification-actions button\{width:100%/);
 });
 
-test("publishes the first 200 S&P 500 companies in descending market-cap dossier batches", async () => {
-  const [registry, batch01Dossiers, batch02Dossiers, batch03Dossiers, batches, page, navigation, secCompanies] = await Promise.all([
+test("publishes the first 300 S&P 500 dossier-program companies in descending market-cap batches", async () => {
+  const [registry, batch01Dossiers, batch02Dossiers, batch03Dossiers, batch04Dossiers, batches, page, navigation, secCompanies] = await Promise.all([
     source("app/data/featuredDossiers.ts"),
     source("app/data/sp500Batch01Dossiers.ts"),
     source("app/data/sp500Batch02Dossiers.ts"),
     source("app/data/sp500Batch03Dossiers.ts"),
+    source("app/data/sp500Batch04Dossiers.ts"),
     source("app/data/sp500DossierBatches.ts"),
     source("app/research/batches/page.tsx"),
     source("app/ui.tsx"),
@@ -146,6 +147,7 @@ test("publishes the first 200 S&P 500 companies in descending market-cap dossier
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch01Dossiers\)/);
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch02Dossiers\)/);
   assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch03Dossiers\)/);
+  assert.match(registry, /Object\.assign\(featuredDossiers, sp500Batch04Dossiers\)/);
   assert.match(registry, /featuredDossiers\.GOOGL/);
   for (const ticker of ["AVGO", "BRK.B", "LLY", "MU", "JPM", "WMT", "V", "XOM", "JNJ", "MA", "INTC", "ABBV", "CSCO", "BAC", "COST", "AMAT", "CVX", "UNH", "KO", "LRCX", "GE"]) {
     assert.match(batch01Dossiers, new RegExp(`ticker: "${ticker.replace(".", "\\.")}"`));
@@ -156,12 +158,16 @@ test("publishes the first 200 S&P 500 companies in descending market-cap dossier
   for (const ticker of ["FTNT", "HWM", "ADBE", "ABNB", "VRT", "HOOD", "REGN", "DLR", "SNPS", "NKE", "NXPI", "O"]) {
     assert.match(batch03Dossiers, new RegExp(`"${ticker}"`));
   }
+  for (const ticker of ["TEL", "CTVA", "F", "TER", "NDAQ", "EA", "PYPL", "COIN", "AXON", "VEEV", "ON", "JBL"]) {
+    assert.match(batch04Dossiers, new RegExp(`"${ticker}"`));
+  }
   assert.match(batches, /\[30, "GE", "GE Aerospace"/);
   assert.match(batches, /"PG", "HD", "MS", "MRK", "NFLX"/);
   assert.match(batches, /rank: index \+ 31/);
   assert.match(batches, /sp500DossierBatchAsOf = "July 30, 2026"/);
-  assert.match(page, /Two hundred companies/);
-  assert.match(page, /Batches 01–03 · 200 companies complete/);
+  assert.match(page, /Three hundred companies/);
+  assert.match(page, /Batches 01–04 · 300 companies complete/);
+  assert.match(page, /Ranks 201–300 by market cap/);
   assert.match(page, /Alphabet’s two share classes share one company dossier/);
   assert.match(navigation, /href="\/research\/batches">Research/);
   assert.match(secCompanies, /normalizedTicker === "XOM"/);

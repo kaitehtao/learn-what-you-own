@@ -65,5 +65,7 @@ export const sp500DossierBatch02: DossierBatchCompany[] = batch02Tickers.map((ti
 import { marketCaps } from "./marketCaps.generated";
 import { sp500Companies } from "./sp500";
 import { sp500Batch03Ranking } from "./sp500Batch03Dossiers";
+import { sp500Batch04Ranking } from "./sp500Batch04Dossiers";
 
 export const sp500DossierBatch03: DossierBatchCompany[] = sp500Batch03Ranking;
+export const sp500DossierBatch04: DossierBatchCompany[] = sp500Batch04Ranking;
