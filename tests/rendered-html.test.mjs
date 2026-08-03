@@ -636,9 +636,12 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
 });
 
 test("keeps investment notebooks private while supporting sourced public handoff", async () => {
-  const [migration, route, client, captureButton, contributionPage, header] = await Promise.all([
+  const [migration, attachmentMigration, route, attachmentRoute, downloadRoute, client, captureButton, contributionPage, header] = await Promise.all([
     source("supabase/migrations/20260801020000_private_research_notebooks.sql"),
+    source("supabase/migrations/20260802000000_private_research_attachments.sql"),
     source("app/api/notebook/route.ts"),
+    source("app/api/notebook/attachments/route.ts"),
+    source("app/api/notebook/attachments/[id]/route.ts"),
     source("app/notebook/NotebookClient.tsx"),
     source("app/SaveToNotebookButton.tsx"),
     source("app/contribute/page.tsx"),
@@ -650,16 +653,46 @@ test("keeps investment notebooks private while supporting sourced public handoff
   assert.match(migration, /auth\.uid\(\) = user_id/);
   assert.match(migration, /revoke all on public\.research_notebooks from anon/);
   assert.match(migration, /revoke all on public\.research_notes from anon/);
+  assert.match(attachmentMigration, /create table if not exists public\.research_attachments/);
+  assert.match(attachmentMigration, /private-research-files/);
+  assert.match(attachmentMigration, /auth\.uid\(\) = user_id/);
+  assert.match(attachmentMigration, /allowed_mime_types = excluded\.allowed_mime_types/);
   assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /research_attachments/);
   assert.match(route, /Choose a ticker from the research universe/);
   assert.match(route, /Source URL must begin with http:\/\/ or https:\/\//);
+  assert.match(attachmentRoute, /MAX_PDF_BYTES = 20 \* 1024 \* 1024/);
+  assert.match(attachmentRoute, /isPdfSignature/);
+  assert.match(attachmentRoute, /\.eq\("user_id", profile\.user_id\)/);
+  assert.match(attachmentRoute, /PRIVATE_RESEARCH_BUCKET/);
+  assert.match(downloadRoute, /createSignedUrl/);
+  assert.match(downloadRoute, /\.eq\("user_id", profile\.user_id\)/);
   assert.match(client, /PRIVATE BY DEFAULT/);
+  assert.match(client, /PRIVATE FILES &amp; LINKS/);
+  assert.match(client, /Upload PDF/);
+  assert.match(client, /Private link/);
   assert.match(client, /ONE-SENTENCE WORKING THESIS/);
   assert.match(client, /Prepare public contribution/);
   assert.match(client, /setTimeout[\s\S]*850/);
   assert.match(captureButton, /action: "capture"/);
   assert.match(contributionPage, /initialDraft/);
   assert.match(header, /href="\/notebook"/);
+});
+
+test("publishes FCEL as a fully sourced benchmark dossier", async () => {
+  const [dossier, registry] = await Promise.all([
+    source("app/data/fcelDossier.ts"),
+    source("app/data/featuredDossiers.ts"),
+  ]);
+  assert.match(registry, /featuredDossiers\.FCEL = fcelDossier/);
+  assert.match(dossier, /completeness: 100/);
+  assert.match(dossier, /August 2, 2026/);
+  assert.match(dossier, /\$1\.14B/);
+  assert.match(dossier, /Q2 GROSS MARGIN/);
+  assert.match(dossier, /10,714,286 new common shares/);
+  assert.match(dossier, /Siemens and FuelCell Energy collaboration/);
+  assert.match(dossier, /evidenceReview/);
+  assert.match(dossier, /comparables/);
 });
 
 test("creates private member notifications and opt-in email delivery", async () => {

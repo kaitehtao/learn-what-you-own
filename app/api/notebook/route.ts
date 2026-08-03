@@ -64,6 +64,17 @@ function publicNote(row: Record<string, unknown>) {
   };
 }
 
+function publicAttachment(row: Record<string, unknown>) {
+  return {
+    id: row.id,
+    notebookId: row.notebook_id,
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    fileSize: row.file_size,
+    createdAt: row.created_at,
+  };
+}
+
 async function getOrCreateNotebook(
   supabase: Awaited<ReturnType<typeof requireSupabaseUser>>["supabase"],
   userId: string,
@@ -84,16 +95,20 @@ async function getOrCreateNotebook(
 export async function GET(request: Request) {
   try {
     const { profile, supabase } = await requireSupabaseUser(request);
-    const [notebooksResult, notesResult] = await Promise.all([
+    const [notebooksResult, notesResult, attachmentsResult] = await Promise.all([
       supabase.from("research_notebooks").select("*").eq("user_id", profile.user_id).order("ticker"),
       supabase.from("research_notes").select("*").eq("user_id", profile.user_id)
         .order("pinned", { ascending: false }).order("updated_at", { ascending: false }).limit(1000),
+      supabase.from("research_attachments").select("*").eq("user_id", profile.user_id)
+        .order("created_at", { ascending: false }).limit(500),
     ]);
     if (notebooksResult.error) throw notebooksResult.error;
     if (notesResult.error) throw notesResult.error;
+    if (attachmentsResult.error) throw attachmentsResult.error;
     return Response.json({
       notebooks: (notebooksResult.data ?? []).map((row) => publicNotebook(row)),
       notes: (notesResult.data ?? []).map((row) => publicNote(row)),
+      attachments: (attachmentsResult.data ?? []).map((row) => publicAttachment(row)),
       owner: { username: profile.username, displayName: profile.display_name },
     });
   } catch (error) {

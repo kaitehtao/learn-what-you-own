@@ -6,7 +6,8 @@ import { authenticatedFetch, loginPath } from "../supabase-browser";
 
 type Notebook = { id: number; ticker: string; companyName: string; thesis: string; conviction: string; createdAt: string; updatedAt: string };
 type Note = { id: number; notebookId: number | null; noteType: string; title: string; body: string; status: string; tags: string[]; sourceTitle: string; sourceUrl: string; sourceExcerpt: string; sourceDate: string | null; pinned: boolean; createdAt: string; updatedAt: string };
-type NotebookResponse = { notebooks: Notebook[]; notes: Note[]; owner: { username: string; displayName: string }; error?: string };
+type Attachment = { id: number; notebookId: number; fileName: string; mimeType: string; fileSize: number; createdAt: string };
+type NotebookResponse = { notebooks: Notebook[]; notes: Note[]; attachments: Attachment[]; owner: { username: string; displayName: string }; error?: string };
 
 const noteTypes = [
   ["general", "Research note"], ["source", "Saved source"], ["thesis", "Thesis"], ["bull_case", "Bull case"],
@@ -21,6 +22,11 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
 
+function formatBytes(value: number) {
+  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function noteDraft(note: Note) {
   return { ...note, tagsText: note.tags.join(", ") };
 }
@@ -28,6 +34,7 @@ function noteDraft(note: Note) {
 export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [owner, setOwner] = useState("researcher");
   const [selectedNotebookId, setSelectedNotebookId] = useState<number | "inbox" | "all">("all");
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null);
@@ -42,6 +49,8 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
   const [busy, setBusy] = useState(false);
   const [saveState, setSaveState] = useState("Saved");
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadInputKey, setUploadInputKey] = useState(0);
 
   const selectedNotebook = typeof selectedNotebookId === "number" ? notebooks.find((item) => item.id === selectedNotebookId) ?? null : null;
 
@@ -82,6 +91,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     if (!response.ok) throw new Error(data.error ?? "Unable to load your research notebook.");
     setNotebooks(data.notebooks);
     setNotes(data.notes);
+    setAttachments(data.attachments ?? []);
     setOwner(data.owner.username);
     if (initialTicker) {
       const existing = data.notebooks.find((item) => item.ticker === initialTicker);
@@ -164,12 +174,40 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     setBusy(true); setError("");
     const response = await authenticatedFetch("/api/notebook", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
       action: "create_note", notebookId: typeof selectedNotebookId === "number" ? selectedNotebookId : null, noteType: type,
-      title: type === "task" ? "New research task" : type === "question" ? "New open question" : "Untitled research note",
+      title: type === "task" ? "New research task" : type === "question" ? "New open question" : type === "source" ? "Private research link" : "Untitled research note",
     }) });
     const data = await response.json() as { note?: Note; error?: string };
     setBusy(false);
     if (!response.ok || !data.note) return setError(data.error ?? "Unable to create a note.");
     setNotes((current) => [data.note!, ...current]); selectNote(data.note);
+  }
+
+  async function uploadPdf(file: File | null) {
+    if (!file || !selectedNotebook) return;
+    setUploading(true); setError("");
+    const form = new FormData();
+    form.set("notebookId", String(selectedNotebook.id));
+    form.set("file", file);
+    const response = await authenticatedFetch("/api/notebook/attachments", { method: "POST", body: form });
+    const data = await response.json() as { attachment?: Attachment; error?: string };
+    setUploading(false); setUploadInputKey((value) => value + 1);
+    if (!response.ok || !data.attachment) return setError(data.error ?? "Unable to upload that PDF.");
+    setAttachments((current) => [data.attachment!, ...current]);
+  }
+
+  async function openAttachment(attachment: Attachment) {
+    const response = await authenticatedFetch(`/api/notebook/attachments/${attachment.id}`, { cache: "no-store" });
+    const data = await response.json() as { url?: string; error?: string };
+    if (!response.ok || !data.url) return setError(data.error ?? "Unable to open that PDF.");
+    window.open(data.url, "_blank", "noopener,noreferrer");
+  }
+
+  async function deleteAttachment(attachment: Attachment) {
+    if (!window.confirm(`Delete ${attachment.fileName} from this private notebook?`)) return;
+    const response = await authenticatedFetch("/api/notebook/attachments", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: attachment.id }) });
+    const data = await response.json() as { error?: string };
+    if (!response.ok) return setError(data.error ?? "Unable to delete that PDF.");
+    setAttachments((current) => current.filter((item) => item.id !== attachment.id));
   }
 
   async function updateConviction(conviction: string) {
@@ -189,13 +227,14 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
 
   const publishHref = draft && selectedNotebook ? `/contribute?${new URLSearchParams({ ticker: selectedNotebook.ticker, type: "Thesis update", claim: draft.title.slice(0, 1000), why: (draft.body || draft.sourceExcerpt).slice(0, 1200), source: draft.sourceUrl }).toString()}` : "/contribute";
   const completedTasks = notes.filter((note) => note.noteType === "task" && note.status === "done").length;
+  const selectedAttachments = selectedNotebook ? attachments.filter((attachment) => attachment.notebookId === selectedNotebook.id) : [];
 
   if (loading) return <section className="notebook-loading">Opening your private research workspace…</section>;
   if (error && !notebooks.length && !notes.length) return <section className="notebook-loading"><strong>Notebook unavailable</strong><p>{error}</p></section>;
 
   return <>
     <section className="notebook-hero"><div className="container"><div><span className="kicker">PRIVATE INVESTMENT RESEARCH</span><h1>Your working memory,<br />organized by company.</h1><p>Capture primary sources, pressure-test a thesis, track unanswered questions, and publish only the insight you deliberately choose.</p></div><div className="notebook-privacy"><span>PRIVATE BY DEFAULT</span><strong>@{owner}</strong><p>Only you can read these notebooks. Public contributions use a separate review workflow.</p></div></div></section>
-    <section className="container notebook-stats"><div><small>COMPANY NOTEBOOKS</small><strong>{notebooks.length}</strong></div><div><small>PRIVATE NOTES</small><strong>{notes.length}</strong></div><div><small>OPEN QUESTIONS</small><strong>{notes.filter((note) => note.noteType === "question" && note.status === "active").length}</strong></div><div><small>TASKS COMPLETED</small><strong>{completedTasks}</strong></div></section>
+    <section className="container notebook-stats"><div><small>COMPANY NOTEBOOKS</small><strong>{notebooks.length}</strong></div><div><small>PRIVATE MATERIALS</small><strong>{notes.length + attachments.length}</strong></div><div><small>PDF ATTACHMENTS</small><strong>{attachments.length}</strong></div><div><small>TASKS COMPLETED</small><strong>{completedTasks}</strong></div></section>
     {error && <div className="container notebook-error">{error}<button onClick={() => setError("")}>×</button></div>}
     <section className="container notebook-workspace">
       <aside className="notebook-sidebar">
@@ -210,6 +249,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
       <div className="notebook-index">
         <header>{selectedNotebook ? <div className="notebook-company-header"><Link href={`/company/${selectedNotebook.ticker.toLowerCase()}`}>{selectedNotebook.ticker}</Link><div><small>PRIVATE COMPANY NOTEBOOK</small><h2>{selectedNotebook.companyName}</h2></div><label>CONVICTION<select value={selectedNotebook.conviction} onChange={(event) => updateConviction(event.target.value)}><option value="unranked">Unranked</option><option value="watching">Watching</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label></div> : <div><span className="kicker">{selectedNotebookId === "inbox" ? "RESEARCH INBOX" : "COMPLETE LIBRARY"}</span><h2>{selectedNotebookId === "inbox" ? "Ideas waiting to be filed" : "All private research"}</h2></div>}</header>
         {selectedNotebook && <label className="notebook-thesis"><span>ONE-SENTENCE WORKING THESIS <em>{thesisDirty ? saveState : "Autosaved"}</em></span><textarea value={thesisDraft} onChange={(event) => editThesis(event.target.value)} placeholder={`What must be true for ${selectedNotebook.ticker} to become a good long-term investment?`} /></label>}
+        {selectedNotebook && <section className="notebook-private-materials"><header><div><small>PRIVATE FILES &amp; LINKS</small><strong>Evidence for {selectedNotebook.ticker}</strong></div><div><button type="button" onClick={() => createNote("source")} disabled={busy}>＋ Private link</button><label className={uploading ? "uploading" : ""}>{uploading ? "Uploading…" : "＋ Upload PDF"}<input key={uploadInputKey} type="file" accept="application/pdf,.pdf" disabled={uploading} onChange={(event) => void uploadPdf(event.target.files?.[0] ?? null)} /></label></div></header><p>PDFs and links stay visible only inside your account. PDF limit: 20 MB.</p>{selectedAttachments.length > 0 && <div className="notebook-attachment-list">{selectedAttachments.map((attachment) => <article key={attachment.id}><button type="button" onClick={() => void openAttachment(attachment)}><span>PDF</span><div><strong>{attachment.fileName}</strong><small>{formatBytes(attachment.fileSize)} · Added {formatDate(attachment.createdAt)}</small></div></button><button type="button" aria-label={`Delete ${attachment.fileName}`} onClick={() => void deleteAttachment(attachment)}>×</button></article>)}</div>}</section>}
         <div className="notebook-tools"><label>⌕<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes, sources, and tags" /></label><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">All note types</option>{noteTypes.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><button onClick={() => createNote("general")} disabled={busy}>New note ＋</button></div>
         <div className="notebook-quick-add"><span>QUICK ADD</span>{[["source", "Source"], ["risk", "Risk"], ["catalyst", "Catalyst"], ["question", "Question"], ["task", "Task"]].map(([type, label]) => <button key={type} onClick={() => createNote(type)} disabled={busy}>＋ {label}</button>)}</div>
         <div className="notebook-note-list">{visibleNotes.length ? visibleNotes.map((note) => <button key={note.id} className={`${selectedNoteId === note.id ? "selected" : ""} ${note.status === "done" ? "done" : ""}`} onClick={() => selectNote(note)}><span className={`note-type-icon ${note.noteType}`}>{note.pinned ? "★" : labelFor(note.noteType).slice(0, 1)}</span><div><header><small>{labelFor(note.noteType)}{note.status === "done" ? " · DONE" : ""}</small><time>{formatDate(note.updatedAt)}</time></header><strong>{note.title}</strong><p>{note.body || note.sourceExcerpt || note.sourceTitle || "Start writing…"}</p>{note.tags.length > 0 && <footer>{note.tags.slice(0, 4).map((tag) => <em key={tag}>#{tag}</em>)}</footer>}</div></button>) : <div className="notebook-empty"><span>✎</span><h3>No research here yet.</h3><p>Start with a question, save a source from a company dossier, or write down the claim you want to test.</p><button onClick={() => createNote("general")}>Create the first note →</button></div>}</div>
