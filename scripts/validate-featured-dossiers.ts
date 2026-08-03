@@ -1,12 +1,13 @@
 import { featuredDossiers } from "../app/data/featuredDossiers";
-import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatch04, sp500DossierBatch05 } from "../app/data/sp500DossierBatches";
+import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatch04, sp500DossierBatch05, sp500DossierBatch06 } from "../app/data/sp500DossierBatches";
+import { sp500Companies } from "../app/data/sp500";
 import { legacyCompletedTickers } from "../app/data/legacyCompleteDossiers";
 import { researchUniverse } from "../app/data/universe";
 
 const requiredTickers = Object.keys(featuredDossiers).sort();
 
 const failures: string[] = [];
-const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02, ...sp500DossierBatch03, ...sp500DossierBatch04, ...sp500DossierBatch05];
+const rankedSpxCompanies = [...sp500DossierBatch01, ...sp500DossierBatch02, ...sp500DossierBatch03, ...sp500DossierBatch04, ...sp500DossierBatch05, ...sp500DossierBatch06];
 const universeTickers = new Set(researchUniverse.map((company) => company.ticker));
 const markupLeakPattern = /q4default|<\/?(?:style|script|html|body)\b|\bfont-(?:size|family)\s*:|\blist-style-type\s*:|\{\s*(?:color|margin|padding)\s*:/i;
 
@@ -23,7 +24,10 @@ function dossierText(dossier: object) {
   return JSON.stringify(dossier);
 }
 
-if (rankedSpxCompanies.length !== 400) failures.push(`S&P 500 program: expected 400 ranked companies, found ${rankedSpxCompanies.length}`);
+if (rankedSpxCompanies.length !== 497) failures.push(`S&P 500 program: expected 497 ranked company records, found ${rankedSpxCompanies.length}`);
+for (const company of sp500Companies) {
+  if (!featuredDossiers[company.ticker]) failures.push(`${company.ticker}: S&P 500 component is missing a complete dossier`);
+}
 for (const ticker of legacyCompletedTickers) {
   if (!featuredDossiers[ticker]) failures.push(`${ticker}: legacy/starter record was not upgraded to the complete dossier registry`);
 }
@@ -126,4 +130,4 @@ if (failures.length > 0) {
   throw new Error(`Flagship dossier benchmark failed:\n${failures.join("\n")}`);
 }
 
-console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). The first 400 S&P 500 dossier-program companies are ranked by descending market capitalization after excluding already-complete legacy records, all 10 legacy records are upgraded, and every dossier has complete owner research sections, a filing/call evidence ledger, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);
+console.log(`Comprehensive dossier audit passed for ${requiredTickers.length} ticker pages (${requiredTickers.length - 1} distinct companies; GOOG and GOOGL share one Alphabet dossier). All ${sp500Companies.length} S&P 500 component ticker rows now have complete dossiers across 497 descending-market-cap program records plus five previously completed flagship records and Alphabet's consolidated share classes. All 10 legacy records are upgraded, and every dossier has complete owner research sections, a filing/call evidence ledger, balanced thesis coverage, six or more comparables, filing and company sources, an official newsroom, and clean display text.`);

@@ -67,7 +67,9 @@ import { sp500Companies } from "./sp500";
 import { sp500Batch03Ranking } from "./sp500Batch03Dossiers";
 import { sp500Batch04Ranking } from "./sp500Batch04Dossiers";
 import { sp500Batch05Ranking } from "./sp500Batch05Dossiers";
+import { sp500Batch06Ranking } from "./sp500Batch06Dossiers";
 
 export const sp500DossierBatch03: DossierBatchCompany[] = sp500Batch03Ranking;
 export const sp500DossierBatch04: DossierBatchCompany[] = sp500Batch04Ranking;
 export const sp500DossierBatch05: DossierBatchCompany[] = sp500Batch05Ranking;
+export const sp500DossierBatch06: DossierBatchCompany[] = sp500Batch06Ranking;
