@@ -135,6 +135,10 @@ test("lets investors build, sort, share, and export custom ten-company comp tabl
   assert.match(builder, /Balance sheet/);
   assert.match(api, /no more than ten tickers/);
   assert.match(api, /SEC-reported operating income plus SEC-reported depreciation and amortization/);
+  assert.match(api, /MAX_STORED_FACT_AGE_DAYS = 550/);
+  assert.match(api, /fetchCurrentSecFacts/);
+  assert.match(api, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
+  assert.match(api, /Current SEC Company Facts/);
   assert.match(metrics, /evToEbitda/);
   assert.match(metrics, /currentRatio/);
   assert.match(secMetrics, /depreciation_amortization/);
