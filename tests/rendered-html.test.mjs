@@ -591,6 +591,8 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(panel, /Largest reporting holders/);
   assert.match(panel, /not a reported SEC retail figure/);
   assert.match(route, /EntityCommonStockSharesOutstanding/);
+  assert.match(route, /CommonStockSharesOutstanding/);
+  assert.match(route, /latestSharesOutstanding/);
   assert.match(route, /EntityPublicFloat/);
   assert.match(route, /institutional-holdings/);
   assert.match(route, /insider-trades\?limit=500/);

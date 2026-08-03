@@ -87,6 +87,7 @@ const priorityMetrics = [
   "operating_cash_flow",
   "capital_expenditures",
   "cash",
+  "shares_outstanding",
   "diluted_shares",
 ];
 

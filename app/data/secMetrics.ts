@@ -20,6 +20,7 @@ export const secMetricDefinitions: SecMetricDefinition[] = [
   { key: "total_liabilities", label: "Total liabilities", concepts: ["Liabilities"], preferredUnits: ["USD"] },
   { key: "stockholders_equity", label: "Stockholders’ equity", concepts: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"], preferredUnits: ["USD"] },
   { key: "long_term_debt", label: "Long-term debt", concepts: ["LongTermDebtCurrent", "LongTermDebtNoncurrent"], preferredUnits: ["USD"] },
+  { key: "shares_outstanding", label: "Common shares outstanding", concepts: ["CommonStockSharesOutstanding"], preferredUnits: ["shares"] },
   { key: "diluted_shares", label: "Diluted weighted-average shares", concepts: ["WeightedAverageNumberOfDilutedSharesOutstanding"], preferredUnits: ["shares"] },
   { key: "stock_based_compensation", label: "Stock-based compensation", concepts: ["ShareBasedCompensation"], preferredUnits: ["USD"] },
 ];

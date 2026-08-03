@@ -5,17 +5,27 @@ import { researchUniverse } from "../../data/universe";
 export const dynamic = "force-dynamic";
 
 type SecFact = { val?: number; end?: string; filed?: string; form?: string; accn?: string };
-type SecCompanyFacts = { facts?: { dei?: Record<string, { units?: Record<string, SecFact[]> }> } };
+type SecCompanyFacts = { facts?: Record<string, Record<string, { units?: Record<string, SecFact[]> }>> };
 type InstitutionalRow = { ownerName?: string; date?: string; sharesHeld?: string; sharesChange?: string; sharesChangePCT?: string; marketValue?: string; url?: string };
 type NasdaqInstitutional = { data?: { ownershipSummary?: { SharesOutstandingPCT?: { value?: string }; ShareoutstandingTotal?: { value?: string } }; activePositions?: { rows?: Array<{ positions?: string; holders?: string; shares?: string }> }; holdingsTransactions?: { institutionalHolders?: string; sharesHeld?: string; table?: { rows?: InstitutionalRow[] } } } };
 type InsiderRow = { insider?: string; relation?: string; lastDate?: string; transactionType?: string; ownType?: string; sharesTraded?: string; lastPrice?: string; sharesHeld?: string; url?: string };
 type NasdaqInsiders = { data?: { transactionTable?: { totalRecords?: string; table?: { rows?: InsiderRow[] } } } };
 type InsiderTransactionDirection = "purchase" | "sale" | "other";
 
-function latestFact(payload: SecCompanyFacts, concept: string, unit: string) {
-  const values = payload.facts?.dei?.[concept]?.units?.[unit] ?? [];
+function latestFact(payload: SecCompanyFacts, taxonomy: string, concept: string, unit: string) {
+  const values = payload.facts?.[taxonomy]?.[concept]?.units?.[unit] ?? [];
   return values.filter((fact) => typeof fact.val === "number" && fact.end && fact.filed)
     .sort((left, right) => (right.filed ?? "").localeCompare(left.filed ?? "") || (right.end ?? "").localeCompare(left.end ?? ""))[0] ?? null;
+}
+
+// Most issuers expose the cover-page share count under the DEI taxonomy, but
+// some valid filers (including Dell) publish the same point-in-time fact as the
+// US-GAAP CommonStockSharesOutstanding concept. Keep the preferred DEI value,
+// then fall back to US-GAAP so the ownership card and filing-history cards do
+// not disagree simply because the issuer chose a different standard tag.
+function latestSharesOutstanding(payload: SecCompanyFacts) {
+  return latestFact(payload, "dei", "EntityCommonStockSharesOutstanding", "shares")
+    ?? latestFact(payload, "us-gaap", "CommonStockSharesOutstanding", "shares");
 }
 
 async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000, extraHeaders: Record<string, string> = {}): Promise<T> {
@@ -113,8 +123,8 @@ export async function GET(request: Request) {
   ]);
 
   const sec = secResult.status === "fulfilled" ? secResult.value : null;
-  const shares = sec ? latestFact(sec, "EntityCommonStockSharesOutstanding", "shares") : null;
-  const publicFloat = sec ? latestFact(sec, "EntityPublicFloat", "USD") : null;
+  const shares = sec ? latestSharesOutstanding(sec) : null;
+  const publicFloat = sec ? latestFact(sec, "dei", "EntityPublicFloat", "USD") : null;
   const institutional = institutionalResult.status === "fulfilled" ? institutionalResult.value.data : null;
   const institutionalPct = numberFrom(institutional?.ownershipSummary?.SharesOutstandingPCT?.value);
   const summarizedSharesOutstanding = numberFrom(institutional?.ownershipSummary?.ShareoutstandingTotal?.value);
