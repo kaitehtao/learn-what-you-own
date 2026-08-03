@@ -7,7 +7,10 @@ import { researchUniverse, type ResearchCompany } from "./universe";
 const SEC_ORIGIN = "https://www.sec.gov";
 const SEC_USER_AGENT = "LearnWhatYouOwn research@learnwhatyouown.com";
 const FILING_BATCH_SIZE = 8;
-const FILINGS_PER_REFRESH = 32;
+// Eight requests per 1.05 seconds stays below the SEC's published fair-access
+// ceiling. Four scheduled runs can therefore process up to 960 ownership
+// documents per day while retaining a resumable offset for unusually busy days.
+const FILINGS_PER_REFRESH = 240;
 
 export type InsiderActivityPeriod = "month" | "quarter" | "year";
 

@@ -102,6 +102,7 @@ export function InsiderActivityScreen() {
   const isBackfilling = !data?.coverage.coverageStart || Number(data.coverage.completedDays ?? 0) < (period === "month" ? 20 : period === "quarter" ? 60 : 240);
 
   function selectPeriod(nextPeriod: InsiderActivityPeriod) {
+    if (nextPeriod === period) return;
     setLoading(true);
     setError("");
     setPeriod(nextPeriod);
