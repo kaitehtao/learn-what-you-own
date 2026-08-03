@@ -1,5 +1,6 @@
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
+import { aggregateSecReportingInsiders, parseSecOwnershipXml, recentOwnershipFilings, type ParsedSecOwnershipFiling, type SecInsiderTransaction } from "../../data/secOwnership";
 import { latestShareFiling, latestSharesOutstanding, sharesFromInlineFiling, type SecCompanyFacts, type SecSubmissions } from "../../data/secShareFacts";
 import { researchUniverse } from "../../data/universe";
 
@@ -7,9 +8,6 @@ export const dynamic = "force-dynamic";
 
 type InstitutionalRow = { ownerName?: string; date?: string; sharesHeld?: string; sharesChange?: string; sharesChangePCT?: string; marketValue?: string; url?: string };
 type NasdaqInstitutional = { data?: { ownershipSummary?: { SharesOutstandingPCT?: { value?: string }; ShareoutstandingTotal?: { value?: string } }; activePositions?: { rows?: Array<{ positions?: string; holders?: string; shares?: string }> }; holdingsTransactions?: { institutionalHolders?: string; sharesHeld?: string; table?: { rows?: InstitutionalRow[] } } } };
-type InsiderRow = { insider?: string; relation?: string; lastDate?: string; transactionType?: string; ownType?: string; sharesTraded?: string; lastPrice?: string; sharesHeld?: string; url?: string };
-type NasdaqInsiders = { data?: { transactionTable?: { totalRecords?: string; table?: { rows?: InsiderRow[] } } } };
-type InsiderTransactionDirection = "purchase" | "sale" | "other";
 
 function latestFact(payload: SecCompanyFacts, taxonomy: string, concept: string, unit: string) {
   const values = payload.facts?.[taxonomy]?.[concept]?.units?.[unit] ?? [];
@@ -27,11 +25,11 @@ async function fetchJson<T>(url: string, userAgent: string, timeoutMs = 12_000, 
   } finally { clearTimeout(timeout); }
 }
 
-async function fetchText(url: string, userAgent: string, timeoutMs = 12_000): Promise<string> {
+async function fetchText(url: string, userAgent: string, timeoutMs = 12_000, accept = "text/html,application/xhtml+xml"): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { headers: { accept: "text/html,application/xhtml+xml", "user-agent": userAgent }, signal: controller.signal });
+    const response = await fetch(url, { headers: { accept, "user-agent": userAgent }, signal: controller.signal });
     if (!response.ok) throw new Error(`SEC filing returned ${response.status}.`);
     return await response.text();
   } finally { clearTimeout(timeout); }
@@ -48,57 +46,44 @@ function secFilingUrl(cik: string, accession: string | undefined) {
   return `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accession.replaceAll("-", "")}/`;
 }
 
-function aggregateInsiders(rows: InsiderRow[]) {
-  const people = new Map<string, { name: string; relation: string; latestDate: string; latestTransaction: string; reportedShares: number; positions: Set<string>; sourceUrl: string }>();
-  for (const row of rows) {
-    const name = row.insider?.trim();
-    if (!name) continue;
-    const positionKey = `${name}|${row.ownType || "Unspecified"}`;
-    let person = people.get(name);
-    if (!person) {
-      person = { name, relation: row.relation || "Reporting person", latestDate: row.lastDate || "", latestTransaction: row.transactionType || "SEC ownership filing", reportedShares: 0, positions: new Set(), sourceUrl: row.url ? new URL(row.url, "https://www.nasdaq.com").toString() : "" };
-      people.set(name, person);
+function publicInsiderTransaction(transaction: SecInsiderTransaction) {
+  return {
+    name: transaction.name,
+    relation: transaction.relation,
+    date: transaction.date,
+    transactionCode: transaction.transactionCode,
+    transactionType: transaction.transactionType,
+    securityTitle: transaction.securityTitle,
+    shares: transaction.shares,
+    price: transaction.price,
+    value: transaction.value,
+    sharesHeld: transaction.sharesHeld,
+    directOrIndirect: transaction.directOrIndirect,
+    sourceUrl: transaction.sourceUrl,
+  };
+}
+
+async function secOwnershipDocuments(cik: string, submissions: SecSubmissions, userAgent: string) {
+  const { filings, availableRecords } = recentOwnershipFilings(cik, submissions, 32);
+  const parsed: ParsedSecOwnershipFiling[] = [];
+  let failedFilings = 0;
+  // Stay below the SEC's published 10-requests-per-second ceiling while
+  // avoiding a long serial wait on first uncached dossier access.
+  const batchSize = 8;
+  for (let index = 0; index < filings.length; index += batchSize) {
+    const batch = filings.slice(index, index + batchSize);
+    const results = await Promise.allSettled(batch.map(async (filing) => {
+      const xml = await fetchText(filing.rawXmlUrl, userAgent, 10_000, "application/xml,text/xml,text/plain,*/*");
+      if (!/<ownershipDocument\b/i.test(xml)) throw new Error("SEC ownership XML was not returned.");
+      return parseSecOwnershipXml(xml, filing);
+    }));
+    for (const result of results) {
+      if (result.status === "fulfilled") parsed.push(result.value);
+      else failedFilings += 1;
     }
-    if (!person.positions.has(positionKey)) {
-      person.positions.add(positionKey);
-      person.reportedShares += numberFrom(row.sharesHeld) ?? 0;
-    }
+    if (index + batchSize < filings.length) await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
-  return [...people.values()].map((person) => ({
-    name: person.name,
-    relation: person.relation,
-    latestDate: person.latestDate,
-    latestTransaction: person.latestTransaction,
-    reportedShares: person.reportedShares,
-    sourceUrl: person.sourceUrl,
-  }));
-}
-
-function insiderTransactionDirection(transactionType: string | undefined): InsiderTransactionDirection {
-  const label = transactionType?.trim().toLowerCase() ?? "";
-  if (/\b(buy|bought|purchase|purchased)\b/.test(label)) return "purchase";
-  if (/\b(sell|sold|sale)\b/.test(label)) return "sale";
-  return "other";
-}
-
-function insiderTransactions(rows: InsiderRow[], direction: Exclude<InsiderTransactionDirection, "other">) {
-  return rows
-    .filter((row) => insiderTransactionDirection(row.transactionType) === direction)
-    .map((row) => {
-      const shares = Math.abs(numberFrom(row.sharesTraded) ?? 0);
-      const price = Math.abs(numberFrom(row.lastPrice) ?? 0);
-      return {
-        name: row.insider?.trim() || "Reporting insider",
-        relation: row.relation || "Reporting person",
-        date: row.lastDate || "",
-        transactionType: row.transactionType || (direction === "purchase" ? "Purchase" : "Sale"),
-        shares,
-        price: price || null,
-        value: shares && price ? shares * price : null,
-        sharesHeld: numberFrom(row.sharesHeld),
-        sourceUrl: row.url ? new URL(row.url, "https://www.nasdaq.com").toString() : "",
-      };
-    });
+  return { parsed, availableRecords, selectedFilings: filings.length, failedFilings };
 }
 
 export async function GET(request: Request) {
@@ -111,26 +96,27 @@ export async function GET(request: Request) {
   if (!cik) return Response.json({ ticker, available: false, reason: "No verified SEC filer match is available for this security." });
 
   const secSourceUrl = `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`;
+  const secSubmissionsUrl = `https://data.sec.gov/submissions/CIK${cik}.json`;
   const nasdaqInstitutionalUrl = `https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/institutional-holdings?limit=25&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`;
-  const nasdaqInsidersUrl = `https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/insider-trades?limit=500`;
+  const secAgent = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com";
   const browserAgent = "Mozilla/5.0 (compatible; LearnWhatYouOwn/1.0; +https://learnwhatyouown.com)";
   const nasdaqHeaders = { "accept-language": "en-US,en;q=0.9", referer: "https://www.nasdaq.com/", origin: "https://www.nasdaq.com" };
-  const [secResult, institutionalResult, insiderResult] = await Promise.allSettled([
-    fetchJson<SecCompanyFacts>(secSourceUrl, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com"),
+  const [secResult, submissionsResult, institutionalResult] = await Promise.allSettled([
+    fetchJson<SecCompanyFacts>(secSourceUrl, secAgent),
+    fetchJson<SecSubmissions>(secSubmissionsUrl, secAgent),
     fetchJson<NasdaqInstitutional>(nasdaqInstitutionalUrl, browserAgent, 15_000, nasdaqHeaders),
-    fetchJson<NasdaqInsiders>(nasdaqInsidersUrl, browserAgent, 15_000, nasdaqHeaders),
   ]);
 
   const sec = secResult.status === "fulfilled" ? secResult.value : null;
+  const submissions = submissionsResult.status === "fulfilled" ? submissionsResult.value : null;
   let shares = sec ? latestSharesOutstanding(sec) : null;
   let directFilingChecked = false;
-  if (!shares) {
+  if (!shares && submissions) {
     try {
-      const submissions = await fetchJson<SecSubmissions>(`https://data.sec.gov/submissions/CIK${cik}.json`, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com");
       const filing = latestShareFiling(cik, submissions);
       if (filing) {
         directFilingChecked = true;
-        shares = sharesFromInlineFiling(await fetchText(filing.sourceUrl, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com"), filing);
+        shares = sharesFromInlineFiling(await fetchText(filing.sourceUrl, secAgent), filing);
       }
     } catch (error) {
       console.error(`Direct SEC share-count fallback failed for ${ticker}.`, error);
@@ -142,13 +128,35 @@ export async function GET(request: Request) {
   const summarizedSharesOutstanding = numberFrom(institutional?.ownershipSummary?.ShareoutstandingTotal?.value);
   const activeTotal = institutional?.activePositions?.rows?.find((row) => row.positions === "Total Institutional Shares");
   const holderRows = institutional?.holdingsTransactions?.table?.rows ?? [];
-  const insiderRows = insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.table?.rows ?? [] : [];
-  const insiders = aggregateInsiders(insiderRows);
-  const insiderPurchases = insiderTransactions(insiderRows, "purchase");
-  const insiderSales = insiderTransactions(insiderRows, "sale");
-  const insiderOtherCount = insiderRows.filter((row) => insiderTransactionDirection(row.transactionType) === "other").length;
-  const insiderSourceUrl = `https://www.nasdaq.com/market-activity/stocks/${ticker.toLowerCase()}/insider-activity`;
   const secInsiderSourceUrl = `https://www.sec.gov/edgar/search/#/ciks=${cik}&category=custom&forms=3%2C4%2C5`;
+  let ownership: Awaited<ReturnType<typeof secOwnershipDocuments>> | null = null;
+  let ownershipError = "";
+  if (submissions) {
+    try {
+      ownership = await secOwnershipDocuments(cik, submissions, secAgent);
+    } catch (error) {
+      ownershipError = error instanceof Error ? error.message : "SEC ownership filings could not be retrieved.";
+      console.error(`Direct SEC ownership import failed for ${ticker}.`, error);
+    }
+  } else {
+    ownershipError = "SEC submissions are temporarily unavailable.";
+  }
+  const parsedOwnership = ownership?.parsed ?? [];
+  const insiderTransactions = parsedOwnership.flatMap((filing) => filing.transactions)
+    .sort((left, right) => right.date.localeCompare(left.date));
+  const insiderPurchases = insiderTransactions.filter((transaction) => transaction.direction === "purchase").map(publicInsiderTransaction);
+  const insiderSales = insiderTransactions.filter((transaction) => transaction.direction === "sale").map(publicInsiderTransaction);
+  const insiderOtherCount = insiderTransactions.filter((transaction) => transaction.direction === "other").length;
+  const insiders = aggregateSecReportingInsiders(parsedOwnership);
+  const availableOwnershipRecords = ownership?.availableRecords ?? 0;
+  const ownershipStatus = ownershipError || (availableOwnershipRecords > 0 && !parsedOwnership.length)
+    ? "unavailable"
+    : availableOwnershipRecords === 0 ? "no_filings" : "available";
+  const ownershipMessage = ownershipStatus === "unavailable"
+    ? "SEC ownership filings are temporarily unavailable. This does not mean the company has no insider activity."
+    : ownershipStatus === "no_filings"
+      ? "The SEC submissions index returned no recent Forms 3, 4, or 5 for this issuer."
+      : `Parsed ${parsedOwnership.length} recent SEC ownership filings directly from EDGAR.`;
 
   return Response.json({
     ticker,
@@ -173,21 +181,26 @@ export async function GET(request: Request) {
       purchases: insiderPurchases,
       sales: insiderSales,
       otherCount: insiderOtherCount,
-      transactionRecordsReviewed: insiderRows.length,
-      availableRecords: numberFrom(insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.totalRecords : undefined),
-      sourceUrl: insiderSourceUrl,
+      transactionRecordsReviewed: insiderTransactions.length,
+      filingsReviewed: parsedOwnership.length,
+      availableRecords: availableOwnershipRecords,
+      failedFilings: ownership?.failedFilings ?? 0,
+      latestFilingDate: parsedOwnership.map((filing) => filing.filingDate).filter(Boolean).sort().at(-1) ?? "",
+      sourceUrl: secInsiderSourceUrl,
       secSourceUrl: secInsiderSourceUrl,
-      methodology: "Purchases and sales are separated only when the public insider ledger explicitly labels the transaction as a buy, purchase, sell, or sale. Awards, grants, option exercises, gifts, tax withholding, conversions, and unclassified ownership filings remain outside both totals.",
+      methodology: "SEC Forms 3, 4, and 5 are parsed directly from EDGAR. Transaction code P is classified as a purchase and S as a sale. Awards, grants, option exercises, gifts, tax withholding, conversions, and other SEC codes remain outside both totals but are counted as other activity.",
     },
     insiders: {
       people: insiders,
       displayedPeople: insiders.length,
-      transactionRecordsReviewed: insiderRows.length,
-      availableRecords: numberFrom(insiderResult.status === "fulfilled" ? insiderResult.value.data?.transactionTable?.totalRecords : undefined),
-      sourceUrl: insiderSourceUrl,
+      transactionRecordsReviewed: insiderTransactions.length,
+      filingsReviewed: parsedOwnership.length,
+      availableRecords: availableOwnershipRecords,
+      sourceUrl: secInsiderSourceUrl,
       secSourceUrl: secInsiderSourceUrl,
     },
-    sourceStatus: { sec: secResult.status === "fulfilled", secDirectFiling: directFilingChecked, institutional13F: institutionalResult.status === "fulfilled", insiderFilings: insiderResult.status === "fulfilled" },
+    insiderSource: { status: ownershipStatus, provider: "SEC EDGAR", message: ownershipMessage, error: ownershipError || null },
+    sourceStatus: { sec: secResult.status === "fulfilled", secDirectFiling: directFilingChecked, institutional13F: institutionalResult.status === "fulfilled", insiderFilings: ownershipStatus !== "unavailable" },
     updatedAt: new Date().toISOString(),
-  }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=3600" } });
+  }, { headers: { "cache-control": "public, max-age=1800, stale-while-revalidate=21600" } });
 }

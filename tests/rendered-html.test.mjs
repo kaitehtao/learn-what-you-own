@@ -686,8 +686,9 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(panel, /Insider purchases/);
   assert.match(panel, /Insider sales/);
   assert.match(panel, /Purchases and sales, separated/);
-  assert.match(panel, /No explicitly labeled insider purchases were returned/);
-  assert.match(panel, /No explicitly labeled insider sales were returned/);
+  assert.match(panel, /No SEC transactions coded P were found/);
+  assert.match(panel, /No SEC transactions coded S were found/);
+  assert.match(panel, /this is not a zero-activity result/);
   assert.match(panel, /Reporting insiders/);
   assert.match(panel, /Largest reporting holders/);
   assert.match(panel, /not a reported SEC retail figure/);
@@ -699,11 +700,12 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(route, /sourceConcept: shares\.concept/);
   assert.match(route, /EntityPublicFloat/);
   assert.match(route, /institutional-holdings/);
-  assert.match(route, /insider-trades\?limit=500/);
-  assert.match(route, /insiderTransactionDirection/);
+  assert.match(route, /secOwnershipDocuments/);
+  assert.match(route, /parseSecOwnershipXml/);
+  assert.match(route, /temporarily unavailable\. This does not mean the company has no insider activity/);
   assert.match(route, /purchases: insiderPurchases/);
   assert.match(route, /sales: insiderSales/);
-  assert.match(route, /Awards, grants, option exercises, gifts, tax withholding, conversions/);
+  assert.match(route, /Transaction code P is classified as a purchase and S as a sale/);
   assert.match(route, /forms=3%2C4%2C5/);
   assert.match(featured, /StockOwnershipPanel/);
   assert.match(featured, /href="#ownership"/);
