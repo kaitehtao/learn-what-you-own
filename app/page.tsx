@@ -161,7 +161,8 @@ export default function Home() {
           <div className="hero-account-pitch" aria-label="Free account benefits">
             <div className="hero-account-actions">
               <Link className="hero-primary-cta" href="/login?mode=signup">Create my free account <span>→</span></Link>
-              <Link className="hero-secondary-cta" href="/companies">Browse public dossiers</Link>
+              <Link className="hero-secondary-cta" href="/login">Existing member sign in</Link>
+              <Link className="hero-browse-cta" href="/companies">Browse public dossiers</Link>
             </div>
             <p className="hero-account-proof">Free to join <span>·</span> No credit card <span>·</span> Your portfolio stays private</p>
             <div className="hero-benefit-grid">

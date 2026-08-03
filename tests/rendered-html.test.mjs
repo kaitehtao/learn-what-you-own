@@ -33,6 +33,8 @@ test("leads the homepage with a strong free-account call to action and concrete 
 
   assert.match(home, /Create my free account/);
   assert.match(home, /href="\/login\?mode=signup"/);
+  assert.match(home, /Existing member sign in/);
+  assert.match(home, /className="hero-secondary-cta" href="\/login"/);
   assert.match(home, /Browse public dossiers/);
   assert.match(home, /Watchlists \+ portfolio/);
   assert.match(home, /Earnings alerts/);
@@ -491,6 +493,7 @@ test("distinguishes public research from verified-account tools and collects pri
   assert.match(onboarding, /sms_marketing_consent: false/);
   assert.match(onboarding, /supabase\.auth\.updateUser/);
   assert.match(header, /Create free account/);
+  assert.match(header, /Member sign in/);
   assert.match(header, /Founder’s Letter/);
   assert.match(header, /menu-label/);
 });

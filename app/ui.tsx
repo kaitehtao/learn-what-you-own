@@ -77,7 +77,7 @@ export function Header() {
           <div className="mobile-nav-actions">
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false
-              ? <><Link href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></>
+              ? <><Link href="/login">Member sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></>
               : <Link className="nav-cta" href="/account">{signedIn ? "My account" : "Account"}</Link>}
           </div>
         </nav>
@@ -86,7 +86,7 @@ export function Header() {
           <NotificationBell signedIn={signedIn}/>
           {signedIn
             ? <Link className="nav-cta" href="/account">My account</Link>
-            : <><Link className="nav-signin" href="/login">Sign in</Link><Link className="nav-cta" href="/login?mode=signup">Create free account</Link></>}
+            : <><Link className="nav-signin" href="/login">Member sign in</Link><Link className="nav-cta" href="/login?mode=signup">Create free account</Link></>}
         </div>
         <button
           className="menu-button"
