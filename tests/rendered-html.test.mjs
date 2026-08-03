@@ -381,9 +381,10 @@ test("keeps the public domains attached to the production Worker", async () => {
     source("vite.config.ts"),
     source("docs/ARCHITECTURE.md"),
   ]);
-  assert.match(config, /pattern: "learnwhatyouown\.com", custom_domain: true/);
+  assert.match(config, /pattern: "learnwhatyouown\.com\/\*", zone_name: "learnwhatyouown\.com"/);
   assert.match(config, /pattern: "www\.learnwhatyouown\.com\/\*"/);
   assert.match(config, /zone_name: "learnwhatyouown\.com"/);
+  assert.doesNotMatch(config, /custom_domain: true/);
   assert.match(config, /workers_dev: true/);
   assert.match(architecture, /Public origin \| `https:\/\/learnwhatyouown\.com`/);
 });

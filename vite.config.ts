@@ -23,7 +23,10 @@ const localBindingConfig = {
   // explicit route, a successful workers.dev deploy can leave the apex domain
   // serving an older Sites deployment.
   routes: [
-    { pattern: "learnwhatyouown.com", custom_domain: true },
+    // Zone routes preserve the existing proxied DNS records. A custom-domain
+    // attachment would try to replace them and can leave the public apex on a
+    // stale Sites deployment after the Worker code has already uploaded.
+    { pattern: "learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
     { pattern: "www.learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
   ],
   // Rotate filing refreshes through the dossier universe every six hours.

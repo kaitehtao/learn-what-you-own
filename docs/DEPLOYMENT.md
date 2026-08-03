@@ -157,6 +157,8 @@ npx wrangler deploy --config dist/server/wrangler.json --name learn-what-you-own
 
 Alternatively, use the existing Cloudflare Git integration only after confirming it targets account `e5c3672efaf52cf5b417da2b09e687af`, Worker `learn-what-you-own`, and branch `main`.
 
+The apex and `www` hostnames use zone routes in `vite.config.ts`. Keep the existing proxied DNS records in place. Do not change the apex to a Wrangler `custom_domain` attachment: that conflicts with the externally managed records and can upload a new Worker while leaving the public domain on an older Sites origin.
+
 Do not deploy the generated name as a new service. Do not create a new D1 database to resolve a binding error.
 
 ## Release record
