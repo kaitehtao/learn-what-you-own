@@ -83,6 +83,17 @@ export default function Home() {
     }).slice(0, 8);
   }, [query, localMatches, catalogSearch]);
   useEffect(() => {
+    const focusSearchFromHash = () => {
+      if (window.location.hash !== "#company-search") return;
+      const input = document.getElementById("company-search-input") as HTMLInputElement | null;
+      input?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+    };
+    focusSearchFromHash();
+    window.addEventListener("hashchange", focusSearchFromHash);
+    return () => window.removeEventListener("hashchange", focusSearchFromHash);
+  }, []);
+  useEffect(() => {
     authenticatedFetch("/api/research-demand", { cache: "no-store" }).then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json() as { companies?: Demand[]; viewerVotes?: string[] };
@@ -173,9 +184,10 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-search-divider"><span>Or search the public research universe</span></div>
-          <div className="search-shell">
+          <div className="search-shell" id="company-search">
             <span className="search-icon">⌕</span>
             <input
+              id="company-search-input"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search ticker, company, sector, or index"

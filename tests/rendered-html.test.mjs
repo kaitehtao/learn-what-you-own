@@ -735,6 +735,23 @@ test("adds filing-grounded stock ownership to every dossier", async () => {
   assert.match(panel, /mobile-field-label/);
 });
 
+test("links the masthead search shortcut to and focuses the homepage search field", async () => {
+  const [header, home, styles] = await Promise.all([
+    source("app/ui.tsx"),
+    source("app/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(header, /className="search-shortcut" href="\/#company-search"/);
+  assert.match(header, /Jump to company search/);
+  assert.match(header, /input\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(header, />Search<\/strong>/);
+  assert.match(home, /id="company-search"/);
+  assert.match(home, /id="company-search-input"/);
+  assert.match(home, /window\.location\.hash !== "#company-search"/);
+  assert.match(styles, /\.search-shortcut\{display:inline-flex/);
+});
+
 test("keeps investment notebooks private while supporting sourced public handoff", async () => {
   const [migration, attachmentMigration, route, attachmentRoute, downloadRoute, client, captureButton, contributionPage, header] = await Promise.all([
     source("supabase/migrations/20260801020000_private_research_notebooks.sql"),

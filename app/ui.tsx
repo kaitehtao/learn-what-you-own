@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 import { NotificationBell } from "./NotificationBell";
 
@@ -32,6 +32,15 @@ export function Header() {
     }).catch(() => active && setSignedIn(false));
     return () => { active = false; unsubscribe(); };
   }, []);
+
+  const focusHomepageSearch = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (window.location.pathname !== "/") return;
+    event.preventDefault();
+    window.history.replaceState(null, "", "#company-search");
+    const input = document.getElementById("company-search-input") as HTMLInputElement | null;
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+  };
 
   return (
     <header className="site-header">
@@ -76,6 +85,7 @@ export function Header() {
             <Link href="/notifications">Notifications</Link>
           </div>}
           <div className="mobile-nav-actions">
+            <Link href="/#company-search" onClick={focusHomepageSearch}>Search companies</Link>
             {signedIn && <Link href="/watchlist">Watchlist</Link>}
             {signedIn === false
               ? <><Link href="/login">Member sign in</Link><Link className="nav-cta" href="/login?mode=signup">Join free</Link></>
@@ -83,7 +93,7 @@ export function Header() {
           </div>
         </nav>
         <div className="nav-actions">
-          <button className="search-button" aria-label="Search">⌕</button>
+          <Link className="search-shortcut" href="/#company-search" onClick={focusHomepageSearch} aria-label="Jump to company search"><span aria-hidden="true">⌕</span><strong>Search</strong></Link>
           <NotificationBell signedIn={signedIn}/>
           {signedIn
             ? <Link className="nav-cta" href="/account">My account</Link>
