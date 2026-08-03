@@ -68,6 +68,11 @@ async function refreshScheduledSecFacts(env: Env, ctx: ExecutionContext) {
   if (!response.ok) throw new Error(`SEC facts refresh endpoint returned ${response.status}`);
 }
 
+async function refreshScheduledInsiderActivity(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/insider-activity-refresh", "learn-what-you-own-insider-activity/1.0");
+  if (!response.ok) throw new Error(`SEC insider activity refresh endpoint returned ${response.status}`);
+}
+
 async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
   const response = await runScheduledEndpoint(env, ctx, "/api/internal/earnings-alerts", "learn-what-you-own-earnings-alerts/1.0");
   if (!response.ok) throw new Error(`Earnings alert endpoint returned ${response.status}`);
@@ -110,6 +115,7 @@ const worker = {
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
       await refreshScheduledSecFacts(env, ctx);
+      await refreshScheduledInsiderActivity(env, ctx);
       if (!isPacificDigestHour(controller.scheduledTime)) return;
       await refreshScheduledEarningsAlerts(env, ctx);
       await deliverScheduledDigest(env, ctx);

@@ -42,6 +42,9 @@ export type ParsedSecOwnershipFiling = {
   filingDate: string;
   reportDate: string;
   sourceUrl: string;
+  issuerCik: string;
+  issuerName: string;
+  issuerTradingSymbol: string;
   owners: SecReportingInsider[];
   transactions: SecInsiderTransaction[];
 };
@@ -194,7 +197,17 @@ export function parseSecOwnershipXml(xml: string, filing: SecOwnershipFiling): P
     reportedShares,
     sourceUrl: filing.sourceUrl,
   }));
-  return { form: filing.form, filingDate: filing.filingDate, reportDate, sourceUrl: filing.sourceUrl, owners, transactions };
+  return {
+    form: filing.form,
+    filingDate: filing.filingDate,
+    reportDate,
+    sourceUrl: filing.sourceUrl,
+    issuerCik: textValue(xml, "issuerCik").replace(/^0+/, ""),
+    issuerName: textValue(xml, "issuerName"),
+    issuerTradingSymbol: textValue(xml, "issuerTradingSymbol").toUpperCase(),
+    owners,
+    transactions,
+  };
 }
 
 export function aggregateSecReportingInsiders(filings: ParsedSecOwnershipFiling[]) {

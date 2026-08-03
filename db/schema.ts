@@ -384,3 +384,53 @@ export const brokerageClicks = sqliteTable("brokerage_clicks", {
   index("brokerage_click_broker_created_idx").on(table.brokerKey, table.createdAt),
   index("brokerage_click_action_created_idx").on(table.action, table.createdAt),
 ]);
+
+// A normalized, filing-level ledger powers the cross-company insider screen.
+// Only SEC transaction codes P and S are stored here; awards, gifts, exercises,
+// and tax withholding stay visible in individual filings but do not distort the
+// ranked buy/sell research lists.
+export const secInsiderTransactions = sqliteTable("sec_insider_transactions", {
+  id: text("id").primaryKey(),
+  ticker: text("ticker").notNull(),
+  companyName: text("company_name").notNull(),
+  cik: text("cik").notNull(),
+  accessionNumber: text("accession_number").notNull(),
+  form: text("form").notNull(),
+  filingDate: text("filing_date").notNull(),
+  transactionDate: text("transaction_date").notNull(),
+  insiderName: text("insider_name").notNull(),
+  insiderRelation: text("insider_relation").notNull(),
+  transactionCode: text("transaction_code").notNull(),
+  direction: text("direction", { enum: ["purchase", "sale"] }).notNull(),
+  transactionType: text("transaction_type").notNull(),
+  securityTitle: text("security_title").notNull(),
+  shares: real("shares").notNull(),
+  price: real("price"),
+  reportedValue: real("reported_value"),
+  sharesHeld: real("shares_held"),
+  directOrIndirect: text("direct_or_indirect").notNull().default(""),
+  sourceUrl: text("source_url").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("sec_insider_accession_transaction_idx").on(table.accessionNumber, table.id),
+  index("sec_insider_direction_date_idx").on(table.direction, table.transactionDate),
+  index("sec_insider_ticker_date_idx").on(table.ticker, table.transactionDate),
+]);
+
+export const secOwnershipIndexImports = sqliteTable("sec_ownership_index_imports", {
+  indexDate: text("index_date").primaryKey(),
+  status: text("status").notNull().default("pending"),
+  nextOffset: integer("next_offset").notNull().default(0),
+  totalFilings: integer("total_filings").notNull().default(0),
+  importedTransactions: integer("imported_transactions").notNull().default(0),
+  failedFilings: integer("failed_filings").notNull().default(0),
+  indexUrl: text("index_url").notNull().default(""),
+  lastAttemptedAt: text("last_attempted_at"),
+  lastSuccessAt: text("last_success_at"),
+  lastError: text("last_error").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("sec_ownership_import_status_date_idx").on(table.status, table.indexDate),
+]);

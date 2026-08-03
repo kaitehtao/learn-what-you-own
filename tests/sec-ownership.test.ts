@@ -14,6 +14,7 @@ const submissions: SecSubmissions = { filings: { recent: {
 const form4 = `<?xml version="1.0"?>
 <ownershipDocument>
   <documentType>4</documentType><periodOfReport>2026-07-09</periodOfReport>
+  <issuer><issuerCik>0001671933</issuerCik><issuerName>The Trade Desk, Inc.</issuerName><issuerTradingSymbol>TTD</issuerTradingSymbol></issuer>
   <reportingOwner><reportingOwnerId><rptOwnerName>Price Penry W</rptOwnerName></reportingOwnerId>
     <reportingOwnerRelationship><isDirector>1</isDirector><isOfficer>0</isOfficer><isTenPercentOwner>0</isTenPercentOwner><isOther>0</isOther></reportingOwnerRelationship>
   </reportingOwner>
@@ -43,6 +44,9 @@ test("parses SEC ownership codes into purchases, sales, and other activity", () 
   const parsed = parseSecOwnershipXml(form4, filing);
   assert.equal(parsed.owners[0]?.name, "Price Penry W");
   assert.equal(parsed.owners[0]?.relation, "Director");
+  assert.equal(parsed.issuerCik, "1671933");
+  assert.equal(parsed.issuerName, "The Trade Desk, Inc.");
+  assert.equal(parsed.issuerTradingSymbol, "TTD");
   assert.equal(parsed.transactions.length, 3);
   assert.equal(parsed.transactions[0]?.direction, "purchase");
   assert.equal(parsed.transactions[0]?.shares, 1_250);

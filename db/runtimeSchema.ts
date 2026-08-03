@@ -5,6 +5,7 @@ let feedbackVotingSchemaPromise: Promise<unknown> | null = null;
 let memberRewardsSchemaPromise: Promise<unknown> | null = null;
 let professionalInterviewsSchemaPromise: Promise<unknown> | null = null;
 let brokerageClickSchemaPromise: Promise<unknown> | null = null;
+let insiderActivitySchemaPromise: Promise<unknown> | null = null;
 
 // Manual migrations are packaged with the worker, but an older production D1
 // database can briefly receive new application code before the migration is
@@ -144,4 +145,58 @@ export function ensureBrokerageClickSchema() {
     });
   }
   return brokerageClickSchemaPromise;
+}
+
+export function ensureInsiderActivitySchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!insiderActivitySchemaPromise) {
+    insiderActivitySchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS sec_insider_transactions (
+        id TEXT PRIMARY KEY,
+        ticker TEXT NOT NULL,
+        company_name TEXT NOT NULL,
+        cik TEXT NOT NULL,
+        accession_number TEXT NOT NULL,
+        form TEXT NOT NULL,
+        filing_date TEXT NOT NULL,
+        transaction_date TEXT NOT NULL,
+        insider_name TEXT NOT NULL,
+        insider_relation TEXT NOT NULL,
+        transaction_code TEXT NOT NULL,
+        direction TEXT NOT NULL CHECK(direction IN ('purchase','sale')),
+        transaction_type TEXT NOT NULL,
+        security_title TEXT NOT NULL,
+        shares REAL NOT NULL,
+        price REAL,
+        reported_value REAL,
+        shares_held REAL,
+        direct_or_indirect TEXT NOT NULL DEFAULT '',
+        source_url TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS sec_insider_accession_transaction_idx ON sec_insider_transactions(accession_number,id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS sec_insider_direction_date_idx ON sec_insider_transactions(direction,transaction_date)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS sec_insider_ticker_date_idx ON sec_insider_transactions(ticker,transaction_date)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS sec_ownership_index_imports (
+        index_date TEXT PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'pending',
+        next_offset INTEGER NOT NULL DEFAULT 0,
+        total_filings INTEGER NOT NULL DEFAULT 0,
+        imported_transactions INTEGER NOT NULL DEFAULT 0,
+        failed_filings INTEGER NOT NULL DEFAULT 0,
+        index_url TEXT NOT NULL DEFAULT '',
+        last_attempted_at TEXT,
+        last_success_at TEXT,
+        last_error TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS sec_ownership_import_status_date_idx ON sec_ownership_index_imports(status,index_date)"),
+    ]).catch((error) => {
+      insiderActivitySchemaPromise = null;
+      throw error;
+    });
+  }
+  return insiderActivitySchemaPromise;
 }

@@ -1378,3 +1378,41 @@ test("links portfolio members to official brokerage login and account-opening de
   assert.match(migration, /PRAGMA optimize/);
   assert.match(styles, /\.brokerage-grid\{display:grid;grid-template-columns:repeat\(3/);
 });
+
+test("publishes a responsive cross-company SEC insider activity research screen", async () => {
+  const [page, client, publicApi, refreshApi, repository, worker, schema, runtimeSchema, migration, navigation, layout, styles] = await Promise.all([
+    source("app/insider-activity/page.tsx"),
+    source("app/insider-activity/InsiderActivityScreen.tsx"),
+    source("app/api/insider-activity/route.ts"),
+    source("app/api/internal/insider-activity-refresh/route.ts"),
+    source("app/data/secInsiderActivityRepository.ts"),
+    source("worker/index.ts"),
+    source("db/schema.ts"),
+    source("db/runtimeSchema.ts"),
+    source("drizzle/0020_insider_activity_ledger.sql"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(page, /SEC OWNERSHIP INTELLIGENCE/);
+  assert.match(client, /Top insider purchases/);
+  assert.match(client, /Top insider sales/);
+  assert.match(client, /Trailing 30 days/);
+  assert.match(client, /Trailing 90 days/);
+  assert.match(client, /Trailing 365 days/);
+  assert.match(client, /Grants, gifts, option exercises/);
+  assert.match(publicApi, /getSecInsiderActivity/);
+  assert.match(refreshApi, /refreshSecInsiderActivityBatch/);
+  assert.match(repository, /master\.\$\{dateValue\.replaceAll/);
+  assert.match(repository, /\^\(3\|3\\\/A\|4\|4\\\/A\|5\|5\\\/A\)\$/);
+  assert.match(repository, /transaction\.direction === "purchase"/);
+  assert.match(repository, /transaction\.direction === "sale"/);
+  assert.match(worker, /refreshScheduledInsiderActivity/);
+  assert.match(schema, /secInsiderTransactions/);
+  assert.match(runtimeSchema, /ensureInsiderActivitySchema/);
+  assert.match(migration, /sec_insider_direction_date_idx/);
+  assert.match(navigation, /href="\/insider-activity"/);
+  assert.match(layout, /Insider buys &amp; sells/);
+  assert.match(styles, /\.insider-ranking-row/);
+  assert.match(styles, /@media\(max-width:720px\).*\.insider-ranking-row\{display:grid;grid-template-columns:1fr 1fr/s);
+});
