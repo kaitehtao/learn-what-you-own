@@ -9,7 +9,7 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --import tsx scripts/validate-featured-dossiers.ts && node --import tsx --test tests/news-text.test.ts tests/sec-share-facts.test.ts tests/sec-ownership.test.ts tests/contribution-research-assets.test.ts tests/rendered-html.test.mjs",
+    "test": "npm run build && node --import tsx scripts/validate-featured-dossiers.ts && node --import tsx --test tests/news-text.test.ts tests/sec-share-facts.test.ts tests/sec-ownership.test.ts tests/comparable-metrics.test.ts tests/contribution-research-assets.test.ts tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "db:seed:dossiers": "node --import tsx scripts/generate-dossier-seed.ts",

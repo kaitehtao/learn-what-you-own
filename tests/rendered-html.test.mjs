@@ -91,6 +91,29 @@ test("shows current stock price and market capitalization on detailed dossiers a
   assert.match(quotes, /MarketCap/);
 });
 
+test("standardizes comparable analysis across every completed dossier", async () => {
+  const [dossier, panel, api, metrics, styles] = await Promise.all([
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/ComparableAnalysisPanel.tsx"),
+    source("app/api/comparables/route.ts"),
+    source("app/data/comparableMetrics.ts"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(dossier, /<ComparableAnalysisPanel ticker=\{company\.ticker\}/);
+  assert.match(panel, /STANDARDIZED OWNER LENS/);
+  for (const label of ["Market cap", "FY revenue", "EV \/ revenue", "P \/ earnings", "P \/ free cash flow", "Cash", "Reported LT debt", "Net cash \/ \(debt\)", "Gross margin"]) {
+    assert.match(panel, new RegExp(label.replace(/[()]/g, "\\$&")));
+  }
+  assert.match(api, /ownership === "Public"/);
+  assert.match(api, /Latest SEC-reported fiscal-year revenue/);
+  assert.match(metrics, /return null/);
+  assert.match(metrics, /Financial-company lens/);
+  assert.match(metrics, /Real-estate lens/);
+  assert.match(styles, /\.comparable-metric-row/);
+  assert.match(styles, /@media\(max-width:480px\)/);
+});
+
 test("loads homepage market data with one cached Nasdaq bulk request", async () => {
   const [quotes, route, favicon, serviceWorker] = await Promise.all([
     source("app/market-quotes.ts"),

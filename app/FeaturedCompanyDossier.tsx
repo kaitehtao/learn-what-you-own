@@ -18,6 +18,7 @@ import { CompanyFollowerCount } from "./CompanyFollowerCount";
 import { CompanyMarketSnapshot } from "./CompanyMarketSnapshot";
 import { StockOwnershipPanel } from "./StockOwnershipPanel";
 import { AccessComparison } from "./AccessComparison";
+import { ComparableAnalysisPanel } from "./ComparableAnalysisPanel";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -125,7 +126,9 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         </section>
         {dossier.comparables?.length ? <section className="dossier-section" id="comparables">
           <div className="section-title"><div><span className="section-number">{String(4 + (hasPerformance ? 1 : 0)).padStart(2, "0")}</span><h2>Competitors &amp; comparables</h2></div><span className="reviewed">Valuation needs capital-structure context</span></div>
-          <p className="comparables-intro">Public and private competitors are not automatically true valuation peers. Compare operating model, geography, leverage, leases, profitability, and share count before comparing multiples.</p>
+          <p className="comparables-intro">Compare scale, valuation, balance-sheet resilience, and operating quality—not ticker names alone. Public peers are measured on one filing-grounded template; private companies and strategic competitors remain in the selection record below.</p>
+          <ComparableAnalysisPanel ticker={company.ticker} />
+          <div className="peer-selection-heading"><span className="kicker">PEER SELECTION &amp; CAVEATS</span><h3>Why each company belongs in the comparison</h3></div>
           <div className="comparables-table"><div className="comparables-head"><span>Company</span><span>Relationship</span><span>Valuation snapshot</span><span>Financial status</span></div>{dossier.comparables.map(item => <a href={item.sourceUrl} target="_blank" rel="noreferrer" key={item.name}><span><b className="comparables-field-label">Company</b><strong>{item.name}</strong><small>{item.ticker} · {item.ownership}</small></span><span><b className="comparables-field-label">Relationship</b>{item.relationship}</span><span><b className="comparables-field-label">Valuation snapshot</b>{item.valuation}</span><span><b className="comparables-field-label">Financial status</b>{item.financialStatus}<em>View {comparableSourceLabel(item.sourceUrl)} ↗</em></span></a>)}</div>
           <p className="comparables-source-note">Third-party financial metrics are shown only as dated, attributed reference snapshots. Review the linked source and the company’s SEC filings before relying on a comparison.</p>
         </section> : null}
