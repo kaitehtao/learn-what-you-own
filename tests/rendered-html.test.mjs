@@ -441,6 +441,23 @@ test("keeps private messages between verified sender and recipient accounts", as
   assert.match(header, /href="\/messages"/);
 });
 
+test("keeps privileged member writes server-only and retires legacy definer RPCs", async () => {
+  const [serverMigration, retirementMigration, messageRoute, accountRoute] = await Promise.all([
+    source("supabase/migrations/20260802020000_server_only_member_rpcs.sql"),
+    source("supabase/migrations/20260802030000_retire_legacy_definer_rpcs.sql"),
+    source("app/api/messages/route.ts"),
+    source("app/api/account/route.ts"),
+  ]);
+  assert.match(serverMigration, /set search_path = pg_catalog, public/g);
+  assert.match(serverMigration, /grant execute on function public\.server_send_member_message[\s\S]*to service_role/);
+  assert.match(serverMigration, /revoke all on function public\.server_update_own_profile[\s\S]*from public, anon, authenticated/);
+  assert.match(retirementMigration, /alter function public\.set_updated_at\(\) set search_path = pg_catalog, public/);
+  assert.match(retirementMigration, /drop function if exists public\.send_member_message/);
+  assert.match(retirementMigration, /company_research_demand\(\)[\s\S]*to service_role/);
+  assert.match(messageRoute, /getSupabaseAdminClient\(\)\.rpc\("server_send_member_message"/);
+  assert.match(accountRoute, /admin\.rpc\("server_update_own_profile"/);
+});
+
 test("supports public member profiles, follows, and per-message visibility", async () => {
   const [migration, memberRoute, followRoute, memberClient, messageClient] = await Promise.all([
     source("supabase/migrations/20260801010000_member_following_public_messages.sql"),
