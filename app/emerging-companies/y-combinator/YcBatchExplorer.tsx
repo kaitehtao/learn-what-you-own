@@ -74,8 +74,16 @@ export function YcBatchExplorer({ companies, sourceAsOf }: { companies: YcCompan
           <strong>{company.oneLiner || "Company description pending"}</strong>
           <p>{company.description || company.oneLiner || "The official YC profile currently provides limited public detail."}</p>
           <div className="yc-company-tags">{[company.industry, ...company.tags].filter(Boolean).slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}</div>
-          <dl><div><dt>Location</dt><dd>{company.location || "Not listed"}</dd></div><div><dt>Team</dt><dd>{company.teamSize ?? "Not listed"}</dd></div><div><dt>Status</dt><dd>{company.status || "Not listed"}</dd></div><div><dt>Dossier</dt><dd>Starter profile</dd></div></dl>
-          <footer>{homepage ? <a href={homepage} target="_blank" rel="noreferrer">Company homepage ↗</a> : <span>Homepage not listed</span>}<a href={company.ycUrl} target="_blank" rel="noreferrer">YC profile ↗</a><a href={`/contribute?type=Private%20company%20dossier&company=${encodeURIComponent(company.name)}&source=${encodeURIComponent(company.ycUrl)}`}>Build dossier →</a></footer>
+          <dl>
+            <div><dt>Batch</dt><dd>Summer 2026</dd></div>
+            <div><dt>Category</dt><dd>{company.subindustry || company.industry || "Not listed"}</dd></div>
+            <div><dt>Location</dt><dd>{company.location || "Not listed"}</dd></div>
+            <div><dt>Team</dt><dd>{company.teamSize || "Not listed"}</dd></div>
+            <div><dt>Status</dt><dd>{company.status || "Not listed"}</dd></div>
+            <div><dt>Dossier</dt><dd>Starter profile</dd></div>
+          </dl>
+          <div style={{ marginTop: 12, color: "var(--muted)", fontSize: ".6875rem", lineHeight: 1.45 }}>Profile facts sourced from the official Y Combinator company record · checked {sourceAsOf}</div>
+          <footer>{homepage ? <a href={homepage} target="_blank" rel="noreferrer">Company homepage ↗</a> : <span>Homepage not listed</span>}<a href={`/contribute?type=Private%20company%20dossier&company=${encodeURIComponent(company.name)}&source=${encodeURIComponent(company.ycUrl)}`}>Build dossier →</a></footer>
         </article>;
       })}</div> : <div className="emerging-empty"><strong>No companies match those filters.</strong><p>Try a broader company, product, industry, or location search.</p></div>}
     </section>
