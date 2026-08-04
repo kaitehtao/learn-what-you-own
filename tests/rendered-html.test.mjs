@@ -1076,7 +1076,8 @@ test("lists the official Summer 2026 Y Combinator class with ranking placeholder
   assert.match(explorer, /View full starter dossier/);
   assert.match(explorer, /Founder team/);
   assert.match(explorer, /Public profile facts sourced from YC/);
-  assert.doesNotMatch(explorer, />YC profile ↗</);
+  assert.match(explorer, /Full YC profile ↗/);
+  assert.match(explorer, /href=\{company\.ycUrl\}/);
   assert.match(sitemap, /emerging-companies\/y-combinator/);
 });
 

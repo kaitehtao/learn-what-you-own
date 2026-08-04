@@ -115,7 +115,11 @@ export function YcBatchExplorer({ companies, sourceAsOf }: { companies: YcCompan
             </div>
           </details>
           <div className={styles.source}>Public profile facts sourced from YC · checked {sourceAsOf}. Missing fields are labeled rather than inferred.</div>
-          <footer>{homepage ? <a href={homepage} target="_blank" rel="noreferrer">Company homepage ↗</a> : <span>Homepage not listed</span>}<a href={`/contribute?type=Private%20company%20dossier&company=${encodeURIComponent(company.name)}&source=${encodeURIComponent(company.ycUrl)}`}>Build dossier →</a></footer>
+          <footer>
+            {homepage ? <a href={homepage} target="_blank" rel="noreferrer">Company homepage ↗</a> : <span>Homepage not listed</span>}
+            <a href={company.ycUrl} target="_blank" rel="noreferrer">Full YC profile ↗</a>
+            <a href={`/contribute?type=Private%20company%20dossier&company=${encodeURIComponent(company.name)}&source=${encodeURIComponent(company.ycUrl)}`}>Build dossier →</a>
+          </footer>
         </article>;
       })}</div> : <div className="emerging-empty"><strong>No companies match those filters.</strong><p>Try a broader company, product, industry, or location search.</p></div>}
     </section>
