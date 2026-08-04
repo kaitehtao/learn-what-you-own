@@ -179,6 +179,32 @@ test("publishes a crawler sitemap for every completed dossier and protects priva
   }
 });
 
+test("publishes an internally linked, evidence-first investor education cluster", async () => {
+  const [hub, guidePage, guides, navigation, layout, sitemap, styles] = await Promise.all([
+    source("app/learn/page.tsx"),
+    source("app/learn/[slug]/page.tsx"),
+    source("app/learn/guides.ts"),
+    source("app/ui.tsx"),
+    source("app/layout.tsx"),
+    source("app/sitemap.xml/route.ts"),
+    source("app/globals.css"),
+  ]);
+
+  for (const slug of ["how-to-research-a-stock", "how-to-read-a-10-k", "how-to-evaluate-insider-trading", "how-to-compare-stocks", "how-to-understand-stock-ownership"]) {
+    assert.match(guides, new RegExp(`slug: "${slug}"`));
+  }
+  assert.match(hub, /Owner education/i);
+  assert.match(guidePage, /Learn What You Own Research/);
+  assert.match(guidePage, /"@type": "Article"/);
+  assert.match(guidePage, /"@type": "BreadcrumbList"/);
+  assert.match(guidePage, /For research and education only/);
+  assert.match(navigation, /href="\/learn"/);
+  assert.match(layout, /Learn to research stocks/);
+  assert.match(sitemap, /learningGuides/);
+  assert.match(sitemap, /learn\/\$\{guide\.slug\}/);
+  assert.match(styles, /\.learning-guide-layout/);
+});
+
 test("enforces the AMC dossier standard across completed dossiers and keeps company releases separate from SEC filings", async () => {
   const [newsRoute, newsPanel, upgrades, validator, migration, styles] = await Promise.all([
     source("app/api/company-news/route.ts"),
