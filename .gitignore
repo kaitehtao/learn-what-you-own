@@ -43,6 +43,7 @@ next-env.d.ts
 /outputs/
 /work/
 /backups/
+/supabase/.temp/
 /drizzle/seed-dossiers.sql
 /drizzle/seed-company-index-overlay.sql
 /drizzle/seed-exchange-universe.sql
