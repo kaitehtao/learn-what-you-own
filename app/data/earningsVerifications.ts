@@ -30,6 +30,15 @@ const records: OfficialEarningsVerification[] = [
     verifiedAt: "2026-07-31",
   },
   {
+    ticker: "CBRS",
+    date: "2026-08-12",
+    session: "AMC",
+    announcedTime: "2:00 p.m. PT / 5:00 p.m. ET; results after market close",
+    sourceUrl: "https://investors.cerebras.ai/news-releases/news-release-details/cerebras-systems-sets-date-second-quarter-2026-financial-results",
+    sourceLabel: "Cerebras Investor Relations",
+    verifiedAt: "2026-08-03",
+  },
+  {
     ticker: "NVDA",
     date: "2026-08-26",
     session: "AMC",

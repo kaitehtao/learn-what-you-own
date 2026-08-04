@@ -13,6 +13,7 @@ export const secCompaniesGeneratedAsOf = "July 29, 2026";
 
 export const secCompanies: Record<string, SecCompany> = {
   "A": {"cik":"0001090872","name":"AGILENT TECHNOLOGIES, INC.","secTicker":"A"},
+  "CBRS": {"cik":"0002021728","name":"Cerebras Systems Inc.","secTicker":"CBRS","note":"Added from the May 2026 IPO prospectus and first public 10-Q."},
   "AA": {"cik":"0001675149","name":"Alcoa Corp","secTicker":"AA"},
   "AAL": {"cik":"0000006201","name":"American Airlines Group Inc.","secTicker":"AAL"},
   "AAMI": {"cik":"0001748824","name":"Acadian Asset Management Inc.","secTicker":"AAMI"},

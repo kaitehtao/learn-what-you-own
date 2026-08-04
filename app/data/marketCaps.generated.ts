@@ -5,6 +5,7 @@ export const marketCapsAsOf = "July 30, 2026";
 export const marketCapSourceUrl = "https://www.nasdaq.com/market-activity/stocks/screener";
 
 export const marketCaps: Record<string, number> = {
+  "CBRS": 49020439223,
   "A": 39176134952,
   "AA": 11867127679,
   "AAL": 10214196344,

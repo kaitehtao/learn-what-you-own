@@ -63,6 +63,13 @@ addCompany({
   exchange: "NYSE",
   weight: 0,
 }, ["Extended Coverage"]);
+addCompany({
+  ticker: "CBRS",
+  name: "CEREBRAS SYSTEMS INC.",
+  sector: "Information Technology",
+  exchange: "NASDAQ",
+  weight: 0,
+}, ["Extended Coverage"]);
 
 export const researchUniverse = [...companies.values()];
 export const researchUniverseAsOf = `${sp500AsOf}–${nasdaq100AsOf}`;

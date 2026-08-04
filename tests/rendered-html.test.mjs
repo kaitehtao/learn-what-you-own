@@ -70,6 +70,33 @@ test("features the full benchmark dossier set, including the four new companies"
   assert.match(validator, /dossier\.sources\.length >= 5/);
 });
 
+test("publishes Cerebras as a public flagship dossier and AMD comparable", async () => {
+  const [registry, dossier, universe, secCompanies, marketCaps, earnings, amd, complements] = await Promise.all([
+    source("app/data/featuredDossiers.ts"),
+    source("app/data/cerebrasDossier.ts"),
+    source("app/data/universe.ts"),
+    source("app/data/secCompanies.generated.ts"),
+    source("app/data/marketCaps.generated.ts"),
+    source("app/data/earningsVerifications.ts"),
+    source("app/data/additionalFlagshipDossiers.ts"),
+    source("app/data/dossierBenchmarkComplements.ts"),
+  ]);
+
+  assert.match(registry, /featuredDossiers\.CBRS = cerebrasDossier/);
+  assert.match(dossier, /ticker: "CBRS"[\s\S]{0,120}completeness: 100/);
+  assert.match(dossier, /Cerebras Q1 2026 Form 10-Q/);
+  assert.match(dossier, /Cerebras IPO Prospectus/);
+  assert.match(dossier, /Q2 earnings · August 12, 2026/);
+  assert.match(universe, /ticker: "CBRS"[\s\S]*name: "CEREBRAS SYSTEMS INC\."/);
+  assert.match(secCompanies, /"CBRS": \{"cik":"0002021728"/);
+  assert.match(marketCaps, /"CBRS": 49020439223/);
+  assert.match(earnings, /ticker: "CBRS"[\s\S]*date: "2026-08-12"/);
+  for (const comparableSource of [amd, complements]) {
+    assert.match(comparableSource, /name: "Cerebras Systems", ticker: "CBRS", ownership: "Public"/);
+    assert.doesNotMatch(comparableSource, /name: "Cerebras Systems", ticker: "PRIVATE"/);
+  }
+});
+
 test("shows current stock price and market capitalization on detailed dossiers and homepage cards", async () => {
   const [featured, ondas, home, snapshot, api, quotes] = await Promise.all([
     source("app/FeaturedCompanyDossier.tsx"),

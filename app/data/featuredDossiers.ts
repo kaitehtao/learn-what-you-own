@@ -9,6 +9,7 @@ import { sp500Batch06Dossiers } from "./sp500Batch06Dossiers";
 import { legacyCompleteDossiers } from "./legacyCompleteDossiers";
 import { applyEvidenceStandard } from "./structuredDossierFactory";
 import { fcelDossier } from "./fcelDossier";
+import { cerebrasDossier } from "./cerebrasDossier";
 
 export type FeaturedDossier = {
   ticker: string;
@@ -573,6 +574,7 @@ Object.assign(featuredDossiers, sp500Batch04Dossiers);
 Object.assign(featuredDossiers, sp500Batch05Dossiers);
 Object.assign(featuredDossiers, sp500Batch06Dossiers);
 featuredDossiers.FCEL = fcelDossier;
+featuredDossiers.CBRS = cerebrasDossier;
 
 // Alphabet's two S&P 500 share classes represent one underlying company and
 // therefore share the same evidence-linked owner dossier.
