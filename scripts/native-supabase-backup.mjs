@@ -53,6 +53,19 @@ function dockerPostgresClient(command, args, connection, { capture = false } = {
   ], { env: { ...process.env, ...connection, PGSSLMODE: "require", PGOPTIONS: "-c role=postgres" }, capture });
 }
 
+async function dockerPostgresClientWithRetry(command, args, connection, options = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return dockerPostgresClient(command, args, connection, options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5_000));
+    }
+  }
+  throw lastError;
+}
+
 const connection = temporaryConnection();
 await mkdir(path.dirname(output), { recursive: true });
 const dumpArgs = [
@@ -90,7 +103,7 @@ select json_build_object(
 )::text;`;
 const psqlArgs = ["--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command", countsQuery];
 const countsText = process.env.USE_DOCKER_POSTGRES_CLIENT === "1"
-  ? dockerPostgresClient("psql", psqlArgs, connection, { capture: true })
+  ? await dockerPostgresClientWithRetry("psql", psqlArgs, connection, { capture: true })
   : run(await psqlBinary(), psqlArgs, { env: { ...process.env, ...connection, PGSSLMODE: "require", PGOPTIONS: "-c role=postgres" }, capture: true });
 const countsLine = countsText.split("\n").findLast((line) => line.trim().startsWith("{"));
 if (!countsLine) throw new Error("Supabase source counts were not returned as JSON.");
