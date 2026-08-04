@@ -15,6 +15,7 @@
     "backup:verify": "node scripts/verify-backup.mjs",
     "restore:drill": "node scripts/restore-drill.mjs",
     "release:preflight": "node scripts/verify-production-config.mjs",
+    "sites:verify-archive": "node scripts/verify-sites-archive.mjs",
     "deploy:production": "npm run build && npm run release:preflight && node scripts/deploy-production.mjs",
     "db:generate": "drizzle-kit generate",
     "db:seed:dossiers": "node --import tsx scripts/generate-dossier-seed.ts",

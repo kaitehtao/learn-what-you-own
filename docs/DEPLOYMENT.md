@@ -158,6 +158,8 @@ npm run deploy:production
 
 The deployment command records the Git commit in `RELEASE_COMMIT_SHA`, which is visible to administrators in the production dashboard. It refuses to deploy tracked, uncommitted work.
 
+Before saving a Sites version, package from a fresh exact-commit staging directory and run `npm run sites:verify-archive -- <archive.tgz>`. The verifier rejects nested `dist/dist` trees and any SQL migration that is not tracked by the release commit.
+
 Alternatively, use the existing Cloudflare Git integration only after confirming it targets account `e5c3672efaf52cf5b417da2b09e687af`, Worker `learn-what-you-own`, and branch `main`.
 
 The apex and `www` hostnames use zone routes in `vite.config.ts`. Keep the existing proxied DNS records in place. Do not change the apex to a Wrangler `custom_domain` attachment: that conflicts with the externally managed records and can upload a new Worker while leaving the public domain on an older Sites origin.
