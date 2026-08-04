@@ -3,6 +3,19 @@
 /* eslint-disable @next/next/no-img-element -- YC supplies dynamic logo URLs for this official directory dataset. */
 
 import { useMemo, useState } from "react";
+import styles from "./ycProfiles.module.css";
+
+type YcFounder = {
+  name: string;
+  title: string;
+  bio: string;
+  active: boolean;
+  linkedin: string;
+  twitter: string;
+};
+
+type YcLaunch = { title: string; tagline: string; date: string; url: string };
+type YcJob = { title: string; location: string; type: string; role: string; salaryRange: string; equityRange: string; experience: string; visa: string; url: string };
 
 export type YcCompany = {
   name: string;
@@ -18,6 +31,14 @@ export type YcCompany = {
   status: string;
   tags: string[];
   logoUrl: string;
+  yearFounded: number | null;
+  primaryPartner: string;
+  companyLinkedIn: string;
+  companyTwitter: string;
+  companyGithub: string;
+  founders: YcFounder[];
+  launches: YcLaunch[];
+  jobs: YcJob[];
 };
 
 function safeWebsite(value: string) {
@@ -74,15 +95,26 @@ export function YcBatchExplorer({ companies, sourceAsOf }: { companies: YcCompan
           <strong>{company.oneLiner || "Company description pending"}</strong>
           <p>{company.description || company.oneLiner || "The official YC profile currently provides limited public detail."}</p>
           <div className="yc-company-tags">{[company.industry, ...company.tags].filter(Boolean).slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}</div>
+          {company.founders.length ? <div className={styles.founderPreview}><small>FOUNDERS</small><strong>{company.founders.map((founder) => founder.name).join(" · ")}</strong></div> : <div className={styles.founderPreview}><small>FOUNDERS</small><strong>Not publicly listed by YC</strong></div>}
           <dl>
+            <div><dt>Founded</dt><dd>{company.yearFounded ?? "Not listed"}</dd></div>
             <div><dt>Batch</dt><dd>Summer 2026</dd></div>
             <div><dt>Category</dt><dd>{company.subindustry || company.industry || "Not listed"}</dd></div>
             <div><dt>Location</dt><dd>{company.location || "Not listed"}</dd></div>
             <div><dt>Team</dt><dd>{company.teamSize || "Not listed"}</dd></div>
             <div><dt>Status</dt><dd>{company.status || "Not listed"}</dd></div>
-            <div><dt>Dossier</dt><dd>Starter profile</dd></div>
+            <div><dt>YC partner</dt><dd>{company.primaryPartner || "Not listed"}</dd></div>
           </dl>
-          <div style={{ marginTop: 12, color: "var(--muted)", fontSize: ".6875rem", lineHeight: 1.45 }}>Profile facts sourced from the official Y Combinator company record · checked {sourceAsOf}</div>
+          <details className={styles.dossier}>
+            <summary><span>View full starter dossier</span><small>Founders · biographies · launch · hiring</small></summary>
+            <div className={styles.dossierBody}>
+              <section><h4>Founder team</h4>{company.founders.length ? <div className={styles.founders}>{company.founders.map((founder) => <article key={`${company.slug}-${founder.name}`}><header><strong>{founder.name}</strong><span>{founder.title}{founder.active ? " · Active" : " · Former"}</span></header><p>{founder.bio || "YC does not currently provide a public biography for this founder."}</p>{(founder.linkedin || founder.twitter) && <nav>{founder.linkedin && <a href={founder.linkedin} target="_blank" rel="noreferrer">LinkedIn ↗</a>}{founder.twitter && <a href={founder.twitter} target="_blank" rel="noreferrer">X ↗</a>}</nav>}</article>)}</div> : <p>YC does not currently list a public founder profile for this company.</p>}</section>
+              {company.launches.length > 0 && <section><h4>Company launch record</h4>{company.launches.map((launch) => <article className={styles.record} key={`${company.slug}-${launch.title}`}><strong>{launch.title}</strong>{launch.tagline && <p>{launch.tagline}</p>}<small>{launch.date ? new Date(launch.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "Date not listed"}</small></article>)}</section>}
+              <section><h4>Hiring signal</h4>{company.jobs.length ? <div className={styles.jobs}>{company.jobs.map((job) => <article key={`${company.slug}-${job.title}`}><strong>{job.title}</strong><span>{[job.role, job.type].filter(Boolean).join(" · ")}</span><p>{job.location || "Location not listed"}</p><small>{[job.salaryRange, job.equityRange, job.experience].filter(Boolean).join(" · ")}</small></article>)}</div> : <p>No public YC job postings were listed when this dossier was checked.</p>}</section>
+              {(company.companyLinkedIn || company.companyTwitter || company.companyGithub) && <section><h4>Company channels</h4><nav className={styles.channels}>{company.companyLinkedIn && <a href={company.companyLinkedIn} target="_blank" rel="noreferrer">LinkedIn ↗</a>}{company.companyTwitter && <a href={company.companyTwitter} target="_blank" rel="noreferrer">X ↗</a>}{company.companyGithub && <a href={company.companyGithub} target="_blank" rel="noreferrer">GitHub ↗</a>}</nav></section>}
+            </div>
+          </details>
+          <div className={styles.source}>Public profile facts sourced from YC · checked {sourceAsOf}. Missing fields are labeled rather than inferred.</div>
           <footer>{homepage ? <a href={homepage} target="_blank" rel="noreferrer">Company homepage ↗</a> : <span>Homepage not listed</span>}<a href={`/contribute?type=Private%20company%20dossier&company=${encodeURIComponent(company.name)}&source=${encodeURIComponent(company.ycUrl)}`}>Build dossier →</a></footer>
         </article>;
       })}</div> : <div className="emerging-empty"><strong>No companies match those filters.</strong><p>Try a broader company, product, industry, or location search.</p></div>}

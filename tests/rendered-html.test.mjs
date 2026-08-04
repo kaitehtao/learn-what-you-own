@@ -1067,10 +1067,15 @@ test("lists the official Summer 2026 Y Combinator class with ranking placeholder
   const roster = JSON.parse(data);
   assert.equal(roster.batch, "Summer 2026");
   assert.equal(roster.companies.length, 174);
+  assert.equal(roster.companies.reduce((sum, company) => sum + company.founders.length, 0), 340);
+  assert.ok(roster.companies.filter((company) => company.founders.length > 0).length >= 168);
+  assert.match(JSON.stringify(roster.companies.find((company) => company.slug === "83-sciences")), /Ian Naccarella/);
   assert.match(page, /Explore every/);
   assert.match(explorer, /RANK · PENDING RESEARCH/);
   assert.match(explorer, /Rank evidence, not excitement/);
-  assert.match(explorer, /Profile facts sourced from the official Y Combinator company record/);
+  assert.match(explorer, /View full starter dossier/);
+  assert.match(explorer, /Founder team/);
+  assert.match(explorer, /Public profile facts sourced from YC/);
   assert.doesNotMatch(explorer, />YC profile ↗</);
   assert.match(sitemap, /emerging-companies\/y-combinator/);
 });

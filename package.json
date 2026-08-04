@@ -18,7 +18,8 @@
     "db:migration:production-consistency": "node --import tsx scripts/generate-production-consistency-migration.ts",
     "sec:audit-shares": "node --import tsx scripts/audit-share-count-coverage.ts",
     "sec:update": "node scripts/update-sec-companies.mjs",
-    "universe:update": "node scripts/update-exchange-universe.mjs"
+    "universe:update": "node scripts/update-exchange-universe.mjs",
+    "yc:update": "node scripts/import-yc-class-profiles.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
