@@ -6,6 +6,7 @@ let memberRewardsSchemaPromise: Promise<unknown> | null = null;
 let professionalInterviewsSchemaPromise: Promise<unknown> | null = null;
 let brokerageClickSchemaPromise: Promise<unknown> | null = null;
 let insiderActivitySchemaPromise: Promise<unknown> | null = null;
+let earningsIntelligenceSchemaPromise: Promise<unknown> | null = null;
 
 // Manual migrations are packaged with the worker, but an older production D1
 // database can briefly receive new application code before the migration is
@@ -199,4 +200,62 @@ export function ensureInsiderActivitySchema() {
     });
   }
   return insiderActivitySchemaPromise;
+}
+
+export function ensureEarningsIntelligenceSchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!earningsIntelligenceSchemaPromise) {
+    earningsIntelligenceSchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS earnings_consensus_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT NOT NULL,
+        report_date TEXT NOT NULL,
+        fiscal_quarter TEXT NOT NULL DEFAULT '',
+        snapshot_date TEXT NOT NULL,
+        eps_estimate REAL,
+        analyst_count INTEGER,
+        source_label TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        captured_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS earnings_consensus_snapshot_unique_idx ON earnings_consensus_snapshots(ticker,report_date,snapshot_date,source_label)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS earnings_consensus_revision_idx ON earnings_consensus_snapshots(ticker,report_date,snapshot_date)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS earnings_community_estimates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        ticker TEXT NOT NULL,
+        report_date TEXT NOT NULL,
+        fiscal_quarter TEXT NOT NULL DEFAULT '',
+        eps_estimate REAL,
+        revenue_estimate_millions REAL,
+        thesis_case TEXT NOT NULL DEFAULT 'base' CHECK(thesis_case IN ('bull','base','bear')),
+        confidence INTEGER NOT NULL DEFAULT 3 CHECK(confidence BETWEEN 1 AND 5),
+        key_driver TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS earnings_community_user_report_idx ON earnings_community_estimates(user_id,ticker,report_date)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS earnings_community_aggregate_idx ON earnings_community_estimates(ticker,report_date,updated_at)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS earnings_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT NOT NULL,
+        report_date TEXT NOT NULL,
+        fiscal_quarter TEXT NOT NULL DEFAULT '',
+        eps_actual REAL,
+        eps_consensus_at_report REAL,
+        eps_surprise_percent REAL,
+        source_label TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        captured_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS earnings_result_report_idx ON earnings_results(ticker,report_date)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS earnings_result_date_idx ON earnings_results(report_date,ticker)"),
+    ]).catch((error) => {
+      earningsIntelligenceSchemaPromise = null;
+      throw error;
+    });
+  }
+  return earningsIntelligenceSchemaPromise;
 }

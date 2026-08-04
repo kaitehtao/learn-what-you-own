@@ -259,6 +259,65 @@ export const watchlistItems = sqliteTable("watchlist_items", {
   uniqueIndex("watchlist_user_ticker_idx").on(table.userEmail, table.ticker),
 ]);
 
+// Point-in-time consensus snapshots preserve what investors knew before a
+// report. Never overwrite these rows: revision history is the product.
+export const earningsConsensusSnapshots = sqliteTable("earnings_consensus_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull(),
+  reportDate: text("report_date").notNull(),
+  fiscalQuarter: text("fiscal_quarter").notNull().default(""),
+  snapshotDate: text("snapshot_date").notNull(),
+  epsEstimate: real("eps_estimate"),
+  analystCount: integer("analyst_count"),
+  sourceLabel: text("source_label").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  capturedAt: text("captured_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("earnings_consensus_snapshot_unique_idx").on(table.ticker, table.reportDate, table.snapshotDate, table.sourceLabel),
+  index("earnings_consensus_revision_idx").on(table.ticker, table.reportDate, table.snapshotDate),
+]);
+
+// Authenticated members can submit one active estimate per company/report.
+// Server-side identity checks protect writes; public readers only receive the
+// aggregate, never contributor identity attached to an individual forecast.
+export const earningsCommunityEstimates = sqliteTable("earnings_community_estimates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  ticker: text("ticker").notNull(),
+  reportDate: text("report_date").notNull(),
+  fiscalQuarter: text("fiscal_quarter").notNull().default(""),
+  epsEstimate: real("eps_estimate"),
+  revenueEstimateMillions: real("revenue_estimate_millions"),
+  thesisCase: text("thesis_case", { enum: ["bull", "base", "bear"] }).notNull().default("base"),
+  confidence: integer("confidence").notNull().default(3),
+  keyDriver: text("key_driver").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("earnings_community_user_report_idx").on(table.userId, table.ticker, table.reportDate),
+  index("earnings_community_aggregate_idx").on(table.ticker, table.reportDate, table.updatedAt),
+]);
+
+// Provider-reported results are kept separately from consensus snapshots and
+// community estimates so an actual can never silently replace an estimate.
+export const earningsResults = sqliteTable("earnings_results", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull(),
+  reportDate: text("report_date").notNull(),
+  fiscalQuarter: text("fiscal_quarter").notNull().default(""),
+  epsActual: real("eps_actual"),
+  epsConsensusAtReport: real("eps_consensus_at_report"),
+  epsSurprisePercent: real("eps_surprise_percent"),
+  sourceLabel: text("source_label").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  capturedAt: text("captured_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("earnings_result_report_idx").on(table.ticker, table.reportDate),
+  index("earnings_result_date_idx").on(table.reportDate, table.ticker),
+]);
+
 export const portfolioPositions = sqliteTable("portfolio_positions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userEmail: text("user_email").notNull().references(() => profiles.email, { onDelete: "cascade" }),

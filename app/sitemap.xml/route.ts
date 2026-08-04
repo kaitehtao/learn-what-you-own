@@ -10,6 +10,7 @@ const staticPaths = [
   "/contributors",
   "/earnings",
   "/emerging-companies",
+  "/emerging-companies/y-combinator",
   "/founders-letter",
   "/insider-activity",
   "/interviews",

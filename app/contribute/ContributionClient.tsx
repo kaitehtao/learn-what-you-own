@@ -39,8 +39,8 @@ const emptyForm = {
   collaborationNotes: "",
 };
 
-export function ContributionClient({ initialTicker, initialType, initialDraft }: { initialTicker?: string; initialType?: string; initialDraft?: { claim?: string; whyItMatters?: string; sourceUrl?: string } }) {
-  const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker, contributionType: contributionTypes.includes(initialType ?? "") ? initialType! : emptyForm.contributionType, claim: initialDraft?.claim ?? "", whyItMatters: initialDraft?.whyItMatters ?? "", sourceUrl: initialDraft?.sourceUrl ?? "" });
+export function ContributionClient({ initialTicker, initialCompanyName, initialType, initialDraft }: { initialTicker?: string; initialCompanyName?: string; initialType?: string; initialDraft?: { claim?: string; whyItMatters?: string; sourceUrl?: string } }) {
+  const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker, proposedCompanyName: initialCompanyName ?? "", contributionType: contributionTypes.includes(initialType ?? "") ? initialType! : emptyForm.contributionType, claim: initialDraft?.claim ?? "", whyItMatters: initialDraft?.whyItMatters ?? "", sourceUrl: initialDraft?.sourceUrl ?? "" });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [username, setUsername] = useState("your username");
   const [submitted, setSubmitted] = useState(false);

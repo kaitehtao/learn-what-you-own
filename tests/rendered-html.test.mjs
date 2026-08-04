@@ -1035,6 +1035,44 @@ test("shows watchlist earnings dates and creates duplicate-safe seven-day alerts
   assert.match(emailDelivery, /\.in\("frequency", \["immediate", "daily"\]\)/);
 });
 
+test("builds point-in-time earnings intelligence and authenticated community whispers", async () => {
+  const [calendar, route, estimates, runtime, schema, migration] = await Promise.all([
+    source("app/earnings/page.tsx"),
+    source("app/api/earnings/route.ts"),
+    source("app/api/earnings/estimates/route.ts"),
+    source("db/runtimeSchema.ts"),
+    source("db/schema.ts"),
+    source("drizzle/0021_earnings_intelligence.sql"),
+  ]);
+  assert.match(calendar, /LWYO Whisper/);
+  assert.match(calendar, /Revision \+ dispersion/);
+  assert.match(calendar, /Actual \+ surprise/);
+  assert.match(calendar, /REVENUE ESTIMATE · USD MILLIONS/);
+  assert.match(route, /recordProviderEarnings/);
+  assert.match(route, /epsProviderSurprise/);
+  assert.match(estimates, /requireSupabaseUser/);
+  assert.match(estimates, /Estimates are locked for scoring/);
+  assert.match(runtime, /ensureEarningsIntelligenceSchema/);
+  assert.match(schema, /earningsConsensusSnapshots/);
+  assert.match(migration, /earnings_community_estimates/);
+});
+
+test("lists the official Summer 2026 Y Combinator class with ranking placeholders", async () => {
+  const [page, explorer, data, sitemap] = await Promise.all([
+    source("app/emerging-companies/y-combinator/page.tsx"),
+    source("app/emerging-companies/y-combinator/YcBatchExplorer.tsx"),
+    source("app/data/ycSummer2026.json"),
+    source("app/sitemap.xml/route.ts"),
+  ]);
+  const roster = JSON.parse(data);
+  assert.equal(roster.batch, "Summer 2026");
+  assert.equal(roster.companies.length, 174);
+  assert.match(page, /Explore every/);
+  assert.match(explorer, /RANK · PENDING RESEARCH/);
+  assert.match(explorer, /Rank evidence, not excitement/);
+  assert.match(sitemap, /emerging-companies\/y-combinator/);
+});
+
 test("provides an admin-only audience and account control center", async () => {
   const [migration, verificationMigration, route, dashboard, tracker, layout, adminPage] = await Promise.all([
     source("supabase/migrations/20260801040000_admin_dashboard_analytics.sql"),
