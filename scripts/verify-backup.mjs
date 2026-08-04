@@ -16,4 +16,14 @@ const d1Sql = await readFile(path.join(backupDir, "d1-restore.sql"), "utf8");
 for (const required of ["CREATE TABLE companies", "CREATE TABLE `company_dossiers`", "CREATE TABLE `filing_facts`"]) {
   if (!d1Sql.includes(required)) throw new Error(`D1 restore file is missing ${required}.`);
 }
+if (manifest.supabase) {
+  const supabaseSql = await readFile(path.join(backupDir, "supabase.sql"), "utf8");
+  for (const required of ['CREATE SCHEMA "auth"', 'CREATE SCHEMA "public"', 'CREATE SCHEMA "storage"', 'CREATE TABLE "auth"."users"', 'CREATE TABLE "public"."profiles"', 'CREATE TABLE "storage"."objects"']) {
+    if (!supabaseSql.includes(required)) throw new Error(`Supabase restore file is missing ${required}.`);
+  }
+  const counts = JSON.parse(await readFile(path.join(backupDir, "supabase-counts.json"), "utf8"));
+  for (const relation of ["auth.users", "public.profiles", "storage.buckets", "storage.objects"]) {
+    if (!Number.isInteger(Number(counts[relation])) || Number(counts[relation]) < 0) throw new Error(`Invalid Supabase source count for ${relation}.`);
+  }
+}
 console.log(`Verified ${manifest.files.length} backup files from ${manifest.createdAt}.`);

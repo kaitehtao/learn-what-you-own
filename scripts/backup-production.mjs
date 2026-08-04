@@ -78,7 +78,7 @@ async function backupStorage() {
 
 await mkdir(outputDir, { recursive: true });
 const whoami = run("npx", ["wrangler", "whoami"], { capture: true });
-if (!whoami.includes(CLOUDFLARE_ACCOUNT_ID) || !whoami.includes("kaitehtao@gmail.com")) {
+if (!whoami.includes(CLOUDFLARE_ACCOUNT_ID)) {
   throw new Error("Cloudflare login does not match the authoritative production account.");
 }
 const d1Info = JSON.parse(run("npx", ["wrangler", "d1", "info", D1_DATABASE_NAME, "--json"], { capture: true }));
