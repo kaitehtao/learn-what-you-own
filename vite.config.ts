@@ -1,7 +1,7 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
-import { sites } from "./build/sites-vite-plugin";
+import hostingConfig from "./.openai/hosting.json" with { type: "json" };
+import { sites } from "./build/sites-vite-plugin.ts";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557";

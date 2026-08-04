@@ -42,6 +42,7 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/backups/
 /drizzle/seed-dossiers.sql
 /drizzle/seed-company-index-overlay.sql
 /drizzle/seed-exchange-universe.sql

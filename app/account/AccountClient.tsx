@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ProfileAvatar } from "../ProfileAvatar";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
 import { RewardsSummary } from "./RewardsSummary";
+import { PrivacyControls } from "./PrivacyControls";
 
 type Account = {
   email?: string;
@@ -71,6 +72,7 @@ export function AccountClient() {
       {actions.map(([href, title, description], index) => <Link href={href} key={href}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{href === "/contribute" ? `${description} as @${account.profile.username}.` : description}</p></div><i>→</i></Link>)}
       {(account.profile.role === "admin" || account.profile.role === "editor") && <Link href="/admin"><span>09</span><div><strong>{account.profile.role === "admin" ? "Administrator dashboard" : "Editorial desk"}</strong><p>{account.profile.role === "admin" ? "Manage audience analytics, account invitations, roles, and access." : "Review community research before it is approved."}</p></div><i>→</i></Link>}
       </div>
+      <PrivacyControls username={account.profile.username} />
     </div>
   </section>;
 }

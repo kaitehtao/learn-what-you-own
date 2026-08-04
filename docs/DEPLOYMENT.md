@@ -147,13 +147,16 @@ After deployment, verify both cron triggers exist on the `learn-what-you-own` Wo
 npm ci
 npm test
 npm run build
+npm run release:preflight
 ```
 
-The generated config is `dist/server/wrangler.json`. Because its generated name may be `site-creator-vinext-starter`, explicitly target the canonical production Worker when deploying from the CLI:
+The generated config is `dist/server/wrangler.json`. The package and generated Worker name are permanently set to `learn-what-you-own`; preflight fails instead of deploying if the Worker name, D1 binding, routes, or cron triggers drift.
 
 ```bash
-npx wrangler deploy --config dist/server/wrangler.json --name learn-what-you-own
+npm run deploy:production
 ```
+
+The deployment command records the Git commit in `RELEASE_COMMIT_SHA`, which is visible to administrators in the production dashboard. It refuses to deploy tracked, uncommitted work.
 
 Alternatively, use the existing Cloudflare Git integration only after confirming it targets account `e5c3672efaf52cf5b417da2b09e687af`, Worker `learn-what-you-own`, and branch `main`.
 
@@ -172,3 +175,31 @@ For every production release, retain:
 - test/build result;
 - post-deploy checklist result;
 - rollback commit or prior Worker version.
+
+## Backups, exports, and restore drills
+
+Supabase is currently on the Free plan, so Learn What You Own creates an independent logical database backup rather than relying on managed daily backups. Supabase database dumps do not contain Storage object bytes; the backup command therefore downloads all Storage buckets separately.
+
+```bash
+npm run backup:production -- --output backups/manual-YYYY-MM-DD
+npm run backup:verify -- backups/manual-YYYY-MM-DD
+npm run restore:drill -- backups/manual-YYYY-MM-DD
+```
+
+For an emergency database-only snapshot when Storage credentials are unavailable, add `--skip-storage`. The manifest records that omission. To validate only the isolated D1 restoration, add `--d1-only` to the restore drill; a complete drill still requires a disposable Supabase target.
+
+`backup:production` verifies the Cloudflare account, D1 database ID, linked Supabase project, file hashes, and source Git commit. It creates both the unmodified D1 export and a restore-normalized copy because the legacy D1 schema declares some foreign keys before the `companies` compatibility table. The Supabase CLI creates a short-lived database login; the native `pg_dump` process consumes it without printing or storing the credential.
+
+The D1 restore drill always uses isolated local storage and never modifies the remote database. A full Supabase restore drill requires `SUPABASE_RESTORE_DRILL_DB_URL` to identify a disposable non-production Postgres database; the script refuses the production project reference. Supabase Storage objects must be restored separately from the `supabase-storage/` directory after the database restore.
+
+The private GitHub workflow `Encrypted production backup` runs daily and retains only an AES-256 encrypted artifact for 30 days. Configure these GitHub Actions secrets before enabling the schedule:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_DB_PASSWORD`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `BACKUP_ENCRYPTION_PASSWORD`
+
+Members can download their own JSON data export from the account page. Private uploaded files are represented by one-hour signed download links. A member can request or cancel account deletion; an administrator must review and execute deletion through the existing audited account controls.

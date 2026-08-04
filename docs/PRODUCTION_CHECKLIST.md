@@ -14,6 +14,7 @@ Complete this checklist before and after every production release. A coding agen
 - [ ] `SUPABASE_URL` is `https://fxmdunpolhqponfchwsz.supabase.co`.
 - [ ] A recoverable D1 export/backup exists before schema or bulk-data mutations.
 - [ ] A Supabase backup/export exists before schema mutations.
+- [ ] `npm run backup:verify -- <backup-directory>` validates every backup checksum.
 - [ ] Required secrets exist without printing their values.
 - [ ] Migration history has been compared with the ordered lists in `DEPLOYMENT.md`.
 
@@ -82,3 +83,6 @@ Complete this checklist before and after every production release. A coding agen
 - [ ] Resend delivery logs show the expected sender and recipient result.
 - [ ] Rollback means restoring the prior Worker version first; database rollback uses the pre-mutation export or a reviewed forward migration.
 - [ ] The release result and any exceptions are recorded in the corresponding GitHub issue or release note without secrets.
+- [ ] The latest D1 backup has passed an isolated local restore drill.
+- [ ] The latest Supabase backup has passed a restore drill against a disposable non-production database.
+- [ ] The encrypted GitHub backup workflow completed and no plaintext backup was uploaded.

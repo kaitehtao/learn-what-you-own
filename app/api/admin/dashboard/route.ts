@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { env } from "cloudflare:workers";
 import { apiError, getSupabaseAdminClient, requireAdmin } from "../../../supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -74,17 +75,20 @@ export async function GET(request: Request) {
   try {
     await requireAdmin(request);
     const admin = getSupabaseAdminClient();
-    const [{ data: profiles, error: profileError }, authUsers, { data: visitorMetrics, error: metricsError }, { data: audit, error: auditError }] = await Promise.all([
+    const [{ data: profiles, error: profileError }, authUsers, { data: visitorMetrics, error: metricsError }, { data: audit, error: auditError }, { data: deletionRequests, error: deletionError }] = await Promise.all([
       admin.from("profiles").select("user_id,username,display_name,role,onboarding_complete,credential_summary,credential_status,linkedin_url,website_url,links_status,created_at,updated_at").order("created_at", { ascending: false }),
       allAuthUsers(admin),
       admin.rpc("admin_dashboard_visitor_metrics"),
       admin.from("admin_account_audit").select("id,actor_id,target_user_id,action,detail,created_at").order("created_at", { ascending: false }).limit(25),
+      admin.from("account_deletion_requests").select("id,user_id,status,requested_at").eq("status", "requested").order("requested_at"),
     ]);
     if (profileError) throw profileError;
     if (metricsError) throw metricsError;
     if (auditError) throw auditError;
+    if (deletionError) throw deletionError;
     const profileRows = (profiles ?? []) as ProfileRow[];
     const authById = new Map(authUsers.map((user) => [user.id, user]));
+    const deletionByUser = new Map((deletionRequests ?? []).map((item) => [item.user_id, item]));
     const now = Date.now();
     const members = profileRows.map((profile) => {
       const auth = authById.get(profile.user_id);
@@ -103,6 +107,7 @@ export async function GET(request: Request) {
         confirmationSentAt: auth?.confirmation_sent_at ?? auth?.invited_at ?? null,
         createdAt: profile.created_at,
         lastSignInAt: auth?.last_sign_in_at ?? null,
+        deletionRequest: deletionByUser.get(profile.user_id) ?? null,
       };
     });
     const stats = {
@@ -112,7 +117,8 @@ export async function GET(request: Request) {
       accounts30d: profileRows.filter((profile) => now - new Date(profile.created_at).getTime() <= 30 * 86400000).length,
       administrators: profileRows.filter((profile) => profile.role === "admin").length,
     };
-    return Response.json({ stats, visitors: visitorMetrics, signupSeries: signupSeries(profileRows), members, audit: audit ?? [] });
+    const releaseCommit = String((env as unknown as Record<string, unknown>).RELEASE_COMMIT_SHA ?? "");
+    return Response.json({ stats, visitors: visitorMetrics, signupSeries: signupSeries(profileRows), members, audit: audit ?? [], release: { commit: releaseCommit || null } });
   } catch (error) {
     return apiError(error);
   }
