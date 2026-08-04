@@ -3,11 +3,16 @@ import Link from "next/link";
 import { getDb } from "../../../db";
 import { emergingCompanyDossiers } from "../../../db/schema";
 import { Header } from "../../ui";
+import YCombinatorClassesPage from "../y-combinator/page";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmergingCompanyPage({ params }: { params: Promise<{ slug: string }> }) {
   const slug = (await params).slug.toLowerCase();
+  // vinext currently resolves the sibling static route through this dynamic
+  // segment in production. Keep the public YC class explorer reachable even
+  // when that route precedence differs from local Next.js behavior.
+  if (slug === "y-combinator") return <YCombinatorClassesPage />;
   let dossier: typeof emergingCompanyDossiers.$inferSelect | undefined;
   try {
     [dossier] = await getDb().select().from(emergingCompanyDossiers).where(eq(emergingCompanyDossiers.slug, slug)).limit(1);
