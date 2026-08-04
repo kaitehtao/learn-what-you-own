@@ -49,10 +49,11 @@ if (!d1Only) {
     if (!drillContainer && !drillUrl) throw new Error("Set SUPABASE_RESTORE_DRILL_CONTAINER or SUPABASE_RESTORE_DRILL_DB_URL to a disposable non-production database, or pass --d1-only.");
     if (drillContainer) {
       if (!drillContainer.startsWith("supabase_db_")) throw new Error("Refusing to restore into a container that is not a local Supabase database.");
-      run("docker", ["exec", drillContainer, "psql", "-U", "postgres", "-d", "postgres", "--set", "ON_ERROR_STOP=1", "--command", "DROP SCHEMA IF EXISTS auth CASCADE; DROP SCHEMA IF EXISTS storage CASCADE; DROP SCHEMA IF EXISTS public CASCADE;"]);
+      const localAdmin = "supabase_admin";
+      run("docker", ["exec", drillContainer, "psql", "-U", localAdmin, "-d", "postgres", "--set", "ON_ERROR_STOP=1", "--command", "DROP SCHEMA IF EXISTS auth CASCADE; DROP SCHEMA IF EXISTS storage CASCADE; DROP SCHEMA IF EXISTS public CASCADE;"]);
       run("docker", ["cp", supabaseDump, `${drillContainer}:/tmp/lwyo-supabase-restore.sql`]);
-      run("docker", ["exec", drillContainer, "psql", "-U", "postgres", "-d", "postgres", "--single-transaction", "--set", "ON_ERROR_STOP=1", "--file", "/tmp/lwyo-supabase-restore.sql"]);
-      const restoredCounts = JSON.parse(run("docker", ["exec", drillContainer, "psql", "-U", "postgres", "-d", "postgres", "--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command", countQuery], { capture: true }));
+      run("docker", ["exec", drillContainer, "psql", "-U", localAdmin, "-d", "postgres", "--single-transaction", "--set", "ON_ERROR_STOP=1", "--file", "/tmp/lwyo-supabase-restore.sql"]);
+      const restoredCounts = JSON.parse(run("docker", ["exec", drillContainer, "psql", "-U", localAdmin, "-d", "postgres", "--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command", countQuery], { capture: true }));
       assertSupabaseCounts(expectedCounts, restoredCounts);
       console.log(`Verified Supabase restore counts: ${JSON.stringify(restoredCounts)}`);
     } else {
