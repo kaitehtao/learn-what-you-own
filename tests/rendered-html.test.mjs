@@ -165,6 +165,20 @@ test("loads homepage market data with one cached Nasdaq bulk request", async () 
   assert.match(serviceWorker, /self\.clients\.claim/);
 });
 
+test("publishes a crawler sitemap for every completed dossier and protects private account routes", async () => {
+  const [sitemap, robots] = await Promise.all([
+    source("app/sitemap.xml/route.ts"),
+    source("app/robots.txt/route.ts"),
+  ]);
+  assert.match(sitemap, /Object\.keys\(featuredDossiers\)/);
+  assert.match(sitemap, /companySlug\(ticker\)/);
+  assert.match(sitemap, /https:\/\/learnwhatyouown\.com/);
+  assert.match(robots, /Sitemap: https:\/\/learnwhatyouown\.com\/sitemap\.xml/);
+  for (const path of ["account", "admin", "api/", "login", "messages", "notebook", "portfolio", "watchlist"]) {
+    assert.match(robots, new RegExp(`Disallow: \/${path.replace("/", "\\/")}`));
+  }
+});
+
 test("enforces the AMC dossier standard across completed dossiers and keeps company releases separate from SEC filings", async () => {
   const [newsRoute, newsPanel, upgrades, validator, migration, styles] = await Promise.all([
     source("app/api/company-news/route.ts"),
@@ -192,6 +206,11 @@ test("enforces the AMC dossier standard across completed dossiers and keeps comp
   assert.match(newsRoute, /attributedCards/);
   assert.match(newsRoute, /indexedOfficialNews/);
   assert.match(newsRoute, /verifiedOfficialNewsrooms/);
+  assert.match(newsRoute, /parseSecFiledPressReleases/);
+  assert.match(await source("app/data/secNews.ts"), /SEC EDGAR Exhibit 99/);
+  assert.match(newsRoute, /sec-filed-release/);
+  assert.match(newsRoute, /isCleanCompanyRelease/);
+  assert.match(newsRoute, /hasUsableDate/);
   assert.match(newsRoute, /retryOnce/);
   assert.match(newsRoute, /tradingViewNews/);
   assert.match(newsRoute, /news-headlines\.tradingview\.com\/headlines/);
@@ -1278,7 +1297,7 @@ test("separates company releases from external news on every dossier", async () 
   assert.match(panel, /summaryFormat=2/);
   assert.match(route, /companyOfficialNews\(ticker, companyName, newsroomUrl, newsroomFeedUrl\)/);
   assert.match(route, /secOfficialNews\(cik\)/);
-  assert.match(route, /officialSources: \[companyOfficial\.health, secOfficial\.health\]/);
+  assert.match(route, /officialSources: \[effectiveCompanyHealth, secOfficial\.health\]/);
   assert.match(route, /news\.microsoft\.com\/source\/feed/);
   assert.match(route, /about\.netflix\.com\/en\/feed\.xml/);
   assert.match(route, /www\.apple\.com\/newsroom\/rss-feed\.rss/);

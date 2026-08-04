@@ -2,6 +2,7 @@ import { featuredDossiers, type FeaturedDossier } from "../../data/featuredDossi
 import { researchUniverse } from "../../data/universe";
 import { findCatalogCompany } from "../../../db/companyCatalog";
 import { getSecCompany } from "../../data/secCompanies.generated";
+import { parseSecFiledPressReleases } from "../../data/secNews";
 import { stripNewsHtml } from "../../news-text";
 import type { SecSubmissions } from "../../data/secShareFacts";
 
@@ -48,6 +49,14 @@ type OfficialSourceHealth = {
   status: "working" | "empty" | "unavailable" | "not-configured" | "not-applicable";
   records: number;
   url: string | null;
+  method?: "issuer-archive" | "sec-filed-release";
+};
+
+type SecOfficialNewsResult = {
+  items: NewsItem[];
+  health: OfficialSourceHealth;
+  submissions?: SecSubmissions;
+  submissionsUrl: string | null;
 };
 
 const verifiedOfficialFeeds: Record<string, string> = {
@@ -265,6 +274,32 @@ function parseDellAemNewsroom(payload: unknown): NewsItem[] {
   };
   visit(payload);
   return unique(items.sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 100);
+}
+
+async function secFiledCompanyReleases(cik: string, companyName: string, submissions: SecSubmissions): Promise<NewsItem[]> {
+  const recent = submissions.filings?.recent;
+  const filings = (recent?.form ?? []).flatMap((form, index) => {
+    if (!/^(?:8-K(?:\/A)?|6-K(?:\/A)?)$/i.test(form)) return [];
+    const accession = recent?.accessionNumber?.[index] ?? "";
+    const filingDate = recent?.filingDate?.[index] ?? "";
+    if (!accession || !filingDate) return [];
+    const archiveRoot = `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accession.replaceAll("-", "")}`;
+    return [{ accession, filingDate, archiveRoot, submissionUrl: `${archiveRoot}/${accession}.txt` }];
+  }).slice(0, 16);
+
+  const loadBatch = async (batch: typeof filings) => {
+    const responses = await Promise.allSettled(batch.map(async (filing) => parseSecFiledPressReleases(
+      await fetchText(filing.submissionUrl, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com", 10_000),
+      filing.archiveRoot,
+      companyName,
+      filing.filingDate,
+    )));
+    return responses.flatMap((response) => response.status === "fulfilled" ? response.value : []);
+  };
+  const first = await loadBatch(filings.slice(0, 8));
+  const second = first.length < 2 ? await loadBatch(filings.slice(8, 16)) : [];
+  return unique([...first, ...second]
+    .sort((left, right) => new Date(right.publishedAt).valueOf() - new Date(left.publishedAt).valueOf()), 20);
 }
 
 function parsePalantirNewsroom(html: string, newsroomUrl: string): NewsItem[] {
@@ -557,8 +592,8 @@ async function companyOfficialNews(ticker: string, companyName: string, newsroom
   }
 }
 
-async function secOfficialNews(cik: string | null): Promise<{ items: NewsItem[]; health: OfficialSourceHealth }> {
-  if (!cik) return { items: [], health: { source: "sec", status: "not-applicable", records: 0, url: null } };
+async function secOfficialNews(cik: string | null): Promise<SecOfficialNewsResult> {
+  if (!cik) return { items: [], health: { source: "sec", status: "not-applicable", records: 0, url: null }, submissionsUrl: null };
   const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
   try {
     const payload = await fetchJson<SecSubmissions>(url);
@@ -578,9 +613,9 @@ async function secOfficialNews(cik: string | null): Promise<{ items: NewsItem[];
         provider: "SEC EDGAR submissions",
       }];
     });
-    return { items, health: { source: "sec", status: items.length ? "working" : "empty", records: items.length, url } };
+    return { items, health: { source: "sec", status: items.length ? "working" : "empty", records: items.length, url }, submissions: payload, submissionsUrl: url };
   } catch {
-    return { items: [], health: { source: "sec", status: "unavailable", records: 0, url } };
+    return { items: [], health: { source: "sec", status: "unavailable", records: 0, url }, submissionsUrl: url };
   }
 }
 
@@ -612,6 +647,14 @@ function curatedCompanyReleases(dossier: FeaturedDossier | undefined): NewsItem[
       provider: "Editorial source registry",
     }];
   });
+}
+
+function isCleanCompanyRelease(item: NewsItem): boolean {
+  return !/(?:SEC filing|Form 10-[KQ]|annual report|filing library)/i.test(`${item.title} ${item.category ?? ""}`);
+}
+
+function hasUsableDate(item: NewsItem): boolean {
+  return Number.isFinite(new Date(item.publishedAt).valueOf());
 }
 
 function mergePublicSources(groups: NewsItem[][], limit: number): NewsItem[] {
@@ -671,11 +714,27 @@ export async function GET(request: Request) {
     secOfficialNews(cik),
     Promise.allSettled(publicSources.map((source) => source.load())),
   ]);
-  const companyReleases = unique([...companyOfficial.items, ...curatedCompanyReleases(dossier)].sort((left, right) => {
+  const issuerReleases = companyOfficial.items.filter(isCleanCompanyRelease);
+  const curatedReleases = curatedCompanyReleases(dossier).filter(isCleanCompanyRelease);
+  const baseReleases = unique([...issuerReleases, ...curatedReleases], 100);
+  const needsSecReleaseFallback = baseReleases.length < 2 || !baseReleases.some(hasUsableDate);
+  const secFiledReleases = needsSecReleaseFallback && cik && secOfficial.submissions
+    ? await secFiledCompanyReleases(cik, companyName, secOfficial.submissions)
+    : [];
+  const companyReleases = unique([...baseReleases, ...secFiledReleases].filter(isCleanCompanyRelease).sort((left, right) => {
     const leftTime = new Date(left.publishedAt).valueOf();
     const rightTime = new Date(right.publishedAt).valueOf();
     return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
   }), 100);
+  const effectiveCompanyHealth: OfficialSourceHealth = companyReleases.length >= 2 && companyOfficial.health.status !== "working"
+    ? {
+        source: "company",
+        status: "working",
+        records: companyReleases.length,
+        url: secOfficial.submissionsUrl || companyOfficial.health.url,
+        method: "sec-filed-release",
+      }
+    : { ...companyOfficial.health, records: companyReleases.length, method: "issuer-archive" };
   const secFilings = unique(secOfficial.items.sort((left, right) => {
     const leftTime = new Date(left.publishedAt).valueOf();
     const rightTime = new Date(right.publishedAt).valueOf();
@@ -701,11 +760,11 @@ export async function GET(request: Request) {
     companyReleases,
     secFilings,
     official,
-    officialSources: [companyOfficial.health, secOfficial.health],
+    officialSources: [effectiveCompanyHealth, secOfficial.health],
     public: publicNews,
     providers,
     unavailableProviders,
     updatedAt: new Date().toISOString(),
-    partial: [companyOfficial.health, secOfficial.health].some((source) => source.status === "unavailable") || unavailableProviders.length > 0,
+    partial: [effectiveCompanyHealth, secOfficial.health].some((source) => source.status === "unavailable") || unavailableProviders.length > 0,
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }

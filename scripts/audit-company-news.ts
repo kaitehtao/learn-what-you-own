@@ -82,7 +82,10 @@ async function auditTicker(ticker: string): Promise<AuditRow> {
 }
 
 const rows: AuditRow[] = [];
-const concurrency = 6;
+const requestedConcurrency = Number.parseInt(process.env.AUDIT_CONCURRENCY || "6", 10);
+const concurrency = Number.isFinite(requestedConcurrency)
+  ? Math.min(Math.max(requestedConcurrency, 1), 50)
+  : 6;
 for (let index = 0; index < tickers.length; index += concurrency) {
   rows.push(...await Promise.all(tickers.slice(index, index + concurrency).map(auditTicker)));
 }
