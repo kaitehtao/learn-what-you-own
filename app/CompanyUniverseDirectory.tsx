@@ -34,7 +34,16 @@ type CatalogCompany = {
   dossier_source_count: number;
 };
 
-type Payload = { total: number; page: number; pageSize: number; companies: CatalogCompany[] };
+type QualitySummary = {
+  total: number;
+  starting_point: number;
+  machine_enriched: number;
+  editorial_review: number;
+  benchmark_complete: number;
+  zero_sources: number;
+  five_plus_sources: number;
+};
+type Payload = { total: number; page: number; pageSize: number; companies: CatalogCompany[]; qualitySummary?: QualitySummary | null };
 const PAGE_SIZE = 40;
 
 function displayName(name: string) {
@@ -53,9 +62,10 @@ const qualityLabels = {
   benchmark_complete: "Benchmark-complete dossier",
 } as const;
 
-export function CompanyUniverseDirectory({ market, indexMembership = "" }: { market: "listed" | "otc"; indexMembership?: "Russell 2000" | "" }) {
+export function CompanyUniverseDirectory({ market, indexMembership = "" }: { market: "listed" | "otc"; indexMembership?: "S&P 500" | "Russell 2000" | "" }) {
   const otc = market === "otc";
-  const indexFocused = !otc && indexMembership === "Russell 2000";
+  const indexFocused = !otc && Boolean(indexMembership);
+  const russellFocused = indexMembership === "Russell 2000";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [exchange, setExchange] = useState("");
@@ -105,20 +115,26 @@ export function CompanyUniverseDirectory({ market, indexMembership = "" }: { mar
   }, [requestUrl]);
 
   const pageCount = Math.max(1, Math.ceil(payload.total / PAGE_SIZE));
-  const title = otc ? "OTC equities, kept in their own research lane." : indexFocused ? "Russell 2000 companies, largest to smallest." : "The full NYSE and Nasdaq catalog.";
+  const title = otc ? "OTC equities, kept in their own research lane." : indexFocused ? `${indexMembership} companies, largest to smallest.` : "The full NYSE and Nasdaq catalog.";
   const asOf = otc ? otcUniverseAsOf : listedUniverseAsOf;
 
   return <main><Header />
     <section className={`directory-hero ${otc ? "otc-directory-hero" : ""}`}><div className="container">
-      <span className="kicker">{otc ? "OTC / PINK MARKET DIRECTORY" : indexFocused ? "RUSSELL 2000 DIRECTORY" : "NYSE + NASDAQ DIRECTORY"}</span>
+      <span className="kicker">{otc ? "OTC / PINK MARKET DIRECTORY" : indexFocused ? `${indexMembership.toUpperCase()} RESEARCH UNIVERSE` : "NYSE + NASDAQ DIRECTORY"}</span>
       <h1>{title}</h1>
-      <p>{otc ? "Search FINRA’s current OTC equity directory. OTC is not a national securities exchange, and not every OTC security is in the Pink market; instrument type and research status stay visible so unlike securities are not blurred together." : indexFocused ? "Explore every active company tagged as a Russell 2000 member in the research universe. The list uses the latest available market capitalization and automatically ranks companies from highest to lowest." : "All current SEC ticker/exchange associations for NYSE and Nasdaq, cross-checked against Nasdaq Trader’s symbol directory. A catalog entry is not presented as a completed dossier until its evidence has been researched and verified."}</p>
-      <div className="directory-search">⌕ <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={otc ? `Search ${otcSecurityCount.toLocaleString()} OTC symbols or issuers` : indexFocused ? "Search Russell 2000 tickers or companies" : `Search ${listedSecurityCount.toLocaleString()} NYSE and Nasdaq securities`} aria-label={otc ? "Search OTC securities" : indexFocused ? "Search Russell 2000 companies" : "Search NYSE and Nasdaq securities"} autoComplete="off" /></div>
+      <p>{otc ? "Search FINRA’s current OTC equity directory. OTC is not a national securities exchange, and not every OTC security is in the Pink market; instrument type and research status stay visible so unlike securities are not blurred together." : indexFocused ? `Search every active company tagged as a ${indexMembership} member in the research universe. The list uses the latest available market capitalization and automatically ranks companies from highest to lowest.` : "All current SEC ticker/exchange associations for NYSE and Nasdaq, cross-checked against Nasdaq Trader’s symbol directory. A catalog entry is not presented as a completed dossier until its evidence has been researched and verified."}</p>
+      <div className="directory-search">⌕ <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={otc ? `Search ${otcSecurityCount.toLocaleString()} OTC symbols or issuers` : indexFocused ? `Search ${indexMembership} tickers or companies` : `Search ${listedSecurityCount.toLocaleString()} NYSE and Nasdaq securities`} aria-label={otc ? "Search OTC securities" : indexFocused ? `Search ${indexMembership} companies` : "Search NYSE and Nasdaq securities"} autoComplete="off" /></div>
       <div className="universe-note"><span>Official data {asOf}</span><span>{indexFocused ? loading ? "Loading live membership" : `${payload.total.toLocaleString()} active members` : `${(otc ? otcSecurityCount : listedSecurityCount).toLocaleString()} securities`}</span><span>{otc ? "FINRA source" : indexFocused ? "Ranked by market cap" : "SEC + Nasdaq Trader sources"}</span></div>
     </div></section>
     <section className="container directory-section">
-      <div className="market-switcher"><Link className={!otc && !indexFocused ? "active" : ""} href="/companies">NYSE &amp; Nasdaq <span>{listedSecurityCount.toLocaleString()}</span></Link><Link className={indexFocused ? "active" : ""} href="/russell-2000">Russell 2000 <span>Live</span></Link><Link className={otc ? "active otc" : ""} href="/otc">OTC / Pink Market <span>{otcSecurityCount.toLocaleString()}</span></Link><Link href="/emerging-companies">IPOs &amp; private <span>Approved</span></Link></div>
-      {!otc && <div className="universe-explainer expanded">{indexFocused ? <><div><span className="membership-badge russell-badge">Russell 2000</span><p>{loading ? "Loading membership" : `${payload.total.toLocaleString()} active members`}</p></div><div><span className="membership-badge coverage-badge">MARKET CAP</span><p>Highest to lowest by default</p></div><div><span className="membership-badge qqq-badge">LIVE DATA</span><p>Scheduled ranking refresh</p></div></> : <><div><span className="membership-badge coverage-badge">NYSE</span><p>{officialExchangeCounts.NYSE.toLocaleString()} securities</p></div><div><span className="membership-badge qqq-badge">NASDAQ</span><p>{officialExchangeCounts.NASDAQ.toLocaleString()} securities</p></div><div><span className="membership-badge sp-badge">S&amp;P 500</span><p>{indexCounts["S&P 500"]} members tagged</p></div></>}<strong>Catalog coverage is separate from dossier completion.</strong></div>}
+      <div className="market-switcher"><Link className={!otc && !indexFocused ? "active" : ""} href="/companies">NYSE &amp; Nasdaq <span>{listedSecurityCount.toLocaleString()}</span></Link><Link className={indexMembership === "S&P 500" ? "active" : ""} href="/research/sp-500">S&amp;P 500 <span>Research</span></Link><Link className={russellFocused ? "active" : ""} href="/research/russell-2000">Russell 2000 <span>Research</span></Link><Link className={otc ? "active otc" : ""} href="/otc">OTC / Pink <span>{otcSecurityCount.toLocaleString()}</span></Link></div>
+      {!otc && <div className="universe-explainer expanded">{indexFocused ? <><div><span className={`membership-badge ${russellFocused ? "russell-badge" : "sp-badge"}`}>{indexMembership}</span><p>{loading ? "Loading membership" : `${payload.total.toLocaleString()} active members`}</p></div><div><span className="membership-badge coverage-badge">MARKET CAP</span><p>Highest to lowest by default</p></div><div><span className="membership-badge qqq-badge">LIVE DATA</span><p>Scheduled ranking refresh</p></div></> : <><div><span className="membership-badge coverage-badge">NYSE</span><p>{officialExchangeCounts.NYSE.toLocaleString()} securities</p></div><div><span className="membership-badge qqq-badge">NASDAQ</span><p>{officialExchangeCounts.NASDAQ.toLocaleString()} securities</p></div><div><span className="membership-badge sp-badge">S&amp;P 500</span><p>{indexCounts["S&P 500"]} members tagged</p></div></>}<strong>Catalog coverage is separate from dossier completion.</strong></div>}
+      {indexFocused && payload.qualitySummary && <section className="russell-completion-panel">
+        <header><div><span className="kicker">{indexMembership.toUpperCase()} DOSSIER COMPLETION PROGRAM</span><h2>{Number(payload.qualitySummary.benchmark_complete).toLocaleString()} benchmark complete · {(Number(payload.qualitySummary.total) - Number(payload.qualitySummary.benchmark_complete)).toLocaleString()} in progress</h2></div><strong>{((Number(payload.qualitySummary.benchmark_complete) / Math.max(1, Number(payload.qualitySummary.total))) * 100).toFixed(1)}%</strong></header>
+        <div className="russell-completion-track" aria-label={`${indexMembership} benchmark dossier completion`}><i style={{width:`${(Number(payload.qualitySummary.benchmark_complete) / Math.max(1, Number(payload.qualitySummary.total))) * 100}%`}} /></div>
+        <div className="russell-completion-stats"><div><strong>{Number(payload.qualitySummary.total).toLocaleString()}</strong><span>Active members tracked</span></div><div><strong>{Number(payload.qualitySummary.machine_enriched).toLocaleString()}</strong><span>Research foundations</span></div><div><strong>{Number(payload.qualitySummary.five_plus_sources).toLocaleString()}</strong><span>Five-plus primary sources</span></div><div><strong>{Number(payload.qualitySummary.starting_point).toLocaleString()}</strong><span>Queued starting pages</span></div></div>
+        <p>A ticker advances only after exact SEC evidence is ingested. “Benchmark complete” additionally requires claim-level sourcing, balanced bull and bear analysis, financial history, ownership, risks, catalysts, and editorial review.</p>
+      </section>}
       {otc && <aside className="otc-disclosure"><strong>OTC does not mean “Pink Sheet” in every case.</strong><p>This directory includes all current issues in FINRA’s OTC security master, including common shares, ADRs, preferreds, funds, units, warrants, and other instruments. The issue-type filter shows what each symbol represents. A future OTC Markets tier feed would be required to label Pink Current, OTCQB, or OTCQX tiers.</p></aside>}
       <div className="filter-row catalog-filter-row"><strong>{loading ? "Loading…" : `${payload.total.toLocaleString()} securities`}</strong><div className="directory-controls">
         {!otc && <label><span>Exchange</span><select value={exchange} onChange={(event) => { setExchange(event.target.value); setPage(1); }}><option value="">NYSE + Nasdaq</option><option>NYSE</option><option>NASDAQ</option></select></label>}

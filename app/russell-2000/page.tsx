@@ -1,5 +1,5 @@
-import { CompanyUniverseDirectory } from "../CompanyUniverseDirectory";
+import { redirect } from "next/navigation";
 
 export default function Russell2000Page() {
-  return <CompanyUniverseDirectory market="listed" indexMembership="Russell 2000" />;
+  redirect("/research/russell-2000");
 }

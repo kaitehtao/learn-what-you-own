@@ -60,7 +60,14 @@ export function Header() {
           <Link href="/earnings">Earnings</Link>
           <Link href="/insider-activity">Insider Activity</Link>
           <Link href="/comps">Comps</Link>
-          <Link href="/research/batches">Research</Link>
+          <details className="workspace-menu research-menu">
+            <summary>Research</summary>
+            <div>
+              <Link href="/research/sp-500">S&amp;P 500 dossiers</Link>
+              <Link href="/research/russell-2000">Russell 2000 dossiers</Link>
+              <Link href="/research/batches">Coverage program</Link>
+            </div>
+          </details>
           <Link href="/research/community">Community</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/founders-letter">Founder’s Letter</Link>

@@ -32,6 +32,18 @@ async function scanCandidate(candidate: Candidate) {
           filing.materialityReason, JSON.stringify(filing.reviewFocus), filing.refreshFacts ? "pending" : "not_applicable",
         ).run();
       if ((result.meta.changes ?? 0) > 0) inserted.push(filing);
+      // The permanent dossier source ledger must point to the exact filing,
+      // not merely the SEC company search page. This also lets the rollout
+      // measure evidence depth without inventing editorial conclusions.
+      await database.prepare(`INSERT OR IGNORE INTO dossier_sources
+        (ticker,source_type,title,url,filing_type,filed_at,accessed_at,created_at)
+        VALUES (?,'sec',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
+          candidate.ticker,
+          `${filing.form} filed ${filing.filingDate}`,
+          filing.sourceUrl,
+          filing.form,
+          filing.filingDate,
+        ).run();
     }
 
     const factEvents = inserted.filter((filing) => filing.refreshFacts);

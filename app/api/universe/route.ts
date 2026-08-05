@@ -58,7 +58,8 @@ export async function GET(request: Request) {
         ? `c.market_cap IS NULL, c.market_cap ${direction}, c.ticker ASC`
         : `c.ticker ${direction}`;
   const orderBinds = query ? [query.toUpperCase(), `${search}%`, `%${search}%`] : [];
-  const results = await env.DB.prepare(`
+  const [results, qualitySummary] = await Promise.all([
+    env.DB.prepare(`
     SELECT c.ticker, c.name, c.sector, c.exchange, c.market_cap, c.memberships_json,
       c.cik, c.security_type, c.security_description, c.universe_source_url,
       c.universe_source_as_of, d.status AS dossier_status,
@@ -70,7 +71,24 @@ export async function GET(request: Request) {
     WHERE ${where}
     ORDER BY ${order}
     LIMIT ? OFFSET ?
-  `).bind(...binds, ...orderBinds, pageSize, (page - 1) * pageSize).all();
+  `).bind(...binds, ...orderBinds, pageSize, (page - 1) * pageSize).all(),
+    market === "listed" && memberships.has(membership)
+      ? env.DB.prepare(`SELECT
+          COUNT(*) AS total,
+          SUM(CASE WHEN COALESCE(d.quality_tier,'starting_point')='starting_point' THEN 1 ELSE 0 END) AS starting_point,
+          SUM(CASE WHEN d.quality_tier='machine_enriched' THEN 1 ELSE 0 END) AS machine_enriched,
+          SUM(CASE WHEN d.quality_tier='editorial_review' THEN 1 ELSE 0 END) AS editorial_review,
+          SUM(CASE WHEN d.quality_tier='benchmark_complete' THEN 1 ELSE 0 END) AS benchmark_complete,
+          SUM(CASE WHEN COALESCE(s.source_count,0)=0 THEN 1 ELSE 0 END) AS zero_sources,
+          SUM(CASE WHEN COALESCE(s.source_count,0)>=5 THEN 1 ELSE 0 END) AS five_plus_sources
+        FROM companies c
+        LEFT JOIN company_dossiers d ON d.ticker=c.ticker
+        LEFT JOIN (SELECT ticker,COUNT(*) AS source_count FROM dossier_sources GROUP BY ticker) s ON s.ticker=c.ticker
+        WHERE c.listing_scope='listed' AND c.is_active=1
+          AND c.memberships_json LIKE ? ESCAPE '\\'`)
+        .bind(`%${escapedLike(JSON.stringify(membership).slice(1, -1))}%`).first()
+      : Promise.resolve(null),
+  ]);
 
   return Response.json({
     market,
@@ -78,5 +96,6 @@ export async function GET(request: Request) {
     pageSize,
     total: Number(countResult?.count ?? 0),
     companies: results.results,
+    qualitySummary,
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }

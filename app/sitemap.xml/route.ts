@@ -17,6 +17,8 @@ const staticPaths = [
   "/learn",
   "/research/batches",
   "/russell-2000",
+  "/research/sp-500",
+  "/research/russell-2000",
 ];
 
 function xmlEscape(value: string): string {

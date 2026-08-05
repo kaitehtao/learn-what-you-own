@@ -7,6 +7,7 @@ import { formatMarketCap } from "../../market-snapshot";
 export const dynamic = "force-dynamic";
 
 type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
+type RolloutSummary = { total:number;benchmark_complete:number;evidence_ready:number;evidence_ingestion:number;research_backlog:number };
 
 function money(value: number) {
   if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -44,14 +45,25 @@ function ResearchFoundationList({ companies }: { companies: RolloutCompany[] }) 
 
 export default async function ResearchBatchesPage() {
   let russellRollout: RolloutCompany[] = [];
+  let russellSummary: RolloutSummary | null = null;
   try {
-    const result = await env.DB.prepare(`SELECT m.priority_rank,m.ticker,c.name,c.market_cap,m.workflow_status,
+    const [result, summary] = await Promise.all([
+      env.DB.prepare(`SELECT m.priority_rank,m.ticker,c.name,c.market_cap,m.workflow_status,
       COALESCE(d.quality_tier,'starting_point') AS quality_tier,m.source_count
       FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
       LEFT JOIN company_dossiers d ON d.ticker=m.ticker
       WHERE m.batch_id=(SELECT id FROM dossier_expansion_batches WHERE universe_name='Russell 2000' AND status IN ('active','in_progress') ORDER BY updated_at DESC LIMIT 1)
-      ORDER BY m.priority_rank`).all<RolloutCompany>();
+      ORDER BY m.priority_rank LIMIT 100`).all<RolloutCompany>(),
+      env.DB.prepare(`SELECT COUNT(*) AS total,
+        SUM(CASE WHEN workflow_status='benchmark_complete' THEN 1 ELSE 0 END) AS benchmark_complete,
+        SUM(CASE WHEN workflow_status='evidence_ready' THEN 1 ELSE 0 END) AS evidence_ready,
+        SUM(CASE WHEN workflow_status='evidence_ingestion' THEN 1 ELSE 0 END) AS evidence_ingestion,
+        SUM(CASE WHEN workflow_status='research_backlog' THEN 1 ELSE 0 END) AS research_backlog
+        FROM dossier_expansion_members
+        WHERE batch_id=(SELECT id FROM dossier_expansion_batches WHERE universe_name='Russell 2000' AND status IN ('active','in_progress') ORDER BY updated_at DESC LIMIT 1)`).first<RolloutSummary>(),
+    ]);
     russellRollout = result.results;
+    russellSummary = summary;
   } catch (error) {
     console.error("Unable to load active Russell dossier rollout", error);
   }
@@ -66,7 +78,7 @@ export default async function ResearchBatchesPage() {
       </div>
     </section>
     {russellRollout.length > 0 && <section className="container research-batch-section">
-      <header><div><span className="kicker">RUSSELL 2000 · ACTIVE RESEARCH FOUNDATIONS</span><h2>Ranked by current market capitalization</h2></div><p>These tickers use live market data and automated SEC filing ingestion. They are labeled research foundations—not benchmark-complete dossiers—until claim-level evidence and bull/bear analysis pass editorial review.</p></header>
+      <header><div><span className="kicker">RUSSELL 2000 · FULL-UNIVERSE DOSSIER PROGRAM</span><h2>{Number(russellSummary?.total??russellRollout.length).toLocaleString()} members ranked by current market capitalization</h2></div><p>Automated SEC evidence ingestion advances the full universe in controlled batches. {Number(russellSummary?.benchmark_complete??0).toLocaleString()} currently pass the benchmark; the table shows the next 100 highest-priority records. Research foundations are not labeled complete until claim-level evidence and balanced bull/bear analysis pass editorial review.</p></header>
       <ResearchFoundationList companies={russellRollout} />
       <aside className="research-batch-method"><strong>Live ranking policy</strong><p>Market capitalizations refresh from Nasdaq’s listed-universe feed. D1 recalculates descending rank after each refresh; missing values appear last and are never replaced by fabricated estimates.</p></aside>
     </section>}
