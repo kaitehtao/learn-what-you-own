@@ -97,16 +97,19 @@ test("publishes Cerebras as a public flagship dossier and AMD comparable", async
   }
 });
 
-test("shows current stock price and market capitalization on detailed dossiers and homepage cards", async () => {
-  const [featured, ondas, home, snapshot, api, quotes] = await Promise.all([
+test("shows current stock price and compact market capitalization on every detailed dossier and homepage card", async () => {
+  const [featured, starter, ondas, home, snapshot, formatters, api, quotes] = await Promise.all([
     source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
     source("app/company/onds/page.tsx"),
     source("app/page.tsx"),
     source("app/CompanyMarketSnapshot.tsx"),
+    source("app/market-snapshot.ts"),
     source("app/api/market-snapshot/route.ts"),
     source("app/market-quotes.ts"),
   ]);
   assert.match(featured, /<CompanyMarketSnapshot ticker=\{company\.ticker\}/);
+  assert.match(starter, /<CompanyMarketSnapshot ticker=\{company\.ticker\}/);
   assert.match(ondas, /<FeaturedCompanyDossier company=\{company\} dossier=\{dossier\}/);
   assert.match(snapshot, /CURRENT STOCK PRICE/);
   assert.match(snapshot, /MARKET CAPITALIZATION/);
@@ -116,6 +119,7 @@ test("shows current stock price and market capitalization on detailed dossiers a
   assert.match(api, /cache-control/);
   assert.match(quotes, /summary\?assetclass=stocks/);
   assert.match(quotes, /MarketCap/);
+  assert.match(formatters, /maximumFractionDigits: scale\[1\] && Math\.abs\(scaled\) < 10 \? 1 : 0/);
 });
 
 test("standardizes comparable analysis across every completed dossier", async () => {
@@ -1093,6 +1097,7 @@ test("builds point-in-time earnings intelligence and authenticated community whi
   assert.match(calendar, /REVENUE ESTIMATE · USD MILLIONS/);
   assert.match(route, /recordProviderEarnings/);
   assert.match(route, /epsProviderSurprise/);
+  assert.match(route, /marketCap: formatMarketCap\(parseFinancialNumber\(row\.marketCap\)\)/);
   assert.match(estimates, /requireSupabaseUser/);
   assert.match(estimates, /Estimates are locked for scoring/);
   assert.match(runtime, /ensureEarningsIntelligenceSchema/);
@@ -1499,8 +1504,8 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(panel, /No estimates were substituted/);
   assert.match(panel, /Open machine-readable source/);
   assert.match(researchApi, /factsImport/);
-  assert.match(researchApi, /facts\.length === 0 && featuredDossiers\[ticker\]/);
-  assert.match(researchApi, /ensureFeaturedDossierRegistration\(ticker\)/);
+  assert.match(researchApi, /facts\.length === 0 && dossierState\?\.status === "published" && dossierState\.qualityTier !== "starting_point"/);
+  assert.doesNotMatch(researchApi, /featuredDossiers\[ticker\]/);
   assert.match(researchApi, /Initial SEC facts import failed/);
   assert.match(importer, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
   assert.match(importer, /filingFactImports/);
@@ -1540,12 +1545,17 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(styles, /\.filing-history\{display:flex/);
 });
 
-test("separates publication from dossier quality and stages Russell research behind an evidence gate", async () => {
-  const [schema, migration, universeRoute, directory, freshnessApi, freshnessAdmin, worker] = await Promise.all([
+test("separates publication from dossier quality and ranks Russell research from the live market feed", async () => {
+  const [schema, migration, activation, universeRoute, directory, starter, batches, rankingRoute, marketQuotes, freshnessApi, freshnessAdmin, worker] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
+    source("drizzle/0031_activate_ranked_research_foundations.sql"),
     source("app/api/universe/route.ts"),
     source("app/CompanyUniverseDirectory.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/research/batches/page.tsx"),
+    source("app/api/internal/rollout-market-cap-refresh/route.ts"),
+    source("app/market-quotes.ts"),
     source("app/api/admin/freshness/route.ts"),
     source("app/admin/FreshnessQueue.tsx"),
     source("worker/index.ts"),
@@ -1554,14 +1564,24 @@ test("separates publication from dossier quality and stages Russell research beh
   assert.match(migration, /benchmark_complete/);
   assert.match(migration, /russell-2000-market-cap-01/);
   assert.match(migration, /ROW_NUMBER\(\) OVER \(ORDER BY c\.market_cap DESC/);
+  assert.match(activation, /SELECT m\.ticker,'published','machine_enriched'/);
+  assert.match(activation, /Annual reports \(10-K\)/);
+  assert.match(activation, /Proxy statements and beneficial ownership/);
   assert.match(universeRoute, /dossier_quality_tier/);
   assert.match(universeRoute, /dossier_source_count/);
   assert.match(directory, /Benchmark-complete dossier/);
   assert.match(directory, /Research foundation/);
   assert.doesNotMatch(directory, />Published dossier</);
+  assert.match(starter, /LIVE RESEARCH FOUNDATION/);
+  assert.match(starter, /rollout_priority_rank/);
+  assert.match(batches, /Ranked by current market capitalization/);
+  assert.match(rankingRoute, /fetchNasdaqMarketUniverse/);
+  assert.match(rankingRoute, /peer_company\.market_cap>target_company\.market_cap/);
+  assert.match(marketQuotes, /download=true/);
   assert.match(freshnessApi, /WHEN 'earnings_release' THEN 0/);
   assert.match(freshnessAdmin, /first 50-company evidence batch/);
   assert.match(worker, /dossier-freshness\?limit=25/);
+  assert.match(worker, /rollout-market-cap-refresh/);
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
 });
 

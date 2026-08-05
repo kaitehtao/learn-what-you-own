@@ -102,6 +102,24 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   if (!mirrorResponse.ok) console.warn(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
 }
 
+async function refreshScheduledRolloutMarketCaps(env: Env, ctx: ExecutionContext) {
+  const pathname = "/api/internal/rollout-market-cap-refresh";
+  const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-market-cap-ranking/1.0");
+  const mirrorRequest = env.SITES_MIRROR_CRON_SECRET
+    ? fetch(`${SITES_MIRROR_ORIGIN}${pathname}`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${env.SITES_MIRROR_CRON_SECRET}`,
+          "user-agent": "learn-what-you-own-market-cap-ranking-mirror/1.0",
+          "x-lwyo-sites-mirror": "market-cap-ranking",
+        },
+      })
+    : Promise.resolve(null);
+  const [response, mirrorResponse] = await Promise.all([localRequest, mirrorRequest]);
+  if (!response.ok) throw new Error(`Market-cap ranking endpoint returned ${response.status}`);
+  if (mirrorResponse && !mirrorResponse.ok) console.warn(`Sites market-cap ranking mirror returned ${mirrorResponse.status}`);
+}
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
@@ -117,9 +135,10 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const canonicalUrl = canonicalPublicUrl(request.url);
+    const mirrorPurpose = request.headers.get("x-lwyo-sites-mirror");
     const isAuthorizedMirrorRoute =
-      url.pathname === "/api/internal/dossier-freshness" &&
-      request.headers.get("x-lwyo-sites-mirror") === "dossier-freshness";
+      (url.pathname === "/api/internal/dossier-freshness" && mirrorPurpose === "dossier-freshness") ||
+      (url.pathname === "/api/internal/rollout-market-cap-refresh" && mirrorPurpose === "market-cap-ranking");
     if (canonicalUrl && !isAuthorizedMirrorRoute) return Response.redirect(canonicalUrl, 308);
 
     if (url.pathname === "/_vinext/image") {
@@ -145,6 +164,7 @@ const worker = {
         await refreshScheduledDossiers(env, ctx);
         return;
       }
+      await refreshScheduledRolloutMarketCaps(env, ctx);
       await refreshScheduledSecFacts(env, ctx);
       await refreshScheduledInsiderActivity(env, ctx);
       if (!isPacificDigestHour(controller.scheduledTime)) return;

@@ -1,5 +1,6 @@
 import { officialEarningsVerifications } from "../../data/earningsVerifications";
 import { loadEarningsIntelligence, parseFinancialNumber, recordProviderEarnings } from "../../earnings-intelligence";
+import { formatMarketCap } from "../../market-snapshot";
 
 type NasdaqRow = {
   time?: string;
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
         : session === "AMC"
           ? "After market close"
           : "Time not supplied",
-    marketCap: row.marketCap ?? "—",
+    marketCap: formatMarketCap(parseFinancialNumber(row.marketCap)),
     fiscalQuarter: row.fiscalQuarterEnding ?? "—",
     epsEstimate: row.epsForecast ?? "—",
     analystCount: row.noOfEsts ?? "—",

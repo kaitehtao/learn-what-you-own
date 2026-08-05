@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { env } from "cloudflare:workers";
 import { Header } from "../../ui";
 import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatch04, sp500DossierBatch05, sp500DossierBatch06, sp500DossierBatchAsOf, sp500DossierBatchSource, type DossierBatchCompany } from "../../data/sp500DossierBatches";
+import { formatMarketCap } from "../../market-snapshot";
+
+export const dynamic = "force-dynamic";
+
+type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
 
 function money(value: number) {
   if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -24,7 +30,31 @@ function BatchList({ companies }: { companies: DossierBatchCompany[] }) {
   </div>;
 }
 
-export default function ResearchBatchesPage() {
+function ResearchFoundationList({ companies }: { companies: RolloutCompany[] }) {
+  return <div className="research-batch-list">
+    <div className="research-batch-head"><span>Rank</span><span>Company</span><span>Market cap</span><span>Status</span></div>
+    {companies.map(company => <Link href={dossierPath(company.ticker)} key={company.ticker}>
+      <span>{String(company.priority_rank).padStart(2, "0")}</span>
+      <span><i>{company.ticker}</i><strong>{company.name}</strong></span>
+      <span>{formatMarketCap(company.market_cap)}</span>
+      <span className="batch-foundation">Research foundation · {company.source_count} sources</span>
+    </Link>)}
+  </div>;
+}
+
+export default async function ResearchBatchesPage() {
+  let russellRollout: RolloutCompany[] = [];
+  try {
+    const result = await env.DB.prepare(`SELECT m.priority_rank,m.ticker,c.name,c.market_cap,m.workflow_status,
+      COALESCE(d.quality_tier,'starting_point') AS quality_tier,m.source_count
+      FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
+      LEFT JOIN company_dossiers d ON d.ticker=m.ticker
+      WHERE m.batch_id=(SELECT id FROM dossier_expansion_batches WHERE universe_name='Russell 2000' AND status IN ('active','in_progress') ORDER BY updated_at DESC LIMIT 1)
+      ORDER BY m.priority_rank`).all<RolloutCompany>();
+    russellRollout = result.results;
+  } catch (error) {
+    console.error("Unable to load active Russell dossier rollout", error);
+  }
   return <main className="research-batches-page">
     <Header />
     <section className="research-batch-hero">
@@ -35,6 +65,11 @@ export default function ResearchBatchesPage() {
         <div className="research-batch-proof"><strong>Batches 01–06 · 503 component ticker rows covered</strong><span>497 ranked company records plus earlier flagship dossiers and consolidated share classes · Market-cap snapshot: {sp500DossierBatchAsOf}</span><a href={sp500DossierBatchSource} target="_blank" rel="noreferrer">Nasdaq source ↗</a></div>
       </div>
     </section>
+    {russellRollout.length > 0 && <section className="container research-batch-section">
+      <header><div><span className="kicker">RUSSELL 2000 · ACTIVE RESEARCH FOUNDATIONS</span><h2>Ranked by current market capitalization</h2></div><p>These tickers use live market data and automated SEC filing ingestion. They are labeled research foundations—not benchmark-complete dossiers—until claim-level evidence and bull/bear analysis pass editorial review.</p></header>
+      <ResearchFoundationList companies={russellRollout} />
+      <aside className="research-batch-method"><strong>Live ranking policy</strong><p>Market capitalizations refresh from Nasdaq’s listed-universe feed. D1 recalculates descending rank after each refresh; missing values appear last and are never replaced by fabricated estimates.</p></aside>
+    </section>}
     <section className="container research-batch-section">
       <header><div><span className="kicker">BATCH 01</span><h2>Largest S&amp;P 500 companies</h2></div><p>Each dossier includes the business model, balanced thesis, six financial drivers, five material risks, four watchpoints, six owner questions, six comparables, and primary SEC and company sources.</p></header>
       <BatchList companies={sp500DossierBatch01} />

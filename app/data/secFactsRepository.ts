@@ -41,7 +41,6 @@ export async function ensureFeaturedDossierRegistration(tickerValue: string) {
       name: company.name,
       sector: company.sector,
       exchange: company.exchange,
-      marketCap: company.marketCap,
       membershipsJson: JSON.stringify(company.memberships),
       indexWeightsJson: JSON.stringify(company.indexWeights),
       cik: secCompany.cik,
@@ -119,34 +118,14 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
 
 export async function importSecFilingFacts(tickerValue: string): Promise<SecFactImportResult> {
   const ticker = tickerValue.trim().toUpperCase();
-  const company = researchUniverse.find((candidate) => candidate.ticker === ticker);
-  const secCompany = getSecCompany(ticker);
-  if (!company || !secCompany) throw new Error("A verified ticker-to-CIK match is required.");
-
-  const source = `https://data.sec.gov/api/xbrl/companyfacts/CIK${secCompany.cik}.json`;
   const db = getDb();
-  await db.insert(companies).values({
-    ticker: company.ticker,
-    name: company.name,
-    sector: company.sector,
-    exchange: company.exchange,
-    marketCap: company.marketCap,
-    membershipsJson: JSON.stringify(company.memberships),
-    indexWeightsJson: JSON.stringify(company.indexWeights),
-    cik: secCompany.cik,
-  }).onConflictDoUpdate({
-    target: companies.ticker,
-    set: {
-      name: company.name,
-      sector: company.sector,
-      exchange: company.exchange,
-      marketCap: company.marketCap,
-      membershipsJson: JSON.stringify(company.memberships),
-      indexWeightsJson: JSON.stringify(company.indexWeights),
-      cik: secCompany.cik,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
-    },
-  });
+  const [storedCompany] = await db.select({ ticker: companies.ticker, cik: companies.cik }).from(companies)
+    .where(eq(companies.ticker, ticker)).limit(1);
+  const cik = storedCompany?.cik || getSecCompany(ticker)?.cik;
+  if (!storedCompany || !cik) throw new Error("A verified ticker-to-CIK match is required.");
+
+  const paddedCik = cik.padStart(10, "0");
+  const source = `https://data.sec.gov/api/xbrl/companyfacts/CIK${paddedCik}.json`;
 
   try {
     const response = await fetch(source, {
@@ -157,7 +136,7 @@ export async function importSecFilingFacts(tickerValue: string): Promise<SecFact
     });
     if (!response.ok) throw new Error(`SEC Company Facts returned ${response.status}.`);
 
-    const normalized = normalizeCompanyFacts(secCompany.cik, await response.json() as SecCompanyFacts);
+    const normalized = normalizeCompanyFacts(paddedCik, await response.json() as SecCompanyFacts);
     for (let index = 0; index < normalized.length; index += D1_FACT_BATCH_SIZE) {
       const values = normalized.slice(index, index + D1_FACT_BATCH_SIZE).map((fact) => ({ ticker, ...fact }));
       if (!values.length) continue;

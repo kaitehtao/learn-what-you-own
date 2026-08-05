@@ -1,9 +1,8 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { ensureDossierFreshnessSchema, ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
-import { companyRelationships, dossierClaims, dossierFreshnessChecks, dossierFreshnessEvents, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
-import { featuredDossiers } from "../../data/featuredDossiers";
-import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../data/secFactsRepository";
+import { companyDossiers, companyRelationships, dossierClaims, dossierFreshnessChecks, dossierFreshnessEvents, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
+import { importSecFilingFacts } from "../../data/secFactsRepository";
 import { researchUniverse } from "../../data/universe";
 
 export const dynamic = "force-dynamic";
@@ -62,8 +61,10 @@ export async function GET(request: Request) {
       db.select().from(dossierFreshnessEvents).where(eq(dossierFreshnessEvents.ticker, ticker))
         .orderBy(desc(dossierFreshnessEvents.filingDate), desc(dossierFreshnessEvents.detectedAt)).limit(12),
       db.select().from(dossierFreshnessChecks).where(eq(dossierFreshnessChecks.ticker, ticker)).limit(1),
+      db.select({ status: companyDossiers.status, qualityTier: companyDossiers.qualityTier, updatedAt: companyDossiers.updatedAt })
+        .from(companyDossiers).where(eq(companyDossiers.ticker, ticker)).limit(1),
     ]);
-    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult, freshnessResult, freshnessCheckResult] = queries;
+    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult, freshnessResult, freshnessCheckResult, dossierResult] = queries;
     let facts = factsResult.status === "fulfilled" ? factsResult.value : [];
     const claims = claimsResult.status === "fulfilled" ? claimsResult.value : [];
     const relationships = relationshipsResult.status === "fulfilled" ? relationshipsResult.value : [];
@@ -71,13 +72,14 @@ export async function GET(request: Request) {
     const quarterlyUpdates = quarterlyResult.status === "fulfilled" ? quarterlyResult.value : [];
     const freshnessEvents = freshnessResult.status === "fulfilled" ? freshnessResult.value : [];
     const freshnessChecks = freshnessCheckResult.status === "fulfilled" ? freshnessCheckResult.value : [];
+    const dossierRows = dossierResult.status === "fulfilled" ? dossierResult.value : [];
+    const dossierState = dossierRows[0] ?? null;
 
-    // Managed deployments can lag a newly added data migration. A completed
-    // dossier therefore performs one safe, idempotent first-read import when
-    // no filing history exists yet. Recurring refreshes remain scheduler-owned.
-    if (facts.length === 0 && featuredDossiers[ticker]) {
+    // Any published evidence-bearing dossier can safely bootstrap its filing
+    // facts on first read. Eligibility comes from D1 rather than a compiled
+    // ticker registry; recurring refreshes remain scheduler-owned.
+    if (facts.length === 0 && dossierState?.status === "published" && dossierState.qualityTier !== "starting_point") {
       try {
-        await ensureFeaturedDossierRegistration(ticker);
         await importSecFilingFacts(ticker);
         [facts, importRows] = await Promise.all([
           db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
@@ -96,6 +98,7 @@ export async function GET(request: Request) {
       quarterlyUpdates: quarterlyResult.status === "fulfilled" ? "available" : "unavailable",
       freshnessEvents: freshnessResult.status === "fulfilled" ? "available" : "unavailable",
       freshnessCheck: freshnessCheckResult.status === "fulfilled" ? "available" : "unavailable",
+      dossierState: dossierResult.status === "fulfilled" ? "available" : "unavailable",
     };
     queries.forEach((result, index) => {
       if (result.status === "rejected") console.error(`Research source ${Object.keys(sourceStatus)[index]} failed for ${ticker}.`, result.reason);
@@ -103,6 +106,7 @@ export async function GET(request: Request) {
 
     return Response.json({
       ticker,
+      dossier: dossierState,
       sourceStatus,
       facts: facts.map((fact) => ({
         id: fact.id,

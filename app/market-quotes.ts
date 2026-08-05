@@ -33,8 +33,17 @@ type NasdaqScreenerPayload = {
       name?: string;
       lastsale?: string;
       marketCap?: string;
+      url?: string;
     }> | null;
   } | null;
+};
+
+export type MarketUniverseSnapshot = {
+  ticker: string;
+  price: number | null;
+  marketCap: number | null;
+  sourceLabel: string;
+  sourceUrl: string;
 };
 
 type NasdaqHistoricalPayload = {
@@ -148,6 +157,37 @@ async function fetchNasdaqScreenerQuotes(tickers: string[]) {
     });
   }
   return quotes;
+}
+
+export async function fetchNasdaqMarketUniverse() {
+  const response = await fetch(NASDAQ_SCREENER_URL, {
+    headers: { accept: "application/json", "user-agent": "Learn What You Own market-cap ranking" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(NASDAQ_SCREENER_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Market universe provider returned ${response.status}`);
+  const payload = await response.json() as NasdaqScreenerPayload;
+  const snapshots = new Map<string, MarketUniverseSnapshot>();
+  for (const row of payload.data?.rows ?? []) {
+    const providerTicker = String(row.symbol ?? "").trim().toUpperCase();
+    if (!providerTicker) continue;
+    const snapshot = {
+      ticker: providerTicker,
+      price: priceFromDisplay(row.lastsale),
+      marketCap: marketCapFromDisplay(row.marketCap),
+      sourceLabel: "Nasdaq market activity",
+      sourceUrl: `https://www.nasdaq.com${row.url ?? `/market-activity/stocks/${encodeURIComponent(providerTicker.toLowerCase())}`}`,
+    };
+    const aliases = new Set([
+      providerTicker,
+      providerTicker.replaceAll("/", "."),
+      providerTicker.replaceAll("/", "-"),
+      providerTicker.replaceAll(".", "-"),
+      providerTicker.replaceAll("-", "."),
+    ]);
+    for (const alias of aliases) snapshots.set(alias, { ...snapshot, ticker: alias });
+  }
+  return snapshots;
 }
 
 export async function fetchNasdaqQuotes(tickerValues: string[]) {
