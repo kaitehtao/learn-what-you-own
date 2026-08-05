@@ -24,6 +24,13 @@ try {
   const stagedDist = path.join(stage, "dist");
   cpSync(distRoot, stagedDist, { recursive: true });
 
+  // The release archive is written inside dist by default. Exclude a prior
+  // archive so repeated packaging never nests the previous tarball inside the
+  // next one and changes the deployable payload.
+  if (archive.startsWith(`${distRoot}${path.sep}`)) {
+    rmSync(path.join(stagedDist, path.relative(distRoot, archive)), { force: true });
+  }
+
   const stagedOpenAi = path.join(stagedDist, ".openai");
   mkdirSync(stagedOpenAi, { recursive: true });
   cpSync(hostingConfig, path.join(stagedOpenAi, "hosting.json"));
