@@ -174,7 +174,7 @@ npm run deploy:production
 The deployment command records the Git commit in `RELEASE_COMMIT_SHA`, which is visible to administrators in the production dashboard. It refuses to deploy tracked, uncommitted work.
 After Wrangler publishes, the same command runs `npm run verify:authority`. The release fails unless apex, `www`, and the direct Workers.dev URL return identical public-research statistics and the exact deployed Git SHA.
 
-Before saving a Sites version, package from a fresh exact-commit staging directory and run `npm run sites:verify-archive -- <archive.tgz>`. The verifier rejects nested `dist/dist` trees and any SQL migration that is not tracked by the release commit.
+Before saving a Sites version, create the archive with `npm run sites:package -- <archive.tgz>`. The packager stages the existing production build, copies only Git-tracked migrations, and runs `sites:verify-archive` automatically. The verifier rejects nested `dist/dist` trees and any SQL migration that is not tracked by the release commit. Do not upload an archive produced by copying the working tree's `drizzle` directory directly because local dossier drafts are intentionally excluded from releases.
 
 Alternatively, use the existing Cloudflare Git integration only after confirming it targets account `e5c3672efaf52cf5b417da2b09e687af`, Worker `learn-what-you-own`, and branch `main`.
 
