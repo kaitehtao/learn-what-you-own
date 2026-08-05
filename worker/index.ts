@@ -81,23 +81,29 @@ async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
 }
 
 async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
-  const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-freshness", "learn-what-you-own-dossier-freshness/1.0");
-  if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
-
   // The public domain is currently dispatched through Sites, whose D1 binding
   // is distinct from the canonical Cloudflare deployment. Mirror the same
   // source-driven scan into that public database so the visible dossier and
   // the operational Worker remain fresh together. Sites does not receive this
   // mirror-only credential, which prevents a future Sites cron from recursing.
-  if (!env.SITES_MIRROR_CRON_SECRET) return;
-  const mirrorResponse = await fetch(`${SITES_MIRROR_ORIGIN}/api/internal/dossier-freshness`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.SITES_MIRROR_CRON_SECRET}`,
-      "user-agent": "learn-what-you-own-dossier-freshness-mirror/1.0",
-      "x-lwyo-sites-mirror": "dossier-freshness",
-    },
-  });
+  // Twelve dossiers per quarter-hour keeps both source-heavy SEC scans within
+  // Worker execution limits and sweeps the full 519-company universe about
+  // twice per day. Run both stores concurrently so one cannot starve the other.
+  const pathname = "/api/internal/dossier-freshness?limit=12";
+  const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-dossier-freshness/1.0");
+  const mirrorRequest = env.SITES_MIRROR_CRON_SECRET
+    ? fetch(`${SITES_MIRROR_ORIGIN}${pathname}`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${env.SITES_MIRROR_CRON_SECRET}`,
+          "user-agent": "learn-what-you-own-dossier-freshness-mirror/1.0",
+          "x-lwyo-sites-mirror": "dossier-freshness",
+        },
+      })
+    : Promise.resolve(null);
+  const [response, mirrorResponse] = await Promise.all([localRequest, mirrorRequest]);
+  if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
+  if (!mirrorResponse) return;
   if (!mirrorResponse.ok) throw new Error(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
 }
 
