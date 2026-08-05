@@ -17,37 +17,37 @@ ON CONFLICT(ticker) DO UPDATE SET
   published_at=COALESCE(company_dossiers.published_at,CURRENT_TIMESTAMP),
   updated_at=CURRENT_TIMESTAMP;
 --> statement-breakpoint
-INSERT INTO dossier_sources(ticker,source_type,title,url,evidence_date,excerpt,verified_at)
-SELECT m.ticker,'sec_company_page','SEC EDGAR issuer filings',
-  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude',DATE('now'),'Live SEC issuer filing index.',CURRENT_TIMESTAMP
+INSERT INTO dossier_sources(ticker,source_type,title,url)
+SELECT m.ticker,'sec','SEC EDGAR issuer filings',
+  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude'
 FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
 WHERE m.batch_id='russell-2000-market-cap-01' AND c.cik IS NOT NULL AND c.cik<>''
   AND NOT EXISTS(SELECT 1 FROM dossier_sources ds WHERE ds.ticker=m.ticker AND ds.url='https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude');
 --> statement-breakpoint
-INSERT INTO dossier_sources(ticker,source_type,title,url,evidence_date,excerpt,verified_at)
-SELECT m.ticker,'sec_company_page','Annual reports (10-K)',
-  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-K',DATE('now'),'Live SEC annual-report index.',CURRENT_TIMESTAMP
+INSERT INTO dossier_sources(ticker,source_type,title,url)
+SELECT m.ticker,'sec','Annual reports (10-K)',
+  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-K'
 FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
 WHERE m.batch_id='russell-2000-market-cap-01' AND c.cik IS NOT NULL AND c.cik<>''
   AND NOT EXISTS(SELECT 1 FROM dossier_sources ds WHERE ds.ticker=m.ticker AND ds.url='https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-K');
 --> statement-breakpoint
-INSERT INTO dossier_sources(ticker,source_type,title,url,evidence_date,excerpt,verified_at)
-SELECT m.ticker,'sec_company_page','Quarterly reports (10-Q)',
-  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-Q',DATE('now'),'Live SEC quarterly-report index.',CURRENT_TIMESTAMP
+INSERT INTO dossier_sources(ticker,source_type,title,url)
+SELECT m.ticker,'sec','Quarterly reports (10-Q)',
+  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-Q'
 FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
 WHERE m.batch_id='russell-2000-market-cap-01' AND c.cik IS NOT NULL AND c.cik<>''
   AND NOT EXISTS(SELECT 1 FROM dossier_sources ds WHERE ds.ticker=m.ticker AND ds.url='https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=10-Q');
 --> statement-breakpoint
-INSERT INTO dossier_sources(ticker,source_type,title,url,evidence_date,excerpt,verified_at)
-SELECT m.ticker,'sec_company_page','Material current reports and earnings exhibits (8-K)',
-  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=8-K',DATE('now'),'Live SEC material-current-report index.',CURRENT_TIMESTAMP
+INSERT INTO dossier_sources(ticker,source_type,title,url)
+SELECT m.ticker,'sec','Material current reports and earnings exhibits (8-K)',
+  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=8-K'
 FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
 WHERE m.batch_id='russell-2000-market-cap-01' AND c.cik IS NOT NULL AND c.cik<>''
   AND NOT EXISTS(SELECT 1 FROM dossier_sources ds WHERE ds.ticker=m.ticker AND ds.url='https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=8-K');
 --> statement-breakpoint
-INSERT INTO dossier_sources(ticker,source_type,title,url,evidence_date,excerpt,verified_at)
-SELECT m.ticker,'sec_company_page','Proxy statements and beneficial ownership (DEF 14A)',
-  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=DEF+14A',DATE('now'),'Live SEC proxy-statement index.',CURRENT_TIMESTAMP
+INSERT INTO dossier_sources(ticker,source_type,title,url)
+SELECT m.ticker,'sec','Proxy statements and beneficial ownership (DEF 14A)',
+  'https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=DEF+14A'
 FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
 WHERE m.batch_id='russell-2000-market-cap-01' AND c.cik IS NOT NULL AND c.cik<>''
   AND NOT EXISTS(SELECT 1 FROM dossier_sources ds WHERE ds.ticker=m.ticker AND ds.url='https://www.sec.gov/edgar/browse/?CIK=' || printf('%010d',CAST(c.cik AS INTEGER)) || '&owner=exclude&action=getcompany&type=DEF+14A');
