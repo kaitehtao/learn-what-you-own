@@ -10,7 +10,10 @@ const eventLabel=(value:string)=>value.replaceAll("_"," ").replace(/\b\w/g,(lett
 export function FreshnessQueue(){
   const [data,setData]=useState<QueueResponse|null>(null); const [error,setError]=useState(""); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(""); const [summaries,setSummaries]=useState<Record<number,string>>({});
   const load=useCallback(async()=>{const response=await authenticatedFetch("/api/admin/freshness");if(response.status===401)return void window.location.replace(loginPath("/admin"));const body=await response.json() as QueueResponse;if(!response.ok)setError(body.error??"Unable to load filing freshness.");else{setData(body);setError("");}},[]);
-  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>void load(),0);
+    return()=>window.clearTimeout(timer);
+  },[load]);
   const counts=useMemo(()=>new Map(data?.statusCounts.map(row=>[row.status,Number(row.count)])??[]),[data]);
   async function runNow(){setBusy("scan");setError("");const response=await authenticatedFetch("/api/admin/freshness",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({limit:25})});const body=await response.json() as {detected?:number;processed?:number;error?:string};if(!response.ok)setError(body.error??"Unable to run freshness scan.");else{setNotice(`Scanned ${body.processed??0} dossiers and detected ${body.detected??0} new filing events.`);await load();}setBusy("");}
   async function decide(event:EventRow,action:"publish"|"ignore"|"reopen"){setBusy(`${action}:${event.id}`);setError("");setNotice("");const response=await authenticatedFetch("/api/admin/freshness",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:event.id,action,editorialSummary:summaries[event.id]??event.editorial_summary})});const body=await response.json() as {error?:string};if(!response.ok)setError(body.error??"Unable to update filing event.");else{setNotice(action==="publish"?`${event.ticker} filing update published.`:action==="ignore"?`${event.ticker} filing reviewed with no dossier change.`:`${event.ticker} filing returned to review.`);await load();}setBusy("");}

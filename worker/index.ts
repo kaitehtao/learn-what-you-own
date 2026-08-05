@@ -8,6 +8,7 @@ interface Env {
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
   NOTIFICATION_CRON_SECRET: string;
+  SITES_MIRROR_CRON_SECRET?: string;
   NOTIFICATION_SITE_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -21,6 +22,7 @@ interface Env {
 const DIGEST_TIME_ZONE = "America/Los_Angeles";
 const DIGEST_HOUR = "08";
 const CANONICAL_ORIGIN = "https://learnwhatyouown.com";
+const SITES_MIRROR_ORIGIN = "https://learn-what-you-own.julianspencer.chatgpt.site";
 const PUBLIC_ALIAS_HOSTS = new Set([
   "www.learnwhatyouown.com",
   "learn-what-you-own.julianspencer.chatgpt.site",
@@ -81,6 +83,22 @@ async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
 async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-freshness", "learn-what-you-own-dossier-freshness/1.0");
   if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
+
+  // The public domain is currently dispatched through Sites, whose D1 binding
+  // is distinct from the canonical Cloudflare deployment. Mirror the same
+  // source-driven scan into that public database so the visible dossier and
+  // the operational Worker remain fresh together. Sites does not receive this
+  // mirror-only credential, which prevents a future Sites cron from recursing.
+  if (!env.SITES_MIRROR_CRON_SECRET) return;
+  const mirrorResponse = await fetch(`${SITES_MIRROR_ORIGIN}/api/internal/dossier-freshness`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.SITES_MIRROR_CRON_SECRET}`,
+      "user-agent": "learn-what-you-own-dossier-freshness-mirror/1.0",
+      "x-lwyo-sites-mirror": "dossier-freshness",
+    },
+  });
+  if (!mirrorResponse.ok) throw new Error(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
 }
 
 interface ExecutionContext {
@@ -98,7 +116,10 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const canonicalUrl = canonicalPublicUrl(request.url);
-    if (canonicalUrl) return Response.redirect(canonicalUrl, 308);
+    const isAuthorizedMirrorRoute =
+      url.pathname === "/api/internal/dossier-freshness" &&
+      request.headers.get("x-lwyo-sites-mirror") === "dossier-freshness";
+    if (canonicalUrl && !isAuthorizedMirrorRoute) return Response.redirect(canonicalUrl, 308);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

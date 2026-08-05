@@ -985,6 +985,9 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(digestRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /America\/Los_Angeles/);
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
+  assert.match(worker, /SITES_MIRROR_CRON_SECRET/);
+  assert.match(worker, /x-lwyo-sites-mirror/);
+  assert.match(worker, /Sites dossier freshness mirror returned/);
   assert.match(worker, /handler\.fetch\(new Request/);
   assert.doesNotMatch(worker, /await fetch\(`\$\{siteUrl\}\/api\/internal\/sec-facts-refresh/);
   assert.match(worker, /\/api\/notifications\/email-digest/);
