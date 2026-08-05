@@ -8,6 +8,38 @@ let brokerageClickSchemaPromise: Promise<unknown> | null = null;
 let insiderActivitySchemaPromise: Promise<unknown> | null = null;
 let earningsIntelligenceSchemaPromise: Promise<unknown> | null = null;
 let dossierFreshnessSchemaPromise: Promise<unknown> | null = null;
+let dossierQualitySchemaPromise: Promise<unknown> | null = null;
+
+export function ensureDossierQualitySchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!dossierQualitySchemaPromise) {
+    dossierQualitySchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_quality_rules (
+        id TEXT PRIMARY KEY NOT NULL,
+        label TEXT NOT NULL,
+        min_source_count INTEGER NOT NULL CHECK(min_source_count > 0),
+        min_verified_claim_count INTEGER NOT NULL CHECK(min_verified_claim_count > 0),
+        min_distinct_section_count INTEGER NOT NULL CHECK(min_distinct_section_count > 0),
+        min_distinct_claim_type_count INTEGER NOT NULL CHECK(min_distinct_claim_type_count > 0),
+        is_active INTEGER NOT NULL DEFAULT 0 CHECK(is_active IN (0,1)),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS dossier_quality_active_rule_idx ON dossier_quality_rules(is_active) WHERE is_active=1"),
+      env.DB.prepare(`INSERT OR IGNORE INTO dossier_quality_rules
+        (id,label,min_source_count,min_verified_claim_count,min_distinct_section_count,min_distinct_claim_type_count,is_active)
+        VALUES ('evidence-standard-v1','Evidence-led owner dossier standard',5,8,8,2,1)`),
+      env.DB.prepare(`UPDATE dossier_quality_rules SET is_active=1,updated_at=CURRENT_TIMESTAMP
+        WHERE id='evidence-standard-v1' AND NOT EXISTS (
+          SELECT 1 FROM dossier_quality_rules WHERE is_active=1
+        )`),
+    ]).catch((error) => {
+      dossierQualitySchemaPromise = null;
+      throw error;
+    });
+  }
+  return dossierQualitySchemaPromise;
+}
 
 export function ensureDossierFreshnessSchema() {
   if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");

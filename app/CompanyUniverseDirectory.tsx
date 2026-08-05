@@ -43,7 +43,8 @@ type QualitySummary = {
   zero_sources: number;
   five_plus_sources: number;
 };
-type Payload = { total: number; page: number; pageSize: number; companies: CatalogCompany[]; qualitySummary?: QualitySummary | null };
+type QualityRule = { id:string;label:string;min_source_count:number;min_verified_claim_count:number;min_distinct_section_count:number;min_distinct_claim_type_count:number };
+type Payload = { total: number; page: number; pageSize: number; companies: CatalogCompany[]; qualitySummary?: QualitySummary | null; qualityRule?: QualityRule | null };
 const PAGE_SIZE = 40;
 
 function displayName(name: string) {
@@ -133,7 +134,7 @@ export function CompanyUniverseDirectory({ market, indexMembership = "" }: { mar
         <header><div><span className="kicker">{indexMembership.toUpperCase()} DOSSIER COMPLETION PROGRAM</span><h2>{Number(payload.qualitySummary.benchmark_complete).toLocaleString()} benchmark complete · {(Number(payload.qualitySummary.total) - Number(payload.qualitySummary.benchmark_complete)).toLocaleString()} in progress</h2></div><strong>{((Number(payload.qualitySummary.benchmark_complete) / Math.max(1, Number(payload.qualitySummary.total))) * 100).toFixed(1)}%</strong></header>
         <div className="russell-completion-track" aria-label={`${indexMembership} benchmark dossier completion`}><i style={{width:`${(Number(payload.qualitySummary.benchmark_complete) / Math.max(1, Number(payload.qualitySummary.total))) * 100}%`}} /></div>
         <div className="russell-completion-stats"><div><strong>{Number(payload.qualitySummary.total).toLocaleString()}</strong><span>Active members tracked</span></div><div><strong>{Number(payload.qualitySummary.machine_enriched).toLocaleString()}</strong><span>Research foundations</span></div><div><strong>{Number(payload.qualitySummary.five_plus_sources).toLocaleString()}</strong><span>Five-plus primary sources</span></div><div><strong>{Number(payload.qualitySummary.starting_point).toLocaleString()}</strong><span>Queued starting pages</span></div></div>
-        <p>A ticker advances only after exact SEC evidence is ingested. “Benchmark complete” additionally requires claim-level sourcing, balanced bull and bear analysis, financial history, ownership, risks, catalysts, and editorial review.</p>
+        <p>A ticker advances only after exact SEC evidence is ingested. “Benchmark complete” is calculated from the active database rule{payload.qualityRule ? `: at least ${payload.qualityRule.min_source_count} distinct sources, ${payload.qualityRule.min_verified_claim_count} verified claims across ${payload.qualityRule.min_distinct_section_count} sections and ${payload.qualityRule.min_distinct_claim_type_count} evidence classes` : ""}. No ticker or completed count is manually embedded in this page.</p>
       </section>}
       {otc && <aside className="otc-disclosure"><strong>OTC does not mean “Pink Sheet” in every case.</strong><p>This directory includes all current issues in FINRA’s OTC security master, including common shares, ADRs, preferreds, funds, units, warrants, and other instruments. The issue-type filter shows what each symbol represents. A future OTC Markets tier feed would be required to label Pink Current, OTCQB, or OTCQX tiers.</p></aside>}
       <div className="filter-row catalog-filter-row"><strong>{loading ? "Loading…" : `${payload.total.toLocaleString()} securities`}</strong><div className="directory-controls">

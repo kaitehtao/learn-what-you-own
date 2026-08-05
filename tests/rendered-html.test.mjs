@@ -1601,6 +1601,8 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(starter, /rollout_priority_rank/);
   assert.match(batches, /members ranked by current market capitalization/);
   assert.match(rankingRoute, /fetchNasdaqMarketUniverse/);
+  assert.match(rankingRoute, /reconcileDossierQuality/);
+  assert.doesNotMatch(rankingRoute, /2026-08-05-complete-benchmark/);
   assert.match(rankingRoute, /peer_company\.market_cap>target_company\.market_cap/);
   assert.match(marketQuotes, /download=true/);
   assert.match(freshnessApi, /WHEN 'earnings_release' THEN 0/);

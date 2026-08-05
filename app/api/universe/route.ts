@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         ? `c.market_cap IS NULL, c.market_cap ${direction}, c.ticker ASC`
         : `c.ticker ${direction}`;
   const orderBinds = query ? [query.toUpperCase(), `${search}%`, `%${search}%`] : [];
-  const [results, qualitySummary] = await Promise.all([
+  const [results, qualitySummary, qualityRule] = await Promise.all([
     env.DB.prepare(`
     SELECT c.ticker, c.name, c.sector, c.exchange, c.market_cap, c.memberships_json,
       c.cik, c.security_type, c.security_description, c.universe_source_url,
@@ -88,6 +88,11 @@ export async function GET(request: Request) {
           AND c.memberships_json LIKE ? ESCAPE '\\'`)
         .bind(`%${escapedLike(JSON.stringify(membership).slice(1, -1))}%`).first()
       : Promise.resolve(null),
+    market === "listed" && memberships.has(membership)
+      ? env.DB.prepare(`SELECT id,label,min_source_count,min_verified_claim_count,
+          min_distinct_section_count,min_distinct_claim_type_count
+        FROM dossier_quality_rules WHERE is_active=1 ORDER BY updated_at DESC LIMIT 1`).first()
+      : Promise.resolve(null),
   ]);
 
   return Response.json({
@@ -97,5 +102,6 @@ export async function GET(request: Request) {
     total: Number(countResult?.count ?? 0),
     companies: results.results,
     qualitySummary,
+    qualityRule,
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }

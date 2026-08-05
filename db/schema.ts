@@ -38,6 +38,23 @@ export const companyDossiers = sqliteTable("company_dossiers", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Completion is a database policy, not a ticker allowlist. Editors can evolve
+// the active evidence standard without shipping a new front-end build, and the
+// scheduled reconciler applies the same rule to every dossier.
+export const dossierQualityRules = sqliteTable("dossier_quality_rules", {
+  id: text("id").primaryKey(),
+  label: text("label").notNull(),
+  minSourceCount: integer("min_source_count").notNull(),
+  minVerifiedClaimCount: integer("min_verified_claim_count").notNull(),
+  minDistinctSectionCount: integer("min_distinct_section_count").notNull(),
+  minDistinctClaimTypeCount: integer("min_distinct_claim_type_count").notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("dossier_quality_active_rule_idx").on(table.isActive).where(sql`${table.isActive} = true`),
+]);
+
 export const dossierSources = sqliteTable("dossier_sources", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   ticker: text("ticker").notNull().references(() => companyDossiers.ticker, { onDelete: "cascade" }),

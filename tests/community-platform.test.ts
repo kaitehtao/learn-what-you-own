@@ -51,3 +51,17 @@ test("generated D1 registry migrations cover every completed ticker dossier exac
   assert.equal([...combined.matchAll(/INSERT INTO dossier_audit_members/g)].length, Object.keys(featuredDossiers).length);
   for (const ticker of Object.keys(featuredDossiers)) assert.equal((combined.match(new RegExp(`'2026-08-05-complete-benchmark','${ticker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}'`, "g")) ?? []).length, 1, `${ticker} should have one canonical audit record`);
 });
+
+test("live dossier completion is reconciled from database evidence instead of legacy tickers", () => {
+  const quality = read("app/data/dossierQuality.ts");
+  const migration = read("drizzle/0033_live_dossier_quality_rules.sql");
+  const universe = read("app/api/universe/route.ts");
+  assert.match(quality, /COUNT\(DISTINCT s\.url\)/);
+  assert.match(quality, /COUNT\(DISTINCT CASE WHEN cl\.status IN \('verified','published'\)/);
+  assert.match(quality, /activeDossierQualityRule/);
+  assert.doesNotMatch(quality, /2026-08-05-complete-benchmark/);
+  assert.doesNotMatch(quality, /WHERE ticker IN \('/);
+  assert.match(migration, /dossier_quality_rules/);
+  assert.doesNotMatch(migration, /ONDS|AAP|AAMI|AMC|FCEL|AAT|ABAT/);
+  assert.match(universe, /qualityRule/);
+});

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { fetchNasdaqMarketUniverse } from "../../../market-quotes";
+import { reconcileDossierQuality } from "../../../data/dossierQuality";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Re-evaluate every dossier against the active database rule before the
+    // rollout is ranked. No ticker list or legacy completed count is involved.
+    const qualityReconciliation = await reconcileDossierQuality();
     const batchResult = await env.DB.prepare(`SELECT id,universe_name
       FROM dossier_expansion_batches
       WHERE status IN ('active','in_progress') AND universe_name='Russell 2000'
@@ -158,6 +162,7 @@ export async function POST(request: Request) {
       refreshed: updates.length,
       unavailable: allMembers.results.length - updates.length,
       progress,
+      qualityReconciliation,
       ranked: ranked.results,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {

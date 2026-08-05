@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
 type RolloutSummary = { total:number;benchmark_complete:number;evidence_ready:number;evidence_ingestion:number;research_backlog:number };
+type QualityRule = { id:string;label:string;min_source_count:number;min_verified_claim_count:number;min_distinct_section_count:number;min_distinct_claim_type_count:number };
 
 function money(value: number) {
   if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -46,8 +47,9 @@ function ResearchFoundationList({ companies }: { companies: RolloutCompany[] }) 
 export default async function ResearchBatchesPage() {
   let russellRollout: RolloutCompany[] = [];
   let russellSummary: RolloutSummary | null = null;
+  let qualityRule: QualityRule | null = null;
   try {
-    const [result, summary] = await Promise.all([
+    const [result, summary, rule] = await Promise.all([
       env.DB.prepare(`SELECT m.priority_rank,m.ticker,c.name,c.market_cap,m.workflow_status,
       COALESCE(d.quality_tier,'starting_point') AS quality_tier,m.source_count
       FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker
@@ -61,9 +63,13 @@ export default async function ResearchBatchesPage() {
         SUM(CASE WHEN workflow_status='research_backlog' THEN 1 ELSE 0 END) AS research_backlog
         FROM dossier_expansion_members
         WHERE batch_id=(SELECT id FROM dossier_expansion_batches WHERE universe_name='Russell 2000' AND status IN ('active','in_progress') ORDER BY updated_at DESC LIMIT 1)`).first<RolloutSummary>(),
+      env.DB.prepare(`SELECT id,label,min_source_count,min_verified_claim_count,
+        min_distinct_section_count,min_distinct_claim_type_count
+        FROM dossier_quality_rules WHERE is_active=1 ORDER BY updated_at DESC LIMIT 1`).first<QualityRule>(),
     ]);
     russellRollout = result.results;
     russellSummary = summary;
+    qualityRule = rule;
   } catch (error) {
     console.error("Unable to load active Russell dossier rollout", error);
   }
@@ -80,7 +86,7 @@ export default async function ResearchBatchesPage() {
     {russellRollout.length > 0 && <section className="container research-batch-section">
       <header><div><span className="kicker">RUSSELL 2000 · FULL-UNIVERSE DOSSIER PROGRAM</span><h2>{Number(russellSummary?.total??russellRollout.length).toLocaleString()} members ranked by current market capitalization</h2></div><p>Automated SEC evidence ingestion advances the full universe in controlled batches. {Number(russellSummary?.benchmark_complete??0).toLocaleString()} currently pass the benchmark; the table shows the next 100 highest-priority records. Research foundations are not labeled complete until claim-level evidence and balanced bull/bear analysis pass editorial review.</p></header>
       <ResearchFoundationList companies={russellRollout} />
-      <aside className="research-batch-method"><strong>Live ranking policy</strong><p>Market capitalizations refresh from Nasdaq’s listed-universe feed. D1 recalculates descending rank after each refresh; missing values appear last and are never replaced by fabricated estimates.</p></aside>
+      <aside className="research-batch-method"><strong>Live ranking and completion policy</strong><p>Market capitalizations refresh from Nasdaq’s listed-universe feed. D1 recalculates descending rank after each refresh; missing values appear last and are never replaced by fabricated estimates. {qualityRule ? `Completion is database-calculated under “${qualityRule.label}”: ${qualityRule.min_source_count}+ sources, ${qualityRule.min_verified_claim_count}+ verified claims, ${qualityRule.min_distinct_section_count}+ sections, and ${qualityRule.min_distinct_claim_type_count}+ evidence classes.` : "The active completion rule is read from D1 rather than a ticker list."}</p></aside>
     </section>}
     <section className="container research-batch-section">
       <header><div><span className="kicker">BATCH 01</span><h2>Largest S&amp;P 500 companies</h2></div><p>Each dossier includes the business model, balanced thesis, six financial drivers, five material risks, four watchpoints, six owner questions, six comparables, and primary SEC and company sources.</p></header>
