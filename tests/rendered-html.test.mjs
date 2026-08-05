@@ -1546,7 +1546,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
 });
 
 test("separates publication from dossier quality and ranks Russell research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, starter, batches, rankingRoute, marketQuotes, freshnessApi, freshnessAdmin, worker] = await Promise.all([
+  const [schema, migration, activation, universeRoute, directory, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, freshnessApi, freshnessAdmin, worker] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0031_activate_ranked_research_foundations.sql"),
@@ -1556,6 +1556,8 @@ test("separates publication from dossier quality and ranks Russell research from
     source("app/research/batches/page.tsx"),
     source("app/api/internal/rollout-market-cap-refresh/route.ts"),
     source("app/market-quotes.ts"),
+    source("app/api/research/route.ts"),
+    source("app/data/secFactsRepository.ts"),
     source("app/api/admin/freshness/route.ts"),
     source("app/admin/FreshnessQueue.tsx"),
     source("worker/index.ts"),
@@ -1565,8 +1567,9 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(migration, /russell-2000-market-cap-01/);
   assert.match(migration, /ROW_NUMBER\(\) OVER \(ORDER BY c\.market_cap DESC/);
   assert.match(activation, /SELECT m\.ticker,'published','machine_enriched'/);
-  assert.match(activation, /Annual reports \(10-K\)/);
-  assert.match(activation, /Proxy statements and beneficial ownership/);
+  assert.doesNotMatch(activation, /INSERT INTO dossier_sources/);
+  assert.match(researchRoute, /importSecFilingFacts\(ticker\)/);
+  assert.match(secFacts, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
   assert.match(universeRoute, /dossier_quality_tier/);
   assert.match(universeRoute, /dossier_source_count/);
   assert.match(directory, /Benchmark-complete dossier/);
