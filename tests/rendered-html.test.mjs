@@ -1731,6 +1731,33 @@ test("links portfolio members to official brokerage login and account-opening de
   assert.match(styles, /\.brokerage-grid\{display:grid;grid-template-columns:repeat\(3/);
 });
 
+test("organizes company conversations without scraping Stocktwits messages", async () => {
+  const [hub, conversations, featured, starter, navigation, styles] = await Promise.all([
+    source("app/conversations/page.tsx"),
+    source("app/CompanyConversations.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/ui.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(hub, /Conversations with/);
+  assert.match(hub, /CompanyConversations ticker=\{ticker\}/);
+  assert.match(conversations, /LearnWhatYouOwn community/);
+  assert.match(conversations, /Stocktwits market pulse/);
+  assert.match(conversations, /widgets-api\.stocktwits-cdn\.com\/loader\.js/);
+  assert.match(conversations, /chunks-prd\.stocktwits-cdn\.com/);
+  assert.match(conversations, /tab !== "stocktwits"/);
+  assert.match(conversations, /https:\/\/stocktwits\.com\/symbol\//);
+  assert.match(conversations, /has not yet released its per-symbol embed/);
+  assert.doesNotMatch(conversations, /api\.stocktwits\.com|fetch\([^)]*stocktwits/i);
+  assert.match(featured, /href="#conversations"/);
+  assert.match(featured, /<CompanyConversations ticker=\{company\.ticker\}/);
+  assert.match(starter, /<CompanyConversations ticker=\{company\.ticker\}/);
+  assert.match(navigation, /href="\/conversations"/);
+  assert.match(styles, /\.stocktwits-widget-shell/);
+  assert.match(styles, /@media\(max-width:760px\).*\.conversation-heading/s);
+});
+
 test("publishes a responsive cross-company SEC insider activity research screen", async () => {
   const [page, client, publicApi, refreshApi, repository, worker, schema, runtimeSchema, migration, navigation, layout, styles] = await Promise.all([
     source("app/insider-activity/page.tsx"),

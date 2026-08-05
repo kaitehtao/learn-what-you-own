@@ -68,11 +68,18 @@ export function Header() {
               <Link href="/research/batches">Coverage program</Link>
             </div>
           </details>
-          <Link href="/research/community">Community</Link>
+          <details className="workspace-menu community-menu">
+            <summary>Community</summary>
+            <div>
+              <Link href="/research/community">Published research</Link>
+              <Link href="/conversations">Conversations</Link>
+              <Link href="/contributors">Contributors</Link>
+              <Link href="/community-guidelines">Community guidelines</Link>
+            </div>
+          </details>
           <Link href="/interviews">Interviews</Link>
           <Link href="/founders-letter">Founder’s Letter</Link>
           <Link href="/contribute">Contribute</Link>
-          <Link href="/contributors">Contributors</Link>
           <Link href="/feedback">Feedback</Link>
           {signedIn && (
             <details className="workspace-menu">
