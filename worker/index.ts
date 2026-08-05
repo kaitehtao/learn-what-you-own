@@ -81,15 +81,10 @@ async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
 }
 
 async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
-  // The public domain is currently dispatched through Sites, whose D1 binding
-  // is distinct from the canonical Cloudflare deployment. Mirror the same
-  // source-driven scan into that public database so the visible dossier and
-  // the operational Worker remain fresh together. Sites does not receive this
-  // mirror-only credential, which prevents a future Sites cron from recursing.
-  // Twelve dossiers per quarter-hour keeps both source-heavy SEC scans within
-  // Worker execution limits and sweeps the full 519-company universe about
-  // twice per day. Run both stores concurrently so one cannot starve the other.
-  const pathname = "/api/internal/dossier-freshness?limit=12";
+  // Cloudflare is authoritative. Twenty-five dossiers per quarter-hour can
+  // revisit a roughly 2,000-company Russell universe within a day. The Sites
+  // mirror is best-effort and must never block the canonical scan.
+  const pathname = "/api/internal/dossier-freshness?limit=25";
   const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-dossier-freshness/1.0");
   const mirrorRequest = env.SITES_MIRROR_CRON_SECRET
     ? fetch(`${SITES_MIRROR_ORIGIN}${pathname}`, {
@@ -104,7 +99,7 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   const [response, mirrorResponse] = await Promise.all([localRequest, mirrorRequest]);
   if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
   if (!mirrorResponse) return;
-  if (!mirrorResponse.ok) throw new Error(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
+  if (!mirrorResponse.ok) console.warn(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
 }
 
 interface ExecutionContext {

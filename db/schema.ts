@@ -27,6 +27,9 @@ export const companies = sqliteTable("companies", {
 export const companyDossiers = sqliteTable("company_dossiers", {
   ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
   status: text("status", { enum: ["queued", "researching", "verified", "published"] }).notNull().default("queued"),
+  qualityTier: text("quality_tier", { enum: ["starting_point", "machine_enriched", "editorial_review", "benchmark_complete"] }).notNull().default("starting_point"),
+  qualityReviewedAt: text("quality_reviewed_at"),
+  qualityRunId: text("quality_run_id"),
   contentJson: text("content_json"),
   verifiedBy: text("verified_by"),
   verifiedAt: text("verified_at"),

@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 const memberships = new Set(["S&P 500", "Russell 2000", "Russell 3000", "Nasdaq-100 (QQQ)", "Extended Coverage"]);
 const sorts = new Set(["ticker", "company", "market_cap"]);
+const qualityTiers = new Set(["starting_point", "machine_enriched", "editorial_review", "benchmark_complete"]);
 
 function escapedLike(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
   const exchange = (url.searchParams.get("exchange") ?? "").toUpperCase();
   const securityType = (url.searchParams.get("securityType") ?? "").trim().slice(0, 100);
   const membership = (url.searchParams.get("membership") ?? "").trim();
+  const qualityTier = (url.searchParams.get("qualityTier") ?? "").trim();
   const sort = sorts.has(url.searchParams.get("sort") ?? "") ? url.searchParams.get("sort")! : "ticker";
   const direction = url.searchParams.get("direction") === "desc" ? "DESC" : "ASC";
   const page = Math.max(1, Math.min(10_000, Number(url.searchParams.get("page")) || 1));
@@ -35,6 +37,10 @@ export async function GET(request: Request) {
     clauses.push("c.memberships_json LIKE ? ESCAPE '\\'");
     binds.push(`%${escapedLike(JSON.stringify(membership).slice(1, -1))}%`);
   }
+  if (qualityTiers.has(qualityTier)) {
+    clauses.push("COALESCE(d.quality_tier, 'starting_point') = ?");
+    binds.push(qualityTier);
+  }
   const search = escapedLike(query.toUpperCase());
   if (query) {
     clauses.push("(UPPER(c.ticker) LIKE ? ESCAPE '\\' OR UPPER(c.name) LIKE ? ESCAPE '\\' OR UPPER(c.security_description) LIKE ? ESCAPE '\\')");
@@ -42,7 +48,7 @@ export async function GET(request: Request) {
   }
 
   const where = clauses.join(" AND ");
-  const countResult = await env.DB.prepare(`SELECT COUNT(*) AS count FROM companies c WHERE ${where}`)
+  const countResult = await env.DB.prepare(`SELECT COUNT(*) AS count FROM companies c LEFT JOIN company_dossiers d ON d.ticker=c.ticker WHERE ${where}`)
     .bind(...binds).first<{ count: number }>();
   const order = query
     ? "CASE WHEN UPPER(c.ticker) = ? THEN 0 WHEN UPPER(c.ticker) LIKE ? ESCAPE '\\' THEN 1 WHEN UPPER(c.name) LIKE ? ESCAPE '\\' THEN 2 ELSE 3 END, c.ticker ASC"
@@ -55,7 +61,10 @@ export async function GET(request: Request) {
   const results = await env.DB.prepare(`
     SELECT c.ticker, c.name, c.sector, c.exchange, c.market_cap, c.memberships_json,
       c.cik, c.security_type, c.security_description, c.universe_source_url,
-      c.universe_source_as_of, d.status AS dossier_status
+      c.universe_source_as_of, d.status AS dossier_status,
+      COALESCE(d.quality_tier, 'starting_point') AS dossier_quality_tier,
+      d.quality_reviewed_at AS dossier_quality_reviewed_at,
+      (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker) AS dossier_source_count
     FROM companies c
     LEFT JOIN company_dossiers d ON d.ticker = c.ticker
     WHERE ${where}

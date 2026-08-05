@@ -9,12 +9,14 @@ export async function GET(request: Request) {
   try {
     await requireEditor(request);
     await ensureDossierFreshnessSchema();
-    const [events, statusCounts, checkCounts] = await Promise.all([
-      env.DB.prepare(`SELECT id,ticker,accession_number,form,filing_date,report_date,source_url,event_type,sec_items_json,materiality_reason,review_focus_json,facts_refresh_status,facts_refresh_detail,status,editorial_summary,reviewed_by,reviewed_at,published_at,detected_at FROM dossier_freshness_events ORDER BY CASE status WHEN 'editorial_review' THEN 0 WHEN 'failed' THEN 1 ELSE 2 END,filing_date DESC,detected_at DESC LIMIT 200`).all(),
+    const [events, statusCounts, checkCounts, rolloutBatch, rolloutMembers] = await Promise.all([
+      env.DB.prepare(`SELECT id,ticker,accession_number,form,filing_date,report_date,source_url,event_type,sec_items_json,materiality_reason,review_focus_json,facts_refresh_status,facts_refresh_detail,status,editorial_summary,reviewed_by,reviewed_at,published_at,detected_at FROM dossier_freshness_events ORDER BY CASE status WHEN 'editorial_review' THEN 0 WHEN 'failed' THEN 1 ELSE 2 END, CASE event_type WHEN 'earnings_release' THEN 0 WHEN 'annual_report' THEN 1 WHEN 'quarterly_report' THEN 2 WHEN 'proxy' THEN 3 WHEN 'material_8k' THEN 4 ELSE 5 END, filing_date DESC,detected_at DESC LIMIT 200`).all(),
       env.DB.prepare("SELECT status,COUNT(*) AS count FROM dossier_freshness_events GROUP BY status").all(),
       env.DB.prepare("SELECT COUNT(*) AS monitored,SUM(CASE WHEN error_message IS NOT NULL THEN 1 ELSE 0 END) AS errors,MIN(last_success_at) AS oldest_success,MAX(last_success_at) AS latest_success FROM dossier_freshness_checks").first(),
+      env.DB.prepare("SELECT id,universe_name,selection_rule,target_count,status,created_at,updated_at FROM dossier_expansion_batches WHERE id='russell-2000-market-cap-01'").first(),
+      env.DB.prepare(`SELECT m.ticker,m.priority_rank,m.workflow_status,m.source_count,c.name,c.market_cap,COALESCE(d.quality_tier,'starting_point') AS quality_tier FROM dossier_expansion_members m JOIN companies c ON c.ticker=m.ticker LEFT JOIN company_dossiers d ON d.ticker=m.ticker WHERE m.batch_id='russell-2000-market-cap-01' ORDER BY m.priority_rank`).all(),
     ]);
-    return Response.json({ events: events.results, statusCounts: statusCounts.results, checks: checkCounts });
+    return Response.json({ events: events.results, statusCounts: statusCounts.results, checks: checkCounts, rollout: rolloutBatch ? { batch: rolloutBatch, members: rolloutMembers.results } : null });
   } catch (error) { return apiError(error); }
 }
 

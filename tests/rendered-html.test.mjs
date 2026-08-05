@@ -1025,7 +1025,7 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
   assert.match(worker, /SITES_MIRROR_CRON_SECRET/);
   assert.match(worker, /x-lwyo-sites-mirror/);
-  assert.match(worker, /dossier-freshness\?limit=12/);
+  assert.match(worker, /dossier-freshness\?limit=25/);
   assert.match(worker, /Promise\.all\(\[localRequest, mirrorRequest\]\)/);
   assert.match(worker, /Sites dossier freshness mirror returned/);
   assert.match(worker, /handler\.fetch\(new Request/);
@@ -1508,9 +1508,11 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(importer, /quarterlyDossierUpdates/);
   assert.match(importer, /ensureFeaturedDossierRegistration/);
   assert.match(importer, /Founding editorial research/);
-  assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 8/);
-  assert.match(scheduledRoute, /orderBy\(asc\(filingFactImports\.lastAttemptedAt\)/);
-  assert.match(scheduledRoute, /Object\.values\(featuredDossiers\)/);
+  assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 12/);
+  assert.match(scheduledRoute, /FROM company_dossiers d JOIN companies c/);
+  assert.match(scheduledRoute, /COALESCE\(f\.last_attempted_at,''\) ASC/);
+  assert.match(scheduledRoute, /COALESCE\(d\.quality_tier,'starting_point'\)<>'starting_point'/);
+  assert.doesNotMatch(scheduledRoute, /Object\.values\(featuredDossiers\)/);
   assert.match(scheduledRoute, /ensureFeaturedDossierRegistration/);
   assert.match(scheduledRoute, /cloudflare:workers/);
   assert.match(scheduledRoute, /bindings\.NOTIFICATION_CRON_SECRET/);
@@ -1536,6 +1538,31 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(amcSeed, /CIK0001411579\.json', 240, 12/);
   assert.match(publisher, /generateSecFactSql/);
   assert.match(styles, /\.filing-history\{display:flex/);
+});
+
+test("separates publication from dossier quality and stages Russell research behind an evidence gate", async () => {
+  const [schema, migration, universeRoute, directory, freshnessApi, freshnessAdmin, worker] = await Promise.all([
+    source("db/schema.ts"),
+    source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
+    source("app/api/universe/route.ts"),
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/api/admin/freshness/route.ts"),
+    source("app/admin/FreshnessQueue.tsx"),
+    source("worker/index.ts"),
+  ]);
+  assert.match(schema, /qualityTier: text\("quality_tier"/);
+  assert.match(migration, /benchmark_complete/);
+  assert.match(migration, /russell-2000-market-cap-01/);
+  assert.match(migration, /ROW_NUMBER\(\) OVER \(ORDER BY c\.market_cap DESC/);
+  assert.match(universeRoute, /dossier_quality_tier/);
+  assert.match(universeRoute, /dossier_source_count/);
+  assert.match(directory, /Benchmark-complete dossier/);
+  assert.match(directory, /Research foundation/);
+  assert.doesNotMatch(directory, />Published dossier</);
+  assert.match(freshnessApi, /WHEN 'earnings_release' THEN 0/);
+  assert.match(freshnessAdmin, /first 50-company evidence batch/);
+  assert.match(worker, /dossier-freshness\?limit=25/);
+  assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
 });
 
 test("shows privacy-preserving watchlist follower totals for every company", async () => {

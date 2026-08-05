@@ -1,16 +1,12 @@
-import { asc } from "drizzle-orm";
 import { env } from "cloudflare:workers";
-import { getDb } from "../../../../db";
-import { filingFactImports } from "../../../../db/schema";
-import { featuredDossiers } from "../../../data/featuredDossiers";
 import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../../data/secFactsRepository";
 
 export const dynamic = "force-dynamic";
 
-// The Worker invokes this small batch several times per day. Eight dossiers per
-// run rotates through the expanded flagship universe without creating a burst
-// against SEC data services or D1; first dossier reads can self-heal sooner.
-const SCHEDULED_REFRESH_LIMIT = 8;
+// The Worker invokes this serial batch several times per day. It rotates across
+// all evidence-bearing published dossiers without creating a burst against SEC
+// data services or D1; first dossier reads can still self-heal sooner.
+const SCHEDULED_REFRESH_LIMIT = 12;
 
 function secretValue() {
   const bindings = env as unknown as Record<string, unknown>;
@@ -28,16 +24,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const db = getDb();
-  const importHistory = await db.select({
-    ticker: filingFactImports.ticker,
-    lastAttemptedAt: filingFactImports.lastAttemptedAt,
-  }).from(filingFactImports).orderBy(asc(filingFactImports.lastAttemptedAt));
-  const attempts = new Map(importHistory.map((row) => [row.ticker, row.lastAttemptedAt]));
-  const candidates = [...new Set(Object.values(featuredDossiers).map((dossier) => dossier.ticker))]
-    .map((ticker) => ({ ticker, lastAttemptedAt: attempts.get(ticker) ?? null }))
-    .sort((left, right) => String(left.lastAttemptedAt ?? "").localeCompare(String(right.lastAttemptedAt ?? "")) || left.ticker.localeCompare(right.ticker))
-    .slice(0, SCHEDULED_REFRESH_LIMIT);
+  const candidateResult = await env.DB.prepare(`SELECT d.ticker,f.last_attempted_at AS lastAttemptedAt
+    FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
+    LEFT JOIN filing_fact_imports f ON f.ticker=d.ticker
+    WHERE d.status='published' AND COALESCE(d.quality_tier,'starting_point')<>'starting_point'
+      AND c.cik IS NOT NULL AND c.cik<>'' AND c.is_active=1
+    ORDER BY COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`)
+    .bind(SCHEDULED_REFRESH_LIMIT).all<{ticker:string;lastAttemptedAt:string|null}>();
+  const candidates = candidateResult.results;
 
   const results: Array<{ ticker: string; imported?: number; metrics?: number; quarterlyUpdate?: unknown; status: string; error?: string }> = [];
   for (const candidate of candidates) {

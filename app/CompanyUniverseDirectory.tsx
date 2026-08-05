@@ -28,6 +28,9 @@ type CatalogCompany = {
   universe_source_url: string;
   universe_source_as_of: string;
   dossier_status: string | null;
+  dossier_quality_tier: "starting_point" | "machine_enriched" | "editorial_review" | "benchmark_complete";
+  dossier_quality_reviewed_at: string | null;
+  dossier_source_count: number;
 };
 
 type Payload = { total: number; page: number; pageSize: number; companies: CatalogCompany[] };
@@ -42,6 +45,13 @@ function memberships(company: CatalogCompany) {
   try { return JSON.parse(company.memberships_json) as string[]; } catch { return []; }
 }
 
+const qualityLabels = {
+  starting_point: "Starting page",
+  machine_enriched: "Research foundation",
+  editorial_review: "Editorial review",
+  benchmark_complete: "Benchmark-complete dossier",
+} as const;
+
 export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" }) {
   const otc = market === "otc";
   const [query, setQuery] = useState("");
@@ -49,6 +59,7 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
   const [exchange, setExchange] = useState("");
   const [securityType, setSecurityType] = useState("");
   const [membership, setMembership] = useState("");
+  const [qualityTier, setQualityTier] = useState("");
   const [sort, setSort] = useState("ticker");
   const [direction, setDirection] = useState("asc");
   const [page, setPage] = useState(1);
@@ -76,8 +87,9 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
     if (exchange) params.set("exchange", exchange);
     if (securityType) params.set("securityType", securityType);
     if (membership) params.set("membership", membership);
+    if (qualityTier) params.set("qualityTier", qualityTier);
     return `/api/universe?${params}`;
-  }, [market, page, sort, direction, debouncedQuery, exchange, securityType, membership]);
+  }, [market, page, sort, direction, debouncedQuery, exchange, securityType, membership, qualityTier]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -109,6 +121,7 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
       <div className="filter-row catalog-filter-row"><strong>{loading ? "Loading…" : `${payload.total.toLocaleString()} securities`}</strong><div className="directory-controls">
         {!otc && <label><span>Exchange</span><select value={exchange} onChange={(event) => { setExchange(event.target.value); setPage(1); }}><option value="">NYSE + Nasdaq</option><option>NYSE</option><option>NASDAQ</option></select></label>}
         {!otc && <label><span>Index member</span><select value={membership} onChange={(event) => { setMembership(event.target.value); setPage(1); }}><option value="">All securities</option><option>S&amp;P 500</option><option>Nasdaq-100 (QQQ)</option><option>Russell 3000</option><option>Russell 2000</option></select></label>}
+        {!otc && <label><span>Research depth</span><select value={qualityTier} onChange={(event) => { setQualityTier(event.target.value); setPage(1); }}><option value="">All research stages</option><option value="benchmark_complete">Benchmark complete</option><option value="editorial_review">Editorial review</option><option value="machine_enriched">Research foundation</option><option value="starting_point">Starting page</option></select></label>}
         {otc && <label><span>Issue type</span><select value={securityType} onChange={(event) => { setSecurityType(event.target.value); setPage(1); }}><option value="">All OTC issue types</option>{otcIssueTypeCounts.map(([type, count]) => <option value={type} key={type}>{type} ({count.toLocaleString()})</option>)}</select></label>}
         <label><span>Sort by</span><select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }}><option value="ticker">Ticker</option><option value="company">Company</option>{!otc && <option value="market_cap">Market cap</option>}</select></label>
         <label><span>Direction</span><select value={direction} onChange={(event) => { setDirection(event.target.value); setPage(1); }}><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
@@ -116,7 +129,9 @@ export function CompanyUniverseDirectory({ market }: { market: "listed" | "otc" 
       {error && <div className="directory-empty"><strong>Catalog temporarily unavailable.</strong><p>{error}</p></div>}
       {!error && <div className={`directory-table catalog-table ${otc ? "otc-table" : ""}`}><div className="directory-row catalog-row directory-labels"><span>SECURITY / ISSUER</span><span>{otc ? "ISSUE TYPE" : "CIK / INDEX MEMBERSHIP"}</span><span>RESEARCH / FOLLOWERS</span><span>MARKET</span><span /></div>{payload.companies.map((company) => {
         const tags = memberships(company);
-        return <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row catalog-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong><small>{company.security_description !== company.name ? company.security_description : company.sector}</small></span></span><span>{otc ? company.security_type : <><small className="catalog-cik">CIK {company.cik ?? "not available"}</small><span className="catalog-memberships">{tags.length ? tags.join(" · ") : "No tracked index membership"}</span></>}</span><span className={`catalog-status ${company.dossier_status === "published" ? "published" : ""}`}>{company.dossier_status === "published" ? "Published dossier" : company.dossier_status ? `${company.dossier_status} dossier` : "Catalogued · not researched"}<em className="company-followers">♡ {followingLabel(followerCounts[company.ticker] ?? 0)}</em></span><span>{company.exchange}</span><span>→</span></Link>;
+        const quality = company.dossier_quality_tier ?? "starting_point";
+        const sourceCount = Number(company.dossier_source_count ?? 0);
+        return <Link href={`/company/${companySlug(company.ticker)}`} className="directory-row catalog-row" key={company.ticker}><span className="company-cell"><i>{company.ticker}</i><span><strong>{displayName(company.name)}</strong><small>{company.security_description !== company.name ? company.security_description : company.sector}</small></span></span><span>{otc ? company.security_type : <><small className="catalog-cik">CIK {company.cik ?? "not available"}</small><span className="catalog-memberships">{tags.length ? tags.join(" · ") : "No tracked index membership"}</span></>}</span><span className={`catalog-status quality-${quality}`}>{qualityLabels[quality]}<small className="catalog-source-count">{sourceCount.toLocaleString()} primary {sourceCount === 1 ? "source" : "sources"}</small><em className="company-followers">♡ {followingLabel(followerCounts[company.ticker] ?? 0)}</em></span><span>{company.exchange}</span><span>→</span></Link>;
       })}</div>}
       {!loading && !error && payload.companies.length === 0 && <div className="directory-empty"><strong>No securities found.</strong><p>Try a different symbol, issuer name, exchange, index, or issue type.</p></div>}
       <div className="pagination"><button disabled={page === 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}>← Previous</button><span>Page {page.toLocaleString()} of {pageCount.toLocaleString()}</span><button disabled={page >= pageCount || loading} onClick={() => setPage((current) => current + 1)}>Next →</button></div>
