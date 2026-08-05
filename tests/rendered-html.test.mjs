@@ -1549,7 +1549,7 @@ test("separates publication from dossier quality and ranks Russell research from
   const [schema, migration, activation, universeRoute, directory, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, freshnessApi, freshnessAdmin, worker] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
-    source("drizzle/0031_activate_ranked_research_foundations.sql"),
+    source("drizzle/0032_activate_ranked_research_foundations.sql"),
     source("app/api/universe/route.ts"),
     source("app/CompanyUniverseDirectory.tsx"),
     source("app/company/[ticker]/page.tsx"),
