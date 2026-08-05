@@ -1612,6 +1612,13 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
 });
 
+test("authority parity ignores harmless nested object key ordering", async () => {
+  const verifier = await source("scripts/verify-authority-parity.mjs");
+  assert.match(verifier, /function canonicalize\(value\)/);
+  assert.match(verifier, /Object\.entries\(value\)\.sort/);
+  assert.match(verifier, /JSON\.stringify\(canonicalize\(stable\)\)/);
+});
+
 test("shows privacy-preserving watchlist follower totals for every company", async () => {
   const [followerApi, home, directory, featured, starter, followerCount, watchlistButton] = await Promise.all([
     source("app/api/company-followers/route.ts"),

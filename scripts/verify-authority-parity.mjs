@@ -13,6 +13,14 @@ const endpoints = {
 };
 
 const cacheBuster = Date.now();
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, nested]) => [key, canonicalize(nested)]));
+  }
+  return value;
+}
+
 const results = await Promise.all(Object.entries(endpoints).map(async ([name, endpoint]) => {
   const response = await fetch(`${endpoint}?authority-check=${cacheBuster}`, {
     headers: { accept: "application/json", "cache-control": "no-cache" },
@@ -21,7 +29,7 @@ const results = await Promise.all(Object.entries(endpoints).map(async ([name, en
   if (!response.ok) throw new Error(`${name} authority check failed with HTTP ${response.status}.`);
   const payload = await response.json();
   const { checkedAt: _checkedAt, ...stable } = payload;
-  return { name, endpoint, finalUrl: response.url, payload, stable: JSON.stringify(stable) };
+  return { name, endpoint, finalUrl: response.url, payload, stable: JSON.stringify(canonicalize(stable)) };
 }));
 
 const baseline = results[0];
