@@ -16,9 +16,3 @@ ON CONFLICT(ticker) DO UPDATE SET
   quality_run_id=COALESCE(company_dossiers.quality_run_id,excluded.quality_run_id),
   published_at=COALESCE(company_dossiers.published_at,CURRENT_TIMESTAMP),
   updated_at=CURRENT_TIMESTAMP;
---> statement-breakpoint
-UPDATE dossier_expansion_members
-SET workflow_status='machine_enriched',
-    source_count=(SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_expansion_members.ticker),
-    updated_at=CURRENT_TIMESTAMP
-WHERE batch_id='russell-2000-market-cap-01';
