@@ -1614,9 +1614,12 @@ test("separates publication from dossier quality and ranks Russell research from
 
 test("authority parity ignores harmless nested object key ordering", async () => {
   const verifier = await source("scripts/verify-authority-parity.mjs");
+  const deployer = await source("scripts/deploy-production.mjs");
   assert.match(verifier, /function canonicalize\(value\)/);
   assert.match(verifier, /Object\.entries\(value\)\.sort/);
   assert.match(verifier, /JSON\.stringify\(canonicalize\(stable\)\)/);
+  assert.match(deployer, /attempt <= 6/);
+  assert.match(deployer, /setTimeout\(resolve, 3_000\)/);
 });
 
 test("shows privacy-preserving watchlist follower totals for every company", async () => {
