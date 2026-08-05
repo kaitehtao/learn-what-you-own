@@ -78,6 +78,11 @@ async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
   if (!response.ok) throw new Error(`Earnings alert endpoint returned ${response.status}`);
 }
 
+async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-freshness", "learn-what-you-own-dossier-freshness/1.0");
+  if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
+}
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
@@ -114,6 +119,10 @@ const worker = {
     // per day. The member digest and earnings alerts still run only at 08:00
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
+      if (controller.cron === "*/15 * * * *") {
+        await refreshScheduledDossiers(env, ctx);
+        return;
+      }
       await refreshScheduledSecFacts(env, ctx);
       await refreshScheduledInsiderActivity(env, ctx);
       if (!isPacificDigestHour(controller.scheduledTime)) return;

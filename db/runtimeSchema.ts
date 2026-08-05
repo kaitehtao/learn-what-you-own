@@ -7,6 +7,54 @@ let professionalInterviewsSchemaPromise: Promise<unknown> | null = null;
 let brokerageClickSchemaPromise: Promise<unknown> | null = null;
 let insiderActivitySchemaPromise: Promise<unknown> | null = null;
 let earningsIntelligenceSchemaPromise: Promise<unknown> | null = null;
+let dossierFreshnessSchemaPromise: Promise<unknown> | null = null;
+
+export function ensureDossierFreshnessSchema() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!dossierFreshnessSchemaPromise) {
+    dossierFreshnessSchemaPromise = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_freshness_checks (
+        ticker TEXT PRIMARY KEY REFERENCES company_dossiers(ticker) ON DELETE CASCADE,
+        last_attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_success_at TEXT,
+        latest_filing_date TEXT,
+        detected_count INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT
+      )`),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_freshness_check_attempt_idx ON dossier_freshness_checks(last_attempted_at)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_freshness_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker TEXT NOT NULL REFERENCES company_dossiers(ticker) ON DELETE CASCADE,
+        accession_number TEXT NOT NULL,
+        form TEXT NOT NULL,
+        filing_date TEXT NOT NULL,
+        report_date TEXT NOT NULL DEFAULT '',
+        primary_document TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        sec_items_json TEXT NOT NULL DEFAULT '[]',
+        materiality_reason TEXT NOT NULL,
+        review_focus_json TEXT NOT NULL DEFAULT '[]',
+        facts_refresh_status TEXT NOT NULL DEFAULT 'not_applicable',
+        facts_refresh_detail TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'editorial_review',
+        editorial_summary TEXT NOT NULL DEFAULT '',
+        reviewed_by TEXT,
+        reviewed_at TEXT,
+        published_at TEXT,
+        detected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS dossier_freshness_event_accession_idx ON dossier_freshness_events(ticker,accession_number)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_freshness_event_review_idx ON dossier_freshness_events(status,filing_date)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_freshness_event_ticker_idx ON dossier_freshness_events(ticker,filing_date)"),
+    ]).catch((error) => {
+      dossierFreshnessSchemaPromise = null;
+      throw error;
+    });
+  }
+  return dossierFreshnessSchemaPromise;
+}
 
 // Manual migrations are packaged with the worker, but an older production D1
 // database can briefly receive new application code before the migration is

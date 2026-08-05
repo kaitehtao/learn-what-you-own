@@ -119,6 +119,48 @@ export const quarterlyDossierUpdates = sqliteTable("quarterly_dossier_updates", 
   index("quarterly_dossier_update_review_idx").on(table.status, table.filedAt),
 ]);
 
+// SEC submission monitoring is intentionally separate from published dossier
+// prose. A newly filed document becomes a durable review event immediately;
+// an editor must still decide how it changes the ownership thesis.
+export const dossierFreshnessChecks = sqliteTable("dossier_freshness_checks", {
+  ticker: text("ticker").primaryKey().references(() => companyDossiers.ticker, { onDelete: "cascade" }),
+  lastAttemptedAt: text("last_attempted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastSuccessAt: text("last_success_at"),
+  latestFilingDate: text("latest_filing_date"),
+  detectedCount: integer("detected_count").notNull().default(0),
+  errorMessage: text("error_message"),
+}, (table) => [
+  index("dossier_freshness_check_attempt_idx").on(table.lastAttemptedAt),
+]);
+
+export const dossierFreshnessEvents = sqliteTable("dossier_freshness_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companyDossiers.ticker, { onDelete: "cascade" }),
+  accessionNumber: text("accession_number").notNull(),
+  form: text("form").notNull(),
+  filingDate: text("filing_date").notNull(),
+  reportDate: text("report_date").notNull().default(""),
+  primaryDocument: text("primary_document").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  eventType: text("event_type", { enum: ["earnings_release", "annual_report", "quarterly_report", "proxy_statement", "material_8k"] }).notNull(),
+  secItemsJson: text("sec_items_json").notNull().default("[]"),
+  materialityReason: text("materiality_reason").notNull(),
+  reviewFocusJson: text("review_focus_json").notNull().default("[]"),
+  factsRefreshStatus: text("facts_refresh_status", { enum: ["not_applicable", "pending", "refreshed", "failed"] }).notNull().default("not_applicable"),
+  factsRefreshDetail: text("facts_refresh_detail").notNull().default(""),
+  status: text("status", { enum: ["editorial_review", "published", "ignored", "failed"] }).notNull().default("editorial_review"),
+  editorialSummary: text("editorial_summary").notNull().default(""),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: text("reviewed_at"),
+  publishedAt: text("published_at"),
+  detectedAt: text("detected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("dossier_freshness_event_accession_idx").on(table.ticker, table.accessionNumber),
+  index("dossier_freshness_event_review_idx").on(table.status, table.filingDate),
+  index("dossier_freshness_event_ticker_idx").on(table.ticker, table.filingDate),
+]);
+
 // A claim is the smallest publishable unit in a dossier. The classification
 // prevents an editorial interpretation from being presented as a filed fact.
 export const dossierClaims = sqliteTable("dossier_claims", {

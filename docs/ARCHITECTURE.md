@@ -75,7 +75,7 @@ Resend sends opt-in notification email. It does not store private-message bodies
 - `db/schema.ts` and `db/index.ts` — D1/Drizzle schema and binding access
 - `drizzle/` — ordered D1 schema migrations and controlled seed material
 - `supabase/migrations/` — ordered Postgres/RLS migrations
-- `worker/index.ts` — Worker fetch and scheduled-digest entry point
+- `worker/index.ts` — Worker fetch, SEC dossier-freshness monitor, and scheduled-digest entry point
 - `vite.config.ts` — Cloudflare binding, cron, and build configuration
 - `.openai/hosting.json` — Sites binding names and project identifier
 - `tests/rendered-html.test.mjs` — build-level feature and security assertions

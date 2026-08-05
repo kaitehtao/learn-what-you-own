@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
-import { companyRelationships, dossierClaims, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
+import { ensureDossierFreshnessSchema, ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
+import { companyRelationships, dossierClaims, dossierFreshnessChecks, dossierFreshnessEvents, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
 import { featuredDossiers } from "../../data/featuredDossiers";
 import { ensureFeaturedDossierRegistration, importSecFilingFacts } from "../../data/secFactsRepository";
 import { researchUniverse } from "../../data/universe";
@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   try {
     try {
       await ensureQuarterlyDossierUpdatesSchema();
+      await ensureDossierFreshnessSchema();
     } catch (error) {
       console.error(`Quarterly dossier schema check failed for ${ticker}; continuing with core research sources.`, error);
     }
@@ -58,13 +59,18 @@ export async function GET(request: Request) {
       db.select().from(filingFactImports).where(eq(filingFactImports.ticker, ticker)).limit(1),
       db.select().from(quarterlyDossierUpdates).where(eq(quarterlyDossierUpdates.ticker, ticker))
         .orderBy(desc(quarterlyDossierUpdates.filedAt)).limit(8),
+      db.select().from(dossierFreshnessEvents).where(eq(dossierFreshnessEvents.ticker, ticker))
+        .orderBy(desc(dossierFreshnessEvents.filingDate), desc(dossierFreshnessEvents.detectedAt)).limit(12),
+      db.select().from(dossierFreshnessChecks).where(eq(dossierFreshnessChecks.ticker, ticker)).limit(1),
     ]);
-    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult] = queries;
+    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult, freshnessResult, freshnessCheckResult] = queries;
     let facts = factsResult.status === "fulfilled" ? factsResult.value : [];
     const claims = claimsResult.status === "fulfilled" ? claimsResult.value : [];
     const relationships = relationshipsResult.status === "fulfilled" ? relationshipsResult.value : [];
     let importRows = importsResult.status === "fulfilled" ? importsResult.value : [];
     const quarterlyUpdates = quarterlyResult.status === "fulfilled" ? quarterlyResult.value : [];
+    const freshnessEvents = freshnessResult.status === "fulfilled" ? freshnessResult.value : [];
+    const freshnessChecks = freshnessCheckResult.status === "fulfilled" ? freshnessCheckResult.value : [];
 
     // Managed deployments can lag a newly added data migration. A completed
     // dossier therefore performs one safe, idempotent first-read import when
@@ -88,6 +94,8 @@ export async function GET(request: Request) {
       relationships: relationshipsResult.status === "fulfilled" ? "available" : "unavailable",
       importHistory: importsResult.status === "fulfilled" ? "available" : "unavailable",
       quarterlyUpdates: quarterlyResult.status === "fulfilled" ? "available" : "unavailable",
+      freshnessEvents: freshnessResult.status === "fulfilled" ? "available" : "unavailable",
+      freshnessCheck: freshnessCheckResult.status === "fulfilled" ? "available" : "unavailable",
     };
     queries.forEach((result, index) => {
       if (result.status === "rejected") console.error(`Research source ${Object.keys(sourceStatus)[index]} failed for ${ticker}.`, result.reason);
@@ -143,6 +151,26 @@ export async function GET(request: Request) {
         reviewedAt: update.reviewedAt,
         publishedAt: update.publishedAt,
       })),
+      freshnessEvents: freshnessEvents.map((event) => ({
+        id: event.id,
+        accessionNumber: event.accessionNumber,
+        form: event.form,
+        filingDate: event.filingDate,
+        reportDate: event.reportDate,
+        sourceUrl: event.sourceUrl,
+        eventType: event.eventType,
+        materialityReason: event.materialityReason,
+        factsRefreshStatus: event.factsRefreshStatus,
+        status: event.status,
+        editorialSummary: event.status === "published" ? event.editorialSummary : "",
+        publishedAt: event.publishedAt,
+      })),
+      freshnessCheck: freshnessChecks[0] ? {
+        lastAttemptedAt: freshnessChecks[0].lastAttemptedAt,
+        lastSuccessAt: freshnessChecks[0].lastSuccessAt,
+        latestFilingDate: freshnessChecks[0].latestFilingDate,
+        error: freshnessChecks[0].errorMessage,
+      } : null,
     }, { headers: { "cache-control": "public, max-age=300, s-maxage=900" } });
   } catch (error) {
     console.error(error);
