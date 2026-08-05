@@ -27,6 +27,7 @@ WITH raw(ticker, url) AS (
 )`;
 
 export async function GET() {
+  const runtimeEnv = env as typeof env & { RELEASE_COMMIT_SHA?: string };
   const [catalog, dossiers, sources, sourceCounts, claims] = await Promise.all([
     env.DB.prepare(`SELECT COUNT(*) AS total,
       SUM(CASE WHEN listing_scope='listed' THEN 1 ELSE 0 END) AS listed,
@@ -60,6 +61,7 @@ export async function GET() {
       researchableSymbols: "Distinct active NYSE, Nasdaq, and OTC symbols in the authoritative D1 companies table.",
       uniquePrimarySources: "Distinct HTTPS evidence documents, with SEC URLs deduplicated by filing accession.",
     },
+    releaseCommit: runtimeEnv.RELEASE_COMMIT_SHA ?? "unavailable",
     checkedAt: new Date().toISOString(),
   }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
 }

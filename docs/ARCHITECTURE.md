@@ -15,11 +15,11 @@ This document is the operating map for Learn What You Own. It records identifier
 | D1 database | `site-creator-d1` | The single authoritative public-research database. |
 | D1 database ID | `8c2f7a1b-aa6e-45be-8e89-8c64bb0be557` | Must match the production Worker binding. |
 | Sites project | `appgprj_6a6992149bac81918aea31053a6f8eb2` | Preview/control-plane identifier in `.openai/hosting.json`. |
-| Sites preview | `https://learn-what-you-own.julianspencer.chatgpt.site` | Non-authoritative preview; never maintain a separate production dataset here. |
+| Sites preview/control plane | `https://learn-what-you-own.julianspencer.chatgpt.site` | Non-authoritative release history and preview tooling. It owns no `learnwhatyouown.com` custom hostname and is not a production data authority. |
 | Supabase project ref | `fxmdunpolhqponfchwsz` | Production URL: `https://fxmdunpolhqponfchwsz.supabase.co`. Verify against the live `/api/auth/config` response before mutations. |
 | Resend domain | `learnwhatyouown.com` | Sender: `notifications@learnwhatyouown.com`. DNS is hosted in the authoritative Cloudflare account. |
 
-The generated build config currently uses the package name `site-creator-vinext-starter`. Production deploy commands must explicitly target `learn-what-you-own`, or the Cloudflare Git integration must already be pinned to that Worker. Do not accept the generated package name as a production service name.
+The package name and generated Worker configuration are both canonicalized to `learn-what-you-own`. Production preflight fails when the Worker name, D1 binding, public routes, or cron triggers drift. The Sites project must never attach `learnwhatyouown.com` or `www.learnwhatyouown.com`; those hostnames belong exclusively to the canonical Cloudflare Worker.
 
 ## System boundaries
 
@@ -62,11 +62,12 @@ Resend sends opt-in notification email. It does not store private-message bodies
 
 1. `learnwhatyouown.com` reads public research from one D1 database: `site-creator-d1` in Cloudflare account `e5c3672efaf52cf5b417da2b09e687af`.
 2. Preview URLs may run the code, but they do not become independent production systems.
-3. Only SEC filings and official company/IR sources qualify as primary dossier evidence.
-4. Community submissions remain private in Supabase until an editor/admin explicitly approves them.
-5. Private member data never moves into D1 merely to make a dossier public.
-6. Secrets live in platform secret stores or ignored local environment files, never in Git.
-7. Administrator/editor roles are assigned directly by a trusted operator in Supabase, not by a public client action.
+3. Apex, `www`, and the direct Workers.dev URL must return identical `/api/site-stats` data and the same `releaseCommit`; `npm run verify:authority` enforces this after deployment.
+4. Only SEC filings and official company/IR sources qualify as primary dossier evidence.
+5. Community submissions remain private in Supabase until an editor/admin explicitly approves them.
+6. Private member data never moves into D1 merely to make a dossier public.
+7. Secrets live in platform secret stores or ignored local environment files, never in Git.
+8. Administrator/editor roles are assigned directly by a trusted operator in Supabase, not by a public client action.
 
 ## Code map
 

@@ -331,10 +331,13 @@ test("publishes complete S&P 500 dossier coverage in descending market-cap batch
 });
 
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
-  const [home, statsRoute, styles] = await Promise.all([
+  const [home, statsRoute, styles, deploy, authority, architecture] = await Promise.all([
     source("app/page.tsx"),
     source("app/api/site-stats/route.ts"),
     source("app/globals.css"),
+    source("scripts/deploy-production.mjs"),
+    source("scripts/verify-authority-parity.mjs"),
+    source("docs/ARCHITECTURE.md"),
   ]);
 
   assert.match(home, /fetch\("\/api\/site-stats"\)/);
@@ -350,6 +353,13 @@ test("uses authoritative live homepage coverage and deduplicated primary-source 
   assert.match(statsRoute, /cd\.status = 'published'/);
   assert.match(statsRoute, /featuredDossiers/);
   assert.match(statsRoute, /Math\.max\(sourceCountsByTicker\[ticker\] \?\? 0/);
+  assert.match(statsRoute, /releaseCommit: runtimeEnv\.RELEASE_COMMIT_SHA/);
+  assert.match(deploy, /verify-authority-parity\.mjs/);
+  assert.match(authority, /learnwhatyouown\.com\/api\/site-stats/);
+  assert.match(authority, /learn-what-you-own\.kaitehtao\.workers\.dev\/api\/site-stats/);
+  assert.match(authority, /does not match.*production is reading more than one data authority/);
+  assert.match(architecture, /Sites project must never attach `learnwhatyouown\.com`/);
+  assert.doesNotMatch(architecture, /generated build config currently uses the package name `site-creator-vinext-starter`/);
   assert.match(styles, /\.proof-definition\{/);
 });
 
