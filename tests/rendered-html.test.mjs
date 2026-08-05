@@ -1546,12 +1546,14 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
 });
 
 test("separates publication from dossier quality and ranks Russell research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, freshnessApi, freshnessAdmin, worker] = await Promise.all([
+  const [schema, migration, activation, universeRoute, directory, russellPage, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, freshnessApi, freshnessAdmin, worker] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0032_activate_ranked_research_foundations.sql"),
     source("app/api/universe/route.ts"),
     source("app/CompanyUniverseDirectory.tsx"),
+    source("app/russell-2000/page.tsx"),
+    source("app/globals.css"),
     source("app/company/[ticker]/page.tsx"),
     source("app/research/batches/page.tsx"),
     source("app/api/internal/rollout-market-cap-refresh/route.ts"),
@@ -1576,6 +1578,13 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(universeRoute, /dossier_source_count/);
   assert.match(directory, /Benchmark-complete dossier/);
   assert.match(directory, /Research foundation/);
+  assert.match(directory, /href="\/russell-2000"/);
+  assert.match(directory, /indexMembership === "Russell 2000"/);
+  assert.match(directory, /indexFocused \? "market_cap" : "ticker"/);
+  assert.match(directory, /indexFocused \? "desc" : "asc"/);
+  assert.match(directory, /formatMarketCap\(company\.market_cap\)/);
+  assert.match(russellPage, /indexMembership="Russell 2000"/);
+  assert.match(styles, /grid-template-columns:repeat\(4,1fr\)/);
   assert.doesNotMatch(directory, />Published dossier</);
   assert.match(starter, /LIVE RESEARCH FOUNDATION/);
   assert.match(starter, /rollout_priority_rank/);
