@@ -228,6 +228,12 @@ test("separates public valuation evidence from private analyst judgment", async 
   assert.match(accountExport, /analystDecisionJournal/);
 });
 
+test("keeps the deployment authority endpoint out of shared caches", async () => {
+  const stats = await source("app/api/site-stats/route.ts");
+  assert.match(stats, /cache-control": "no-store, max-age=0/);
+  assert.doesNotMatch(stats, /stale-while-revalidate/);
+});
+
 test("publishes an internally linked, evidence-first investor education cluster", async () => {
   const [hub, guidePage, guides, navigation, layout, sitemap, styles] = await Promise.all([
     source("app/learn/page.tsx"),

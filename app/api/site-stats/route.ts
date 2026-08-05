@@ -63,5 +63,5 @@ export async function GET() {
     },
     releaseCommit: runtimeEnv.RELEASE_COMMIT_SHA ?? "unavailable",
     checkedAt: new Date().toISOString(),
-  }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
+  }, { headers: { "cache-control": "no-store, max-age=0" } });
 }
