@@ -87,9 +87,15 @@ export function InsiderActivityScreen() {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/insider-activity?period=${period}&source=canonical-worker`)
+    fetch(`/api/insider-activity?period=${period}`, { headers: { accept: "application/json" } })
       .then(async (response) => {
-        const body = await response.json() as ActivityResponse;
+        const raw = await response.text();
+        let body: ActivityResponse;
+        try {
+          body = JSON.parse(raw) as ActivityResponse;
+        } catch {
+          throw new Error(`Insider activity is temporarily unavailable (HTTP ${response.status}).`);
+        }
         if (!response.ok) throw new Error(body.error ?? "Unable to load SEC insider activity.");
         if (active) setData(body);
       })
