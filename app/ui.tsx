@@ -71,6 +71,7 @@ export function Header() {
             <details className="workspace-menu">
               <summary>Workspace</summary>
               <div>
+                <Link href="/workspace">Analyst workspace</Link>
                 <Link href="/portfolio">Portfolio</Link>
                 <Link href="/notebook">Notebook</Link>
                 <Link href="/watchlist">Watchlist</Link>
@@ -82,6 +83,7 @@ export function Header() {
           )}
           {signedIn && <div className="mobile-workspace-links">
             <span>Your workspace</span>
+            <Link href="/workspace">Analyst</Link>
             <Link href="/portfolio">Portfolio</Link>
             <Link href="/notebook">Notebook</Link>
             <Link href="/watchlist">Watchlist</Link>

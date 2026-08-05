@@ -16,7 +16,17 @@ function markdownEscape(value: unknown) {
   return String(value ?? "").replaceAll("\r\n", "\n").trim();
 }
 
-function notebookMarkdown(profile: { username: string }, exportedAt: string, notebooks: Array<Record<string, unknown>>, notes: Array<Record<string, unknown>>, publications: Array<Record<string, unknown>>) {
+function notebookMarkdown(
+  profile: { username: string },
+  exportedAt: string,
+  notebooks: Array<Record<string, unknown>>,
+  notes: Array<Record<string, unknown>>,
+  publications: Array<Record<string, unknown>>,
+  analystWorkspaces: Array<Record<string, unknown>>,
+  analystDrivers: Array<Record<string, unknown>>,
+  analystScenarios: Array<Record<string, unknown>>,
+  analystDecisions: Array<Record<string, unknown>>,
+) {
   const lines = [`# Learn What You Own research export`, "", `- Member: @${profile.username}`, `- Exported: ${exportedAt}`, `- Format: portable Markdown with source metadata`, ""];
   for (const notebook of notebooks) {
     lines.push(`## ${markdownEscape(notebook.ticker)} — ${markdownEscape(notebook.company_name)}`, "", `**Conviction:** ${markdownEscape(notebook.conviction) || "Unranked"}`, "", `**Working thesis:** ${markdownEscape(notebook.thesis) || "Not recorded"}`, "");
@@ -42,6 +52,40 @@ function notebookMarkdown(profile: { username: string }, exportedAt: string, not
       lines.push("", `**Position disclosure:** ${markdownEscape(item.position_disclosure) || "Not stated"}`, "", `**Conflict disclosure:** ${markdownEscape(item.conflict_disclosure) || "Not stated"}`, "");
     }
   }
+  if (analystWorkspaces.length) {
+    lines.push("## Private analyst workspaces", "", "> These records were private in Learn What You Own and were never published automatically.", "");
+    for (const workspace of analystWorkspaces) {
+      lines.push(
+        `### ${markdownEscape(workspace.ticker)} analyst record`, "",
+        `- Workflow: ${markdownEscape(workspace.workflow_status)}`,
+        `- Assessment: ${markdownEscape(workspace.recommendation)}`,
+        `- Horizon: ${markdownEscape(workspace.time_horizon)}`,
+        `- Conviction: ${markdownEscape(workspace.conviction)}/5`,
+        `- Updated: ${markdownEscape(workspace.updated_at)}`, "",
+        "#### Consensus view", "", markdownEscape(workspace.consensus_view) || "Not recorded", "",
+        "#### Variant view", "", markdownEscape(workspace.variant_view) || "Not recorded", "",
+        "#### Current view", "", markdownEscape(workspace.current_view) || "Not recorded", "",
+      );
+      const drivers = analystDrivers.filter((item) => item.workspace_id === workspace.id);
+      if (drivers.length) {
+        lines.push("#### Thesis drivers", "");
+        for (const driver of drivers) lines.push(`- **${markdownEscape(driver.direction)} — ${markdownEscape(driver.title)}:** ${markdownEscape(driver.hypothesis)}${driver.source_url ? ` ([evidence](${markdownEscape(driver.source_url)}))` : ""}`);
+        lines.push("");
+      }
+      const scenarios = analystScenarios.filter((item) => item.workspace_id === workspace.id);
+      if (scenarios.length) {
+        lines.push("#### Valuation scenarios", "");
+        for (const scenario of scenarios) lines.push(`- **${markdownEscape(scenario.scenario)}:** ${markdownEscape(scenario.probability_pct)}% probability; price target ${markdownEscape(scenario.price_target) || "not recorded"}; ${markdownEscape(scenario.notes)}`);
+        lines.push("");
+      }
+      const decisions = analystDecisions.filter((item) => item.workspace_id === workspace.id);
+      if (decisions.length) {
+        lines.push("#### Decision journal", "");
+        for (const decision of decisions) lines.push(`- **${markdownEscape(decision.created_at)} — ${markdownEscape(decision.decision)}:** ${markdownEscape(decision.rationale)}`);
+        lines.push("");
+      }
+    }
+  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -50,7 +94,7 @@ export async function GET(request: Request) {
     const { user, profile } = await requireSupabaseUser(request);
     const admin = getSupabaseAdminClient();
     const id = user.id;
-    const [watchlist, portfolio, contributions, messages, follows, notebooks, notes, attachments, preferences, notifications, researchVotes, corrections, emailOutbox, accountAudit, deletionRequests, publications, publicationRevisions, publicationBookmarks, publicationComments, blocks, mutes, reports] = await Promise.all([
+    const [watchlist, portfolio, contributions, messages, follows, notebooks, notes, attachments, preferences, notifications, researchVotes, corrections, emailOutbox, accountAudit, deletionRequests, publications, publicationRevisions, publicationBookmarks, publicationComments, blocks, mutes, reports, analystWorkspaces, analystDrivers, analystScenarios, analystDecisions] = await Promise.all([
       admin.from("watchlist_items").select("*").eq("user_id", id).order("created_at"),
       admin.from("portfolio_positions").select("*").eq("user_id", id).order("created_at"),
       admin.from("contributions").select("*").eq("user_id", id).order("created_at"),
@@ -73,8 +117,12 @@ export async function GET(request: Request) {
       admin.from("member_blocks").select("*").eq("blocker_id", id).order("created_at"),
       admin.from("member_mutes").select("*").eq("muter_id", id).order("created_at"),
       admin.from("community_reports").select("*").eq("reporter_id", id).order("created_at"),
+      admin.from("analyst_workspaces").select("*").eq("user_id", id).order("created_at"),
+      admin.from("analyst_thesis_drivers").select("*").eq("user_id", id).order("created_at"),
+      admin.from("analyst_valuation_scenarios").select("*").eq("user_id", id).order("created_at"),
+      admin.from("analyst_decision_journal").select("*").eq("user_id", id).order("created_at"),
     ]);
-    const results = [watchlist, portfolio, contributions, messages, follows, notebooks, notes, attachments, preferences, notifications, researchVotes, corrections, emailOutbox, accountAudit, deletionRequests, publications, publicationRevisions, publicationBookmarks, publicationComments, blocks, mutes, reports];
+    const results = [watchlist, portfolio, contributions, messages, follows, notebooks, notes, attachments, preferences, notifications, researchVotes, corrections, emailOutbox, accountAudit, deletionRequests, publications, publicationRevisions, publicationBookmarks, publicationComments, blocks, mutes, reports, analystWorkspaces, analystDrivers, analystScenarios, analystDecisions];
     const failed = results.find((result) => result.error);
     if (failed?.error) throw failed.error;
     const files: StoredFile[] = [
@@ -87,7 +135,7 @@ export async function GET(request: Request) {
     ];
     const exportedAt = new Date().toISOString();
     if (new URL(request.url).searchParams.get("format") === "markdown") {
-      const markdown = notebookMarkdown(profile, exportedAt, notebooks.data ?? [], notes.data ?? [], publications.data ?? []);
+      const markdown = notebookMarkdown(profile, exportedAt, notebooks.data ?? [], notes.data ?? [], publications.data ?? [], analystWorkspaces.data ?? [], analystDrivers.data ?? [], analystScenarios.data ?? [], analystDecisions.data ?? []);
       const filename = `learn-what-you-own-research-${profile.username}-${exportedAt.slice(0, 10)}.md`;
       return new Response(markdown, { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": `attachment; filename="${filename}"`, "cache-control": "private, no-store" } });
     }
@@ -102,6 +150,7 @@ export async function GET(request: Request) {
         companyResearchVotes: researchVotes.data ?? [], contributionCorrections: corrections.data ?? [], accountAudit: accountAudit.data ?? [], deletionRequests: deletionRequests.data ?? [],
         researchPublications: publications.data ?? [], researchPublicationRevisions: publicationRevisions.data ?? [], researchBookmarks: publicationBookmarks.data ?? [], researchComments: publicationComments.data ?? [],
         blocks: blocks.data ?? [], mutes: mutes.data ?? [], communityReports: reports.data ?? [],
+        analystWorkspaces: analystWorkspaces.data ?? [], analystThesisDrivers: analystDrivers.data ?? [], analystValuationScenarios: analystScenarios.data ?? [], analystDecisionJournal: analystDecisions.data ?? [],
       },
       files: await signedFiles(files),
       fileDownloadNotice: "Private file links expire one hour after this export was created.",

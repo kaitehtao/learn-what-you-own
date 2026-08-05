@@ -10,6 +10,7 @@ Disallow: /notifications
 Disallow: /onboarding
 Disallow: /portfolio
 Disallow: /watchlist
+Disallow: /workspace
 
 Sitemap: https://learnwhatyouown.com/sitemap.xml
 `;

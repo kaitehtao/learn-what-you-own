@@ -37,6 +37,18 @@ type NasdaqScreenerPayload = {
   } | null;
 };
 
+type NasdaqHistoricalPayload = {
+  data?: {
+    tradesTable?: {
+      rows?: Array<{
+        date?: string;
+        close?: string;
+        volume?: string;
+      }> | null;
+    } | null;
+  } | null;
+};
+
 export type MarketQuote = {
   ticker: string;
   companyName: string;
@@ -45,6 +57,14 @@ export type MarketQuote = {
   asOf: string;
   marketStatus: string;
   isRealTime: boolean;
+  sourceLabel: string;
+  sourceUrl: string;
+};
+
+export type HistoricalMarketPrice = {
+  date: string;
+  close: number;
+  volume: number | null;
   sourceLabel: string;
   sourceUrl: string;
 };
@@ -59,6 +79,17 @@ function marketCapFromDisplay(value: string | undefined) {
   if (!value || value === "N/A") return null;
   const marketCap = Number(value.replace(/[$,]/g, ""));
   return Number.isFinite(marketCap) && marketCap >= 0 ? marketCap : null;
+}
+
+function isoDateFromNasdaq(value: string | undefined) {
+  const match = value?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return match ? `${match[3]}-${match[1]}-${match[2]}` : null;
+}
+
+function integerFromDisplay(value: string | undefined) {
+  if (!value || value === "N/A") return null;
+  const parsed = Number(value.replace(/,/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export async function fetchNasdaqQuote(tickerValue: string): Promise<MarketQuote> {
@@ -137,4 +168,27 @@ export async function fetchNasdaqQuotes(tickerValues: string[]) {
       }
   }));
   return quotes;
+}
+
+export async function fetchNasdaqHistoricalPrices(tickerValue: string, years = 5): Promise<HistoricalMarketPrice[]> {
+  const ticker = tickerValue.trim().toUpperCase();
+  if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) throw new Error("Invalid ticker");
+  const boundedYears = Math.min(10, Math.max(1, Math.round(years)));
+  const to = new Date();
+  const from = new Date(Date.UTC(to.getUTCFullYear() - boundedYears, to.getUTCMonth(), to.getUTCDate()));
+  const sourceUrl = `https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(ticker.toLowerCase().replaceAll(".", "-"))}/historical`;
+  const endpoint = `${NASDAQ_QUOTE_URL}/${encodeURIComponent(ticker)}/historical?assetclass=stocks&fromdate=${from.toISOString().slice(0, 10)}&todate=${to.toISOString().slice(0, 10)}&limit=5000`;
+  const response = await fetch(endpoint, {
+    headers: { accept: "application/json", "user-agent": "Learn What You Own market data" },
+    next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!response.ok) throw new Error(`Historical price provider returned ${response.status}`);
+  const payload = await response.json() as NasdaqHistoricalPayload;
+  return (payload.data?.tradesTable?.rows ?? []).flatMap((row) => {
+    const date = isoDateFromNasdaq(row.date);
+    const close = priceFromDisplay(row.close);
+    if (!date || close === null || close <= 0) return [];
+    return [{ date, close, volume: integerFromDisplay(row.volume), sourceLabel: "Nasdaq historical prices", sourceUrl }];
+  }).sort((left, right) => left.date.localeCompare(right.date));
 }

@@ -201,9 +201,31 @@ test("publishes a crawler sitemap for every completed dossier and protects priva
   assert.match(sitemap, /companySlug\(ticker\)/);
   assert.match(sitemap, /https:\/\/learnwhatyouown\.com/);
   assert.match(robots, /Sitemap: https:\/\/learnwhatyouown\.com\/sitemap\.xml/);
-  for (const path of ["account", "admin", "api/", "login", "messages", "notebook", "portfolio", "watchlist"]) {
+  for (const path of ["account", "admin", "api/", "login", "messages", "notebook", "portfolio", "watchlist", "workspace"]) {
     assert.match(robots, new RegExp(`Disallow: \/${path.replace("/", "\\/")}`));
   }
+});
+
+test("separates public valuation evidence from private analyst judgment", async () => {
+  const [panel, workspace, api, migration, robots, accountExport] = await Promise.all([
+    source("app/HistoricalValuationPanel.tsx"),
+    source("app/workspace/AnalystWorkspaceClient.tsx"),
+    source("app/api/analyst-workspace/route.ts"),
+    source("supabase/migrations/20260805020000_institutional_analyst_workspace.sql"),
+    source("app/robots.txt/route.ts"),
+    source("app/api/account/export/route.ts"),
+  ]);
+  assert.match(panel, /Point-in-time trailing multiples/);
+  assert.match(panel, /Public facts/);
+  assert.match(panel, /Your private judgment/);
+  assert.match(workspace, /PRIVATE ANALYST WORKSPACE/);
+  assert.match(workspace, /Private records are never published automatically/);
+  assert.match(api, /requireSupabaseUser/);
+  assert.match(migration, /enable row level security/g);
+  assert.match(migration, /auth\.uid\(\) = user_id/g);
+  assert.match(migration, /revoke all[\s\S]*from anon/);
+  assert.match(robots, /Disallow: \/workspace/);
+  assert.match(accountExport, /analystDecisionJournal/);
 });
 
 test("publishes an internally linked, evidence-first investor education cluster", async () => {

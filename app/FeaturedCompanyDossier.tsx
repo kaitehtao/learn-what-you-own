@@ -19,6 +19,7 @@ import { CompanyMarketSnapshot } from "./CompanyMarketSnapshot";
 import { StockOwnershipPanel } from "./StockOwnershipPanel";
 import { AccessComparison } from "./AccessComparison";
 import { ComparableAnalysisPanel } from "./ComparableAnalysisPanel";
+import { HistoricalValuationPanel } from "./HistoricalValuationPanel";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -51,7 +52,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <section className="company-hero">
       <div className="container dossier-head">
         <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
-        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
+        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/workspace?ticker=${encodeURIComponent(company.ticker)}`}>Private workspace</Link><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
       </div>
       <CompanyMarketSnapshot ticker={company.ticker} />
       <div className="container metrics-bar featured-metrics">
@@ -63,9 +64,12 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>DOSSIER LAST UPDATED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#valuation-history">Valuation history</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
+    </div>
+    <div className="container historical-valuation-wide">
+      <HistoricalValuationPanel ticker={company.ticker} />
     </div>
     <div className="container stock-ownership-wide">
       <StockOwnershipPanel ticker={company.ticker} />
