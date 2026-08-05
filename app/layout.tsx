@@ -49,6 +49,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/companies">Companies</Link>
                 <Link href="/learn">Learn to research stocks</Link>
                 <Link href="/research/batches">Research batches</Link>
+                <Link href="/research/community">Community research</Link>
                 <Link href="/otc">OTC / Pink Market</Link>
                 <Link href="/earnings">Earnings calendar</Link>
                 <Link href="/insider-activity">Insider buys &amp; sells</Link>
@@ -67,12 +68,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <Link href="/contributors">Contributor leaderboard</Link>
                 <Link href="/login?mode=signup">Create free account</Link>
                 <Link href="/account">Account</Link>
+                <Link href="/account/safety">Safety &amp; reports</Link>
               </div>
             </nav>
           </div>
           <div className="container footer-legal">
             <span>© {new Date().getFullYear()} Learn What You Own. All rights reserved.</span>
             <p>For research and educational purposes only. Not individualized investment advice.</p>
+            <div><Link href="/community-guidelines">Community guidelines</Link> · <Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></div>
           </div>
         </footer>
       </body>

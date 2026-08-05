@@ -1,4 +1,5 @@
-import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../supabase-server";
+import { membersBlocked } from "../../community-safety";
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
       .ilike("username", username).eq("onboarding_complete", true).single();
     if (targetError || !target) return Response.json({ error: "Member not found." }, { status: 404 });
     if (target.user_id === profile.user_id) return Response.json({ error: "You cannot follow yourself." }, { status: 400 });
+    if (payload.follow !== false && await membersBlocked(getSupabaseAdminClient(), profile.user_id, target.user_id)) {
+      return Response.json({ error: "Following is unavailable between these accounts." }, { status: 403 });
+    }
 
     const operation = payload.follow === false
       ? supabase.from("member_follows").delete().eq("follower_id", profile.user_id).eq("followed_id", target.user_id)

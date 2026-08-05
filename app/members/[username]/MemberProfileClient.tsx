@@ -31,6 +31,7 @@ export function MemberProfileClient({ username }: { username: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [followBusy, setFollowBusy] = useState(false);
+  const [safetyBusy, setSafetyBusy] = useState(false);
   const [openList, setOpenList] = useState<"followers" | "following" | null>(null);
 
   const load = useCallback(async () => {
@@ -70,6 +71,23 @@ export function MemberProfileClient({ username }: { username: string }) {
     }
   }
 
+  async function safetyAction(action: "block" | "mute" | "report") {
+    if (!member) return;
+    if (!member.signedIn) return void (window.location.href = loginPath(`/members/${encodeURIComponent(member.profile.username)}`));
+    if (action === "block" && !window.confirm(`Block @${member.profile.username}? You will no longer be able to follow or message one another.`)) return;
+    const details = action === "report" ? window.prompt("Briefly describe the concern for the moderation team:") : "";
+    if (action === "report" && details === null) return;
+    setSafetyBusy(true); setError("");
+    try {
+      const response = await authenticatedFetch("/api/safety", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(action === "report" ? { action, entityType: "member", entityId: member.profile.username, reasonCode: "other", details } : { action, username: member.profile.username }) });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to update safety settings.");
+      setError(action === "report" ? "Report submitted to the restricted moderation queue." : `@${member.profile.username} ${action === "block" ? "blocked" : "muted"}.`);
+      if (action === "block") await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to update safety settings."); }
+    finally { setSafetyBusy(false); }
+  }
+
   if (loading) return <section className="member-profile-state">Loading member profile…</section>;
   if (error && !member) return <section className="member-profile-state error"><h1>Member unavailable</h1><p>{error}</p><Link href="/">Return home →</Link></section>;
   if (!member) return null;
@@ -77,7 +95,7 @@ export function MemberProfileClient({ username }: { username: string }) {
   const listedMembers = openList === "followers" ? member.followers : member.following;
 
   return <>
-    <section className="public-profile-hero"><div className="container public-profile-heading"><ProfileAvatar className="public-profile-avatar" name={displayName} photoUrl={member.profile.avatarUrl}/><div><span className="kicker">MEMBER PROFILE</span><h1>{displayName}</h1><strong>@{member.profile.username}</strong><p>{member.profile.role} · Joined {shortDate(member.profile.joinedAt)}</p>{member.profile.bio ? <p className="public-profile-bio">{member.profile.bio}</p> : member.isOwnProfile ? <Link className="empty-profile-bio" href="/account/profile">Add a short biography →</Link> : null}</div><div className="public-profile-actions">{!member.isOwnProfile && <><button className={member.isFollowing ? "following" : ""} disabled={followBusy} onClick={() => void toggleFollow()}>{followBusy ? "Saving…" : member.isFollowing ? "✓ Following" : "+ Follow"}</button><Link href={`/messages?to=${encodeURIComponent(member.profile.username)}&visibility=private`}>Private message</Link><Link href={`/messages?to=${encodeURIComponent(member.profile.username)}&visibility=public`}>Public note</Link></>}{member.isOwnProfile && <Link href="/account/profile">Edit public profile →</Link>}</div></div></section>
+    <section className="public-profile-hero"><div className="container public-profile-heading"><ProfileAvatar className="public-profile-avatar" name={displayName} photoUrl={member.profile.avatarUrl}/><div><span className="kicker">MEMBER PROFILE</span><h1>{displayName}</h1><strong>@{member.profile.username}</strong><p>{member.profile.role} · Joined {shortDate(member.profile.joinedAt)}</p>{member.profile.bio ? <p className="public-profile-bio">{member.profile.bio}</p> : member.isOwnProfile ? <Link className="empty-profile-bio" href="/account/profile">Add a short biography →</Link> : null}</div><div className="public-profile-actions">{!member.isOwnProfile && <><button className={member.isFollowing ? "following" : ""} disabled={followBusy || safetyBusy} onClick={() => void toggleFollow()}>{followBusy ? "Saving…" : member.isFollowing ? "✓ Following" : "+ Follow"}</button><Link href={`/messages?to=${encodeURIComponent(member.profile.username)}&visibility=private`}>Private message</Link><Link href={`/messages?to=${encodeURIComponent(member.profile.username)}&visibility=public`}>Public note</Link><details className="profile-safety-menu"><summary>Safety</summary><button disabled={safetyBusy} onClick={() => void safetyAction("mute")}>Mute from feeds</button><button disabled={safetyBusy} onClick={() => void safetyAction("block")}>Block member</button><button disabled={safetyBusy} onClick={() => void safetyAction("report")}>Report to moderators</button></details></>}{member.isOwnProfile && <Link href="/account/profile">Edit public profile →</Link>}</div></div></section>
 
     <section className="container member-network-layout"><aside className="member-network-card"><span className="kicker">RESEARCH NETWORK</span><button onClick={() => setOpenList(openList === "followers" ? null : "followers")}><strong>{member.followerCount}</strong><span>Followers</span></button><button onClick={() => setOpenList(openList === "following" ? null : "following")}><strong>{member.followingCount}</strong><span>Following</span></button><div className="member-research-activity"><strong>{member.researchActivity.approvedContributions}</strong><span>Approved contributions</span><strong>{member.researchActivity.companiesCovered}</strong><span>Companies covered</span><strong>{member.researchActivity.publishedCorrections}</strong><span>Published corrections</span></div>{member.researchActivity.expertise.length > 0 && <div className="member-expertise"><small>EXPERTISE FROM APPROVED RESEARCH</small><div>{member.researchActivity.expertise.map(topic => <span key={topic}>{topic}</span>)}</div></div>}<p>Following, approved research, and corrections are public so members can assess expertise through evidence—not popularity alone.</p>{openList && <div className="member-connection-list"><strong>{openList === "followers" ? "Followers" : "Following"}</strong>{listedMembers.length === 0 ? <p>No members yet.</p> : listedMembers.map(person => person.username && <Link key={person.username} href={`/members/${encodeURIComponent(person.username)}`}><span>{(person.display_name || person.username).slice(0,1).toUpperCase()}</span><div><strong>@{person.username}</strong>{person.display_name && <small>{person.display_name}</small>}</div></Link>)}</div>}</aside>
 

@@ -18,9 +18,9 @@ export function PrivacyControls({ username }: { username: string }) {
     });
   }, []);
 
-  async function downloadExport() {
+  async function downloadExport(format: "json" | "markdown" = "json") {
     setBusy("export"); setMessage("");
-    const response = await authenticatedFetch("/api/account/export", { cache: "no-store" });
+    const response = await authenticatedFetch(`/api/account/export${format === "markdown" ? "?format=markdown" : ""}`, { cache: "no-store" });
     if (!response.ok) {
       const result = await response.json() as { error?: string };
       setMessage(result.error ?? "Unable to prepare your data export."); setBusy(""); return;
@@ -29,10 +29,10 @@ export function PrivacyControls({ username }: { username: string }) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "learn-what-you-own-data.json";
+    anchor.download = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? `learn-what-you-own-data.${format === "markdown" ? "md" : "json"}`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setMessage("Your account data export has downloaded."); setBusy("");
+    setMessage(format === "markdown" ? "Your portable research Markdown has downloaded." : "Your complete account data export has downloaded."); setBusy("");
   }
 
   async function requestDeletion() {
@@ -59,7 +59,8 @@ export function PrivacyControls({ username }: { username: string }) {
   return <section className="account-privacy-controls">
     <header><span className="kicker">DATA &amp; PRIVACY</span><h2>Keep control of your information.</h2><p>Download a machine-readable copy of your account, research, portfolio, messages, and uploaded-file links. Account deletion requires administrator review to prevent accidental loss.</p></header>
     <div>
-      <button type="button" onClick={() => void downloadExport()} disabled={Boolean(busy)}>{busy === "export" ? "Preparing export…" : "Download my data"}</button>
+      <button type="button" onClick={() => void downloadExport("json")} disabled={Boolean(busy)}>{busy === "export" ? "Preparing export…" : "Download all data (JSON)"}</button>
+      <button type="button" onClick={() => void downloadExport("markdown")} disabled={Boolean(busy)}>{busy === "export" ? "Preparing export…" : "Export research (Markdown)"}</button>
       {pending
         ? <button type="button" className="privacy-cancel-delete" onClick={() => void cancelDeletion()} disabled={Boolean(busy)}>{busy === "cancel" ? "Cancelling…" : "Cancel deletion request"}</button>
         : <button type="button" className="privacy-request-delete" onClick={() => void requestDeletion()} disabled={Boolean(busy)}>{busy === "delete" ? "Submitting…" : "Request account deletion"}</button>}

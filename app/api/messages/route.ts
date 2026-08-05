@@ -1,5 +1,6 @@
 import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../supabase-server";
 import { deliverImmediateMessageEmail } from "../../email-notifications";
+import { enforceActionRateLimit, membersBlocked } from "../../community-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
     if (subject.length < 1 || subject.length > 120) return Response.json({ error: "Subject must be between 1 and 120 characters." }, { status: 400 });
     if (body.length < 1 || body.length > 5000) return Response.json({ error: "Message must be between 1 and 5,000 characters." }, { status: 400 });
 
+    const admin = getSupabaseAdminClient();
+    const { data: recipient } = await admin.from("profiles").select("user_id").ilike("username", recipientUsername).eq("onboarding_complete", true).maybeSingle();
+    if (!recipient) return Response.json({ error: "Recipient username not found." }, { status: 404 });
+    if (await membersBlocked(admin, profile.user_id, recipient.user_id)) return Response.json({ error: "Messaging is unavailable between these accounts." }, { status: 403 });
+    await enforceActionRateLimit(admin, profile.user_id, "message", 20, 3600);
     const { data, error } = await getSupabaseAdminClient().rpc("server_send_member_message", {
       actor_user_id: profile.user_id,
       recipient_username: recipientUsername,

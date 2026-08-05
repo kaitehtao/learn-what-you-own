@@ -1,6 +1,7 @@
 import { researchUniverse } from "../../data/universe";
 import { CONTRIBUTION_RESEARCH_BUCKET, normalizeGoogleSheetUrl } from "../../contribution-research-assets";
 import { apiError, getSupabaseAdminClient, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
+import { enforceActionRateLimit } from "../../community-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
     const { profile, supabase } = await requireSupabaseUser(request);
     if (!profile.onboarding_complete) return Response.json({ error: "Choose your username before contributing." }, { status: 403 });
     const payload = await request.json() as Record<string, unknown>;
+    await enforceActionRateLimit(getSupabaseAdminClient(), profile.user_id, "contribution", 10, 86400);
     const contributionType = String(payload.contributionType ?? "");
     const isCompanyProposal = contributionType === "Upcoming IPO dossier" || contributionType === "Private company dossier";
     const proposedCompanyName = String(payload.proposedCompanyName ?? "").trim();

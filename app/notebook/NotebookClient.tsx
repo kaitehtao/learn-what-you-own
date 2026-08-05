@@ -225,7 +225,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
     setNotes((current) => current.filter((item) => item.id !== draft.id)); selectNote(null);
   }
 
-  const publishHref = draft && selectedNotebook ? `/contribute?${new URLSearchParams({ ticker: selectedNotebook.ticker, type: "Thesis update", claim: draft.title.slice(0, 1000), why: (draft.body || draft.sourceExcerpt).slice(0, 1200), source: draft.sourceUrl }).toString()}` : "/contribute";
+  const publishHref = draft ? `/research/community?compose=1&sourceNote=${draft.id}` : "/research/community?compose=1";
   const completedTasks = notes.filter((note) => note.noteType === "task" && note.status === "done").length;
   const selectedAttachments = selectedNotebook ? attachments.filter((attachment) => attachment.notebookId === selectedNotebook.id) : [];
 
@@ -263,7 +263,7 @@ export function NotebookClient({ initialTicker }: { initialTicker?: string }) {
           <label className="notebook-field">TAGS<input value={draft.tagsText} onChange={(event) => editDraft({ tagsText: event.target.value })} placeholder="moat, margins, management" /></label>
           <div className="notebook-source-fields"><div><span>SOURCE &amp; CITATION</span><small>Keep the evidence beside the interpretation.</small></div><label>SOURCE TITLE<input value={draft.sourceTitle} onChange={(event) => editDraft({ sourceTitle: event.target.value })} placeholder="10-K, earnings call, investor presentation…" /></label><label>SOURCE URL<input type="url" value={draft.sourceUrl} onChange={(event) => editDraft({ sourceUrl: event.target.value })} placeholder="https://www.sec.gov/…" /></label><label>DATE<input type="date" value={draft.sourceDate ?? ""} onChange={(event) => editDraft({ sourceDate: event.target.value })} /></label><label>IMPORTANT EXCERPT<textarea value={draft.sourceExcerpt} onChange={(event) => editDraft({ sourceExcerpt: event.target.value })} placeholder="Paste the exact passage or summarize the evidence you need to revisit." /></label>{draft.sourceUrl && <a href={draft.sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a>}</div>
         </div>
-        <footer className="notebook-publish"><div><strong>Ready to share an insight?</strong><p>Only this note moves to the public editorial form. Your notebook stays private.</p></div>{selectedNotebook ? <Link href={publishHref}>Prepare public contribution →</Link> : <span>File this note under a company first.</span>}</footer>
+        <footer className="notebook-publish"><div><strong>Ready to publish long-form research?</strong><p>A copy opens as an editorial draft. The original private note remains unchanged.</p></div><Link href={publishHref}>Prepare public contribution →</Link></footer>
       </> : <div className="notebook-editor-placeholder"><span>PRIVATE WORKSPACE</span><h3>Select a note to begin.</h3><p>Your sources, excerpts, questions, and unfinished ideas remain visible only to you.</p></div>}</aside>
     </section>
   </>;

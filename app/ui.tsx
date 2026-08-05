@@ -61,6 +61,7 @@ export function Header() {
           <Link href="/insider-activity">Insider Activity</Link>
           <Link href="/comps">Comps</Link>
           <Link href="/research/batches">Research</Link>
+          <Link href="/research/community">Community</Link>
           <Link href="/interviews">Interviews</Link>
           <Link href="/founders-letter">Founder’s Letter</Link>
           <Link href="/contribute">Contribute</Link>
@@ -75,6 +76,7 @@ export function Header() {
                 <Link href="/watchlist">Watchlist</Link>
                 <Link href="/messages">Messages</Link>
                 <Link href="/notifications">Notifications</Link>
+                <Link href="/account/safety">Safety</Link>
               </div>
             </details>
           )}
@@ -85,6 +87,7 @@ export function Header() {
             <Link href="/watchlist">Watchlist</Link>
             <Link href="/messages">Messages</Link>
             <Link href="/notifications">Notifications</Link>
+            <Link href="/account/safety">Safety</Link>
           </div>}
           <div className="mobile-nav-actions">
             <Link href="/#company-search" onClick={focusHomepageSearch}>Search companies</Link>
