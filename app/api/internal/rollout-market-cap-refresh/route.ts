@@ -31,6 +31,27 @@ export async function POST(request: Request) {
       WHERE b.status IN ('active','in_progress') AND c.is_active=1
       ORDER BY m.batch_id,m.priority_rank`).all<RolloutMember>();
     const members = memberResult.results;
+    const activations = members.map((member) => env.DB.prepare(`INSERT INTO company_dossiers(
+        ticker,status,quality_tier,quality_run_id,published_at,updated_at
+      ) VALUES(?,'published','machine_enriched',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+      ON CONFLICT(ticker) DO UPDATE SET
+        status='published',
+        quality_tier=CASE
+          WHEN company_dossiers.quality_tier IN ('benchmark_complete','editorial_review') THEN company_dossiers.quality_tier
+          ELSE 'machine_enriched'
+        END,
+        quality_run_id=COALESCE(company_dossiers.quality_run_id,excluded.quality_run_id),
+        published_at=COALESCE(company_dossiers.published_at,CURRENT_TIMESTAMP),
+        updated_at=CURRENT_TIMESTAMP`).bind(member.ticker, member.batch_id));
+    await runStatements(activations);
+
+    const progressUpdates = members.map((member) => env.DB.prepare(`UPDATE dossier_expansion_members
+      SET workflow_status='machine_enriched',
+          source_count=(SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_expansion_members.ticker),
+          updated_at=CURRENT_TIMESTAMP
+      WHERE batch_id=? AND ticker=?`).bind(member.batch_id, member.ticker));
+    await runStatements(progressUpdates);
+
     const marketUniverse = await fetchNasdaqMarketUniverse();
     const updates = members.flatMap((member) => {
       const snapshot = marketUniverse.get(member.ticker);
@@ -70,6 +91,7 @@ export async function POST(request: Request) {
       ORDER BY m.batch_id,m.priority_rank`).all();
     return Response.json({
       provider: "Nasdaq market activity",
+      activated: activations.length,
       refreshed: updates.length,
       unavailable: members.length - updates.length,
       ranked: ranked.results,

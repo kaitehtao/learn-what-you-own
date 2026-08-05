@@ -1566,8 +1566,10 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(migration, /benchmark_complete/);
   assert.match(migration, /russell-2000-market-cap-01/);
   assert.match(migration, /ROW_NUMBER\(\) OVER \(ORDER BY c\.market_cap DESC/);
-  assert.match(activation, /SELECT m\.ticker,'published','machine_enriched'/);
+  assert.match(activation, /status='in_progress'/);
   assert.doesNotMatch(activation, /INSERT INTO dossier_sources/);
+  assert.match(rankingRoute, /INSERT INTO company_dossiers/);
+  assert.match(rankingRoute, /workflow_status='machine_enriched'/);
   assert.match(researchRoute, /importSecFilingFacts\(ticker\)/);
   assert.match(secFacts, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
   assert.match(universeRoute, /dossier_quality_tier/);
