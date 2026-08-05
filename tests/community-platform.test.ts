@@ -47,6 +47,7 @@ test("generated D1 registry migrations cover every completed ticker dossier exac
   const tickers = [...combined.matchAll(/INSERT INTO dossier_audit_members/g)];
   assert.equal(tickers.length, Object.keys(featuredDossiers).length);
   assert.match(combined, /Complete evidence-led ownership dossier benchmark/);
+  assert.doesNotMatch(combined, /INSERT INTO (?:company_dossiers|dossier_sources|dossier_claims|research_companies)/);
   assert.equal([...combined.matchAll(/INSERT INTO dossier_audit_members/g)].length, Object.keys(featuredDossiers).length);
   for (const ticker of Object.keys(featuredDossiers)) assert.equal((combined.match(new RegExp(`'2026-08-05-complete-benchmark','${ticker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}'`, "g")) ?? []).length, 1, `${ticker} should have one canonical audit record`);
 });
