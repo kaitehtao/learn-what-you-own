@@ -1742,6 +1742,8 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
   assert.match(sourceBackfill, /memberships_json LIKE '%Russell 3000%'/);
   assert.match(sourceBackfill, /ORDER BY c\.market_cap IS NULL,c\.market_cap DESC/);
+  assert.match(sourceBackfill, /INSERT INTO company_dossiers\(ticker,status,quality_tier,published_at,updated_at\)/);
+  assert.doesNotMatch(sourceBackfill, /company_dossiers\(ticker,status,quality_tier,content_json/);
   assert.match(sourceBackfill, /INSERT OR IGNORE INTO dossier_sources/);
   assert.match(sourceBackfill, /importSecFilingFacts/);
   assert.match(sourceBackfill, /reconcileDossierQuality/);

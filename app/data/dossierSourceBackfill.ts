@@ -49,17 +49,13 @@ async function updateBatchItem(batch: string, ticker: string, values: {
 }
 
 async function processCandidate(batch: string, candidate: Candidate) {
-  await env.DB.prepare(`INSERT INTO company_dossiers(ticker,status,quality_tier,content_json,published_at,updated_at)
-    VALUES(?,'published','machine_enriched',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+  await env.DB.prepare(`INSERT INTO company_dossiers(ticker,status,quality_tier,published_at,updated_at)
+    VALUES(?,'published','machine_enriched',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
     ON CONFLICT(ticker) DO UPDATE SET
       status='published',
       quality_tier=CASE WHEN company_dossiers.quality_tier='starting_point' THEN 'machine_enriched' ELSE company_dossiers.quality_tier END,
-      content_json=COALESCE(company_dossiers.content_json,excluded.content_json),
       published_at=COALESCE(company_dossiers.published_at,CURRENT_TIMESTAMP),
-      updated_at=CURRENT_TIMESTAMP`).bind(
-        candidate.ticker,
-        JSON.stringify({ coverage: "Automated SEC research foundation", sourceBackfillBatch: batch }),
-      ).run();
+      updated_at=CURRENT_TIMESTAMP`).bind(candidate.ticker).run();
 
   if (!candidate.cik) {
     await updateBatchItem(batch, candidate.ticker, { status: "no_sec_match", sourceCountAfter: candidate.source_count, error: "No verified CIK is stored for this security." });
