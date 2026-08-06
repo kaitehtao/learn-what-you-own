@@ -10,7 +10,16 @@ Public facts are not personalized recommendations. Valuation percentiles describ
 
 ## Private by default
 
-The analyst workspace stores the member's consensus view, variant view, current conclusion, conviction, workflow status, measurable bull and bear drivers, falsification tests, scenario probabilities, price targets, assumptions, decision journal, notebook notes, source links, and private attachments.
+The analyst workspace stores the member's consensus view, variant view, current conclusion, conviction, workflow status, measurable bull and bear drivers, falsification tests, scenario probabilities, price targets, assumptions, decision journal, notebook notes, source links, and private attachments. It also implements the FACTS method: Financial, Accounting, Credibility, Timing, and Sector.
+
+The private FACTS worksheet adds:
+
+- an evidence status, score, conclusion, decisive question, and evidence gap for each FACTS dimension;
+- growth, value, and turnaround classification;
+- target return, target date, maximum position size, liquidity plan, and explicit entry, hold, and exit rules;
+- a dated management-commitment ledger that compares public promises with outcomes;
+- a private management and third-party-check log for customer, supplier, distributor, competitor, consultant, and trade-show findings; and
+- decision postmortems that distinguish process quality from investment outcome.
 
 Private workspace records:
 
@@ -33,8 +42,15 @@ The workflow is:
 4. Rank bull, bear, and neutral drivers using evidence, confidence, importance, and EPIC tests.
 5. Build bull/base/bear scenarios whose probabilities total 100%.
 6. Record the decision, observed price, key risk, and next catalyst.
-7. Review the journal after earnings and material filings.
-8. Optionally submit a separate public contribution for moderation.
+7. Complete the Financial, Accounting, Credibility, Timing, and Sector assessments and list unresolved evidence gaps.
+8. Define entry, hold, reduce, and exit conditions before capital is committed.
+9. Review management promises, channel checks, and the journal after earnings and material filings.
+10. Complete a postmortem after a major thesis decision or closed position.
+11. Optionally submit a separate public contribution for moderation.
+
+## Public and private FACTS boundary
+
+The public dossier shows the source-linked evidence map for each FACTS dimension and sends members to the relevant filings, ownership, valuation, earnings, comparable-company, interview, and relationship sections. It never shows a member's score, conviction, target return, position limit, channel-check notes, decision rules, or postmortem. Those records remain private under Supabase RLS unless the member separately submits selected material through the moderated public-contribution workflow.
 
 ## Historical valuation methodology
 

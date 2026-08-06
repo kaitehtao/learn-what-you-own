@@ -232,6 +232,49 @@ test("separates public valuation evidence from private analyst judgment", async 
   assert.match(accountExport, /analystDecisionJournal/);
 });
 
+test("implements the FACTS methodology with private row-level security and public evidence links", async () => {
+  const [factsPage, screener, publicPanel, featured, starter, workspace, api, migration, navigation, sitemap, styles] = await Promise.all([
+    source("app/facts/page.tsx"),
+    source("app/facts/FactsScreener.tsx"),
+    source("app/PublicFactsPanel.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/workspace/FactsWorkspace.tsx"),
+    source("app/api/analyst-workspace/route.ts"),
+    source("supabase/migrations/20260805030000_facts_investment_workflow.sql"),
+    source("app/ui.tsx"),
+    source("app/sitemap.xml/route.ts"),
+    source("app/globals.css"),
+  ]);
+  assert.match(factsPage, /Financial, Accounting, Credibility, Timing, and Sector/);
+  assert.match(factsPage, /Generate ideas/);
+  assert.match(factsPage, /Investigate/);
+  assert.match(screener, /sort: "market_cap", direction: "desc"/);
+  assert.match(screener, /membership/);
+  assert.match(screener, /minMarketCap/);
+  assert.match(publicPanel, /Public evidence map/);
+  assert.match(publicPanel, /Private member workflow/);
+  assert.match(featured, /PublicFactsPanel/);
+  assert.match(starter, /PublicFactsPanel/);
+  assert.match(workspace, /FACTS DUE DILIGENCE/);
+  assert.match(workspace, /MANAGEMENT CREDIBILITY LEDGER/);
+  assert.match(workspace, /PRIVATE INVESTIGATION LOG/);
+  assert.match(workspace, /DECISION POSTMORTEM/);
+  for (const action of ["save_facts", "save_action_plan", "save_commitment", "save_channel_check", "add_postmortem"]) {
+    assert.match(api, new RegExp(action));
+  }
+  for (const table of ["analyst_facts_assessments", "analyst_management_commitments", "analyst_channel_checks", "analyst_postmortems"]) {
+    assert.match(migration, new RegExp(`create table if not exists public\\.${table}`));
+  }
+  assert.match(migration, /enable row level security/g);
+  assert.match(migration, /auth\.uid\(\) = user_id/g);
+  assert.match(migration, /revoke all[\s\S]*from anon/);
+  assert.match(navigation, /href="\/facts"/);
+  assert.match(sitemap, /"\/facts"/);
+  assert.match(styles, /\.facts-assessment-grid/);
+  assert.match(styles, /\.facts-screen-row/);
+});
+
 test("keeps the deployment authority endpoint out of shared caches", async () => {
   const stats = await source("app/api/site-stats/route.ts");
   assert.match(stats, /cache-control": "no-store, max-age=0/);
@@ -1592,6 +1635,7 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(directory, /indexMembership === "Russell 2000"/);
   assert.match(directory, /indexFocused \? "market_cap" : "ticker"/);
   assert.match(directory, /indexFocused \? "desc" : "asc"/);
+  assert.match(directory, /CompanyUniverseDirectoryClient key=\{`\$\{props\.market\}:\$\{props\.indexMembership/);
   assert.match(directory, /formatMarketCap\(company\.market_cap\)/);
   assert.match(directory, /DOSSIER COMPLETION PROGRAM/);
   assert.match(russellPage, /indexMembership="Russell 2000"/);

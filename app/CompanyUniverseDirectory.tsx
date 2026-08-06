@@ -63,7 +63,15 @@ const qualityLabels = {
   benchmark_complete: "Benchmark-complete dossier",
 } as const;
 
-export function CompanyUniverseDirectory({ market, indexMembership = "" }: { market: "listed" | "otc"; indexMembership?: "S&P 500" | "Russell 2000" | "" }) {
+type DirectoryProps = { market: "listed" | "otc"; indexMembership?: "S&P 500" | "Russell 2000" | "" };
+
+export function CompanyUniverseDirectory(props: DirectoryProps) {
+  // A route-owned key prevents React from carrying the prior tab's client
+  // filters into a different research universe during soft navigation.
+  return <CompanyUniverseDirectoryClient key={`${props.market}:${props.indexMembership ?? ""}`} {...props} />;
+}
+
+function CompanyUniverseDirectoryClient({ market, indexMembership = "" }: DirectoryProps) {
   const otc = market === "otc";
   const indexFocused = !otc && Boolean(indexMembership);
   const russellFocused = indexMembership === "Russell 2000";

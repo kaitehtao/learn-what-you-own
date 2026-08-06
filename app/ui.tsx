@@ -59,6 +59,7 @@ export function Header() {
           <Link href="/otc">OTC</Link>
           <Link href="/earnings">Earnings</Link>
           <Link href="/insider-activity">Insider Activity</Link>
+          <Link href="/facts">FACTS</Link>
           <Link href="/comps">Comps</Link>
           <details className="workspace-menu research-menu">
             <summary>Research</summary>
@@ -66,6 +67,7 @@ export function Header() {
               <Link href="/research/sp-500">S&amp;P 500 dossiers</Link>
               <Link href="/research/russell-2000">Russell 2000 dossiers</Link>
               <Link href="/research/batches">Coverage program</Link>
+              <Link href="/facts">FACTS methodology</Link>
             </div>
           </details>
           <details className="workspace-menu community-menu">

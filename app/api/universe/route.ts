@@ -16,6 +16,9 @@ export async function GET(request: Request) {
   const query = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const exchange = (url.searchParams.get("exchange") ?? "").toUpperCase();
   const securityType = (url.searchParams.get("securityType") ?? "").trim().slice(0, 100);
+  const sector = (url.searchParams.get("sector") ?? "").trim().slice(0, 100);
+  const minMarketCap = Number(url.searchParams.get("minMarketCap"));
+  const maxMarketCap = Number(url.searchParams.get("maxMarketCap"));
   const membership = (url.searchParams.get("membership") ?? "").trim();
   const qualityTier = (url.searchParams.get("qualityTier") ?? "").trim();
   const sort = sorts.has(url.searchParams.get("sort") ?? "") ? url.searchParams.get("sort")! : "ticker";
@@ -32,6 +35,18 @@ export async function GET(request: Request) {
   if (market === "otc" && securityType) {
     clauses.push("c.security_type = ?");
     binds.push(securityType);
+  }
+  if (market === "listed" && sector) {
+    clauses.push("c.sector = ?");
+    binds.push(sector);
+  }
+  if (market === "listed" && Number.isFinite(minMarketCap) && minMarketCap > 0) {
+    clauses.push("c.market_cap >= ?");
+    binds.push(minMarketCap);
+  }
+  if (market === "listed" && Number.isFinite(maxMarketCap) && maxMarketCap > 0) {
+    clauses.push("c.market_cap <= ?");
+    binds.push(maxMarketCap);
   }
   if (market === "listed" && memberships.has(membership)) {
     clauses.push("c.memberships_json LIKE ? ESCAPE '\\'");
