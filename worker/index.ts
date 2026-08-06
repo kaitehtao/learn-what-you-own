@@ -165,15 +165,11 @@ const worker = {
     // per day. The member digest and earnings alerts still run only at 08:00
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
+      if (controller.cron === "2-59/5 * * * *") {
+        await backfillScheduledDossierSources(env, ctx);
+        return;
+      }
       if (controller.cron === "*/15 * * * *") {
-        // Initial evidence backfill is additive and lower priority than the
-        // established freshness monitor. A failed backfill must never prevent
-        // completed dossiers from receiving their normal filing scan.
-        try {
-          await backfillScheduledDossierSources(env, ctx);
-        } catch (error) {
-          console.error(error);
-        }
         await refreshScheduledDossiers(env, ctx);
         return;
       }

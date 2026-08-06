@@ -1208,6 +1208,31 @@ test("builds point-in-time earnings intelligence and authenticated community whi
   assert.match(migration, /earnings_community_estimates/);
 });
 
+test("builds a private-by-identity collaborative earnings workbook with public aggregates", async () => {
+  const [calendar, page, client, route, model, migration, architecture] = await Promise.all([
+    source("app/earnings/page.tsx"),
+    source("app/earnings/model/[ticker]/page.tsx"),
+    source("app/earnings/model/[ticker]/CollaborativeEarningsModel.tsx"),
+    source("app/api/earnings/models/route.ts"),
+    source("app/earnings-model.ts"),
+    source("supabase/migrations/20260806234500_collaborative_earnings_models.sql"),
+    source("docs/ARCHITECTURE.md"),
+  ]);
+  assert.match(calendar, /Build model/);
+  assert.match(page, /CollaborativeEarningsModel/);
+  assert.match(client, /Anonymous crowd medians/);
+  assert.match(client, /Start from crowd medians/);
+  assert.match(client, /Your revision history/);
+  assert.match(route, /requireSupabaseUser/);
+  assert.match(route, /getSupabaseAdminClient/);
+  assert.match(route, /earnings_model_revisions/);
+  assert.match(model, /deriveEarningsModelPeriod/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /Members own earnings model cells/);
+  assert.match(migration, /revoke all[\s\S]*from anon/);
+  assert.match(architecture, /collaborative earnings-model/);
+});
+
 test("lists the official Summer 2026 Y Combinator class with ranking placeholders", async () => {
   const [page, explorer, data, sitemap] = await Promise.all([
     source("app/emerging-companies/y-combinator/page.tsx"),
@@ -1738,18 +1763,23 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(freshnessAdmin, /full-universe dossier program/);
   assert.match(worker, /dossier-freshness\?limit=25/);
   assert.match(worker, /dossier-source-backfill\?limit=12/);
+  assert.match(worker, /controller\.cron === "2-59\/5 \* \* \* \*"/);
   assert.match(worker, /rollout-market-cap-refresh/);
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
   assert.match(sourceBackfill, /memberships_json LIKE '%Russell 3000%'/);
+  assert.match(sourceBackfill, /COUNT\(\*\)[\s\S]*<5/);
   assert.match(sourceBackfill, /ORDER BY c\.market_cap IS NULL,c\.market_cap DESC/);
   assert.match(sourceBackfill, /INSERT INTO company_dossiers\(ticker,status,quality_tier,published_at,updated_at\)/);
   assert.doesNotMatch(sourceBackfill, /company_dossiers\(ticker,status,quality_tier,content_json/);
-  assert.match(sourceBackfill, /INSERT INTO dossier_sources/);
+  assert.match(sourceBackfill, /INSERT OR IGNORE INTO dossier_sources/);
   assert.match(sourceBackfill, /'sec_filing'/);
   assert.match(sourceBackfill, /evidence_date,excerpt,verified_at,created_at/);
   assert.doesNotMatch(sourceBackfill, /filing_type,filed_at,accessed_at/);
   assert.match(sourceBackfill, /importSecFilingFacts/);
   assert.match(sourceBackfill, /reconcileDossierQuality/);
+  assert.match(sourceBackfill, /recoverStaleDossierSourceBackfills/);
+  assert.match(sourceBackfill, /Lease expired before a complete source pack/);
+  assert.match(sourceBackfill, /error_message NOT LIKE 'Lease expired%'/);
   assert.match(sourceBackfillRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(sourceBackfillAdmin, /Every completed batch records its ticker list/);
   assert.match(sourceBackfillAdmin, /Superseded diagnostic run · inactive/);

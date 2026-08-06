@@ -8,7 +8,8 @@ import { selectSecSourcePack } from "./secSourcePack";
 const SEC_AGENT = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com";
 const DEFAULT_BATCH_LIMIT = 12;
 const MAX_BATCH_LIMIT = 25;
-const SELECTION_RULE = "Active Russell 3000 constituents with zero dossier sources, ordered by current market capitalization descending; Russell 2000 membership is retained on each deduplicated batch item.";
+const STALE_LEASE_MINUTES = 20;
+const SELECTION_RULE = "Active Russell 3000 constituents with fewer than five dossier sources, ordered by current market capitalization descending; Russell 2000 membership is retained on each deduplicated batch item.";
 
 type Candidate = {
   ticker: string;
@@ -48,6 +49,58 @@ async function updateBatchItem(batch: string, ticker: string, values: {
     ).run();
 }
 
+// Scheduled Workers can be interrupted after some source rows are written but
+// before the batch ledger is finalized. Reconcile leases conservatively: a
+// ticker with a full source pack is preserved as complete; an unfinished item
+// is marked retryable immediately rather than blocking the universe forever.
+export async function recoverStaleDossierSourceBackfills(staleMinutes = STALE_LEASE_MINUTES) {
+  const safeMinutes = Math.max(10, Math.min(120, Math.floor(staleMinutes) || STALE_LEASE_MINUTES));
+  const modifier = `-${safeMinutes} minutes`;
+  const stale = await env.DB.prepare(`SELECT id FROM dossier_source_backfill_batches
+    WHERE status='running' AND started_at<datetime('now',?) ORDER BY started_at ASC LIMIT 50`).bind(modifier).all<{ id: string }>();
+  if (!stale.results.length) return { recoveredBatches: 0, completedItems: 0, retryableItems: 0, batchIds: [] as string[] };
+  const ids = stale.results.map((row) => row.id);
+  const placeholders = ids.map(() => "?").join(",");
+
+  await env.DB.prepare(`UPDATE dossier_source_backfill_items SET
+    source_count_after=(SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker),
+    status=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
+      THEN 'source_foundation_complete' ELSE 'error' END,
+    facts_import_status=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
+      THEN CASE WHEN facts_import_status='not_attempted' THEN 'lease_recovered' ELSE facts_import_status END ELSE facts_import_status END,
+    facts_import_detail=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
+      THEN CASE WHEN facts_import_detail='' THEN 'Source pack preserved after an interrupted batch; Company Facts can refresh on the normal cycle.' ELSE facts_import_detail END ELSE facts_import_detail END,
+    error_message=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
+      THEN '' ELSE 'Lease expired before a complete source pack; ticker released for immediate retry.' END,
+    completed_at=CURRENT_TIMESTAMP
+    WHERE status='running' AND batch_id IN (${placeholders})`).bind(...ids).run();
+
+  for (const id of ids) {
+    await env.DB.prepare(`UPDATE dossier_source_backfill_batches SET
+      success_count=(SELECT COUNT(*) FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status='source_foundation_complete'),
+      skipped_count=(SELECT COUNT(*) FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status IN ('no_sec_match','no_supported_filings')),
+      error_count=(SELECT COUNT(*) FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status='error'),
+      source_count_added=(SELECT COALESCE(SUM(MAX(0,source_count_after-source_count_before)),0) FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id),
+      status=CASE
+        WHEN EXISTS(SELECT 1 FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status='error')
+          AND EXISTS(SELECT 1 FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status='source_foundation_complete') THEN 'partial'
+        WHEN EXISTS(SELECT 1 FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status='error') THEN 'failed'
+        WHEN EXISTS(SELECT 1 FROM dossier_source_backfill_items i WHERE i.batch_id=dossier_source_backfill_batches.id AND i.status IN ('no_sec_match','no_supported_filings')) THEN 'partial'
+        ELSE 'completed' END,
+      completed_at=CURRENT_TIMESTAMP WHERE id=? AND status='running'`).bind(id).run();
+  }
+  const recoveryCounts = await env.DB.prepare(`SELECT
+    SUM(CASE WHEN status='source_foundation_complete' THEN 1 ELSE 0 END) AS completed,
+    SUM(CASE WHEN status='error' AND error_message LIKE 'Lease expired%' THEN 1 ELSE 0 END) AS retryable
+    FROM dossier_source_backfill_items WHERE batch_id IN (${placeholders})`).bind(...ids).first<{ completed: number; retryable: number }>();
+  return {
+    recoveredBatches: ids.length,
+    completedItems: Number(recoveryCounts?.completed ?? 0),
+    retryableItems: Number(recoveryCounts?.retryable ?? 0),
+    batchIds: ids,
+  };
+}
+
 async function processCandidate(batch: string, candidate: Candidate) {
   await env.DB.prepare(`INSERT INTO company_dossiers(ticker,status,quality_tier,published_at,updated_at)
     VALUES(?,'published','machine_enriched',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
@@ -73,7 +126,7 @@ async function processCandidate(batch: string, candidate: Candidate) {
   }
 
   for (const source of pack) {
-    await env.DB.prepare(`INSERT INTO dossier_sources
+    await env.DB.prepare(`INSERT OR IGNORE INTO dossier_sources
       (ticker,source_type,title,url,evidence_date,excerpt,verified_at,created_at)
       VALUES (?,'sec_filing',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
         candidate.ticker,
@@ -112,23 +165,24 @@ async function processCandidate(batch: string, candidate: Candidate) {
 
 export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT_BATCH_LIMIT) {
   await Promise.all([ensureDossierSourceBackfillSchema(), ensureDossierFreshnessSchema()]);
+  const leaseRecovery = await recoverStaleDossierSourceBackfills();
   const limit = Math.max(1, Math.min(MAX_BATCH_LIMIT, Math.floor(requestedLimit) || DEFAULT_BATCH_LIMIT));
   const candidateResult = await env.DB.prepare(`SELECT c.ticker,c.name,c.cik,c.memberships_json,
       ROW_NUMBER() OVER (ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC) AS priority_rank,
       COALESCE((SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker),0) AS source_count
     FROM companies c
     WHERE c.is_active=1 AND c.listing_scope='listed' AND c.memberships_json LIKE '%Russell 3000%'
-      AND NOT EXISTS (SELECT 1 FROM dossier_sources ds WHERE ds.ticker=c.ticker)
+      AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker)<5
       AND NOT EXISTS (
         SELECT 1 FROM dossier_source_backfill_items prior
         WHERE prior.ticker=c.ticker AND (
           prior.status='running'
-          OR (prior.status='error' AND prior.completed_at>=datetime('now','-6 hours'))
+          OR (prior.status='error' AND prior.error_message NOT LIKE 'Lease expired%' AND prior.completed_at>=datetime('now','-6 hours'))
           OR (prior.status IN ('no_sec_match','no_supported_filings') AND prior.completed_at>=datetime('now','-30 days'))
         )
       )
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC LIMIT ?`).bind(limit).all<Candidate>();
-  if (!candidateResult.results.length) return { batchId: null, selected: 0, completed: 0, skipped: 0, errors: 0, sourcesAdded: 0, tickers: [], qualityReconciliation: null };
+  if (!candidateResult.results.length) return { batchId: null, selected: 0, completed: 0, skipped: 0, errors: 0, sourcesAdded: 0, tickers: [], qualityReconciliation: null, leaseRecovery };
 
   const id = batchId();
   await env.DB.prepare(`INSERT INTO dossier_source_backfill_batches
@@ -193,5 +247,6 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
     sourcesAdded: Number(counts?.sources_added ?? 0),
     tickers: results,
     qualityReconciliation,
+    leaseRecovery,
   };
 }

@@ -149,10 +149,14 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled filing freshness and daily digest
 
-`vite.config.ts` declares `*/15 * * * *` for initial-source backfill and the
-dossier freshness monitor. Each invocation first processes up to 12 zero-source
-Russell 3000 constituents in descending market-cap order, then checks the 25
-least-recently scanned published dossiers against the
+`vite.config.ts` declares `2-59/5 * * * *` for the initial-source backfill and
+`*/15 * * * *` for the dossier freshness monitor. Each backfill invocation
+processes up to 12 Russell 3000 constituents with fewer than five sources in
+descending market-cap order. This includes partially written source packs, not
+only zero-source dossiers. Before selection it reconciles any batch lease left in a
+running state for more than 20 minutes: complete source packs are preserved and
+unfinished tickers become immediately eligible for retry. The separate
+quarter-hour freshness invocation checks the 25 least-recently scanned published dossiers against the
 SEC submissions feed. At the current S&P benchmark size, every published issuer
 is revisited in approximately six hours. Newly detected earnings releases,
 10-Ks, 10-Qs, definitive proxies, and material 8-Ks are recorded in
@@ -180,7 +184,7 @@ the exact accession and primary document.
 
 The Worker posts to `/api/notifications/email-digest` and `/api/internal/sec-facts-refresh` using `NOTIFICATION_CRON_SECRET`. The digest endpoint processes only queued daily notifications and leaves the no-message case empty. The SEC refresh endpoint selects the five least-recently attempted published dossiers, imports only normalized SEC Company Facts, and records success, unsupported-XBRL, or error status. This bounded rotation avoids aggressive SEC traffic while keeping published financial evidence fresh.
 
-After deployment, verify all three cron triggers exist on the `learn-what-you-own` Worker and inspect at least one freshness invocation plus one daily scheduled invocation. Never point the digest to a preview origin.
+After deployment, verify all four cron triggers exist on the `learn-what-you-own` Worker and inspect at least one backfill invocation, one freshness invocation, and one daily scheduled invocation. Never point the digest to a preview origin.
 
 ## Build and deploy
 
