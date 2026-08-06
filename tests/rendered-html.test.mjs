@@ -402,6 +402,7 @@ test("publishes complete S&P 500 dossier coverage in descending market-cap batch
   assert.match(page, /Alphabet’s two share classes share one company dossier/);
   assert.match(navigation, /<summary>Research<\/summary>/);
   assert.match(navigation, /href="\/research\/sp-500">S&amp;P 500 dossiers/);
+  assert.match(navigation, /href="\/research\/nasdaq-100">Nasdaq-100 dossiers/);
   assert.match(navigation, /href="\/research\/russell-3000">Russell 3000 dossiers/);
   assert.match(navigation, /href="\/research\/russell-2000">Russell 2000 dossiers/);
   assert.match(secCompanies, /normalizedTicker === "XOM"/);
@@ -1647,8 +1648,8 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(styles, /\.filing-history\{display:flex/);
 });
 
-test("separates publication from dossier quality and ranks Russell research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker] = await Promise.all([
+test("separates publication from dossier quality and ranks index research from the live market feed", async () => {
+  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0032_activate_ranked_research_foundations.sql"),
@@ -1656,6 +1657,8 @@ test("separates publication from dossier quality and ranks Russell research from
     source("app/CompanyUniverseDirectory.tsx"),
     source("app/research/russell-2000/page.tsx"),
     source("app/research/russell-3000/page.tsx"),
+    source("app/research/nasdaq-100/page.tsx"),
+    source("app/ui.tsx"),
     source("app/sitemap.xml/route.ts"),
     source("app/globals.css"),
     source("app/company/[ticker]/page.tsx"),
@@ -1693,11 +1696,15 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(directory, /Research foundation/);
   assert.match(directory, /href="\/research\/russell-2000"/);
   assert.match(directory, /href="\/research\/russell-3000"/);
+  assert.match(directory, /href="\/research\/nasdaq-100"/);
   assert.match(directory, /href="\/research\/sp-500"/);
   assert.match(directory, /indexMembership === "Russell 2000"/);
   assert.match(directory, /indexMembership === "Russell 3000"/);
+  assert.match(directory, /indexMembership === "Nasdaq-100 \(QQQ\)"/);
   assert.match(directory, /distinct SEC issuers/);
   assert.match(directory, /FTSE Russell definition/);
+  assert.match(directory, /Official Nasdaq-100 index page/);
+  assert.match(directory, /Nasdaq-100 methodology/);
   assert.match(directory, /indexFocused \? "market_cap" : "ticker"/);
   assert.match(directory, /indexFocused \? "desc" : "asc"/);
   assert.match(directory, /CompanyUniverseDirectoryClient key=\{`\$\{props\.market\}:\$\{props\.indexMembership/);
@@ -1705,6 +1712,9 @@ test("separates publication from dossier quality and ranks Russell research from
   assert.match(directory, /DOSSIER COMPLETION PROGRAM/);
   assert.match(russellPage, /indexMembership="Russell 2000"/);
   assert.match(russell3000Page, /indexMembership="Russell 3000"/);
+  assert.match(nasdaq100Page, /indexMembership="Nasdaq-100 \(QQQ\)"/);
+  assert.match(navigation, /href="\/research\/nasdaq-100">Nasdaq-100 dossiers/);
+  assert.match(sitemap, /"\/research\/nasdaq-100"/);
   assert.match(sitemap, /"\/research\/russell-3000"/);
   assert.match(styles, /grid-template-columns:repeat\(4,1fr\)/);
   assert.doesNotMatch(directory, />Published dossier</);

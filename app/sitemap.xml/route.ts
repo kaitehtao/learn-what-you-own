@@ -19,6 +19,7 @@ const staticPaths = [
   "/research/batches",
   "/russell-2000",
   "/research/sp-500",
+  "/research/nasdaq-100",
   "/research/russell-3000",
   "/research/russell-2000",
 ];
