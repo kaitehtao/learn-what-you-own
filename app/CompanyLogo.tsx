@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 
 type CompanyLogoProps = {
   ticker: string;
@@ -60,12 +59,13 @@ export function CompanyLogo({ ticker, companyName, size = "compact", eager = fal
 
   return <span className={`company-logo company-logo-${size}${needsDarkBackground ? " company-logo-light-artwork" : ""}`} title={`${companyName ?? normalizedTicker} · ${normalizedTicker}`}>
     <span className="company-logo-image">
-      {!failed && symbol ? <Image
+      {/* A native image preserves crossorigin for canvas-based contrast detection. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {!failed && symbol ? <img
         src={`https://financialmodelingprep.com/image-stock/${encodeURIComponent(symbol)}.png`}
         alt={`${companyName ?? normalizedTicker} logo`}
         width={66}
         height={66}
-        unoptimized
         crossOrigin="anonymous"
         loading={eager ? "eager" : "lazy"}
         decoding="async"

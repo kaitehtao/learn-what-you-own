@@ -449,7 +449,8 @@ test("shows data-driven company logos with persistent ticker labels across dossi
   assert.match(logo, /crossOrigin="anonymous"/);
   assert.match(logo, /onLoad=\{\(event\) => detectContrast\(event\.currentTarget\)\}/);
   assert.match(logo, /<small>\{normalizedTicker\}<\/small>/);
-  assert.match(logo, /import Image from "next\/image"/);
+  assert.match(logo, /\? <img/);
+  assert.doesNotMatch(logo, /import Image from "next\/image"/);
   assert.match(featured, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="hero"/);
   assert.match(starter, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="hero"/);
   assert.match(directory, /<CompanyLogo ticker=\{company\.ticker\}/);
