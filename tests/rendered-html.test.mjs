@@ -1752,8 +1752,12 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfill, /reconcileDossierQuality/);
   assert.match(sourceBackfillRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(sourceBackfillAdmin, /Every completed batch records its ticker list/);
+  assert.match(sourceBackfillAdmin, /Superseded diagnostic run · inactive/);
+  assert.match(sourceBackfillAdmin, /is_superseded_diagnostic/);
   assert.match(sourceBackfillMigration, /dossier_source_backfill_batches/);
   assert.match(batches, /Completed batch ticker ledger/);
+  assert.match(batches, /Superseded diagnostic run · inactive/);
+  assert.match(batches, /newer\.universe_name=b\.universe_name/);
 });
 
 test("keeps the Nasdaq-100 source snapshot aligned with the official component feed", async () => {

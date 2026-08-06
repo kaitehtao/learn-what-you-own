@@ -8,9 +8,15 @@ export const dynamic = "force-dynamic";
 async function dashboardData() {
   await ensureDossierSourceBackfillSchema();
   const [batches, items, coverage] = await Promise.all([
-    env.DB.prepare(`SELECT id,universe_name,selection_rule,requested_limit,selected_count,
-      success_count,skipped_count,error_count,source_count_added,status,started_at,completed_at
-      FROM dossier_source_backfill_batches ORDER BY started_at DESC LIMIT 20`).all(),
+    env.DB.prepare(`SELECT b.id,b.universe_name,b.selection_rule,b.requested_limit,b.selected_count,
+      b.success_count,b.skipped_count,b.error_count,b.source_count_added,b.status,b.started_at,b.completed_at,
+      CASE WHEN b.status='failed' AND b.success_count=0 AND b.source_count_added=0
+        AND EXISTS (
+          SELECT 1 FROM dossier_source_backfill_batches newer
+          WHERE newer.universe_name=b.universe_name AND newer.started_at>b.started_at
+            AND newer.status='completed' AND newer.success_count>0
+        ) THEN 1 ELSE 0 END AS is_superseded_diagnostic
+      FROM dossier_source_backfill_batches b ORDER BY b.started_at DESC LIMIT 20`).all(),
     env.DB.prepare(`SELECT batch_id,ticker,priority_rank,memberships_json,status,source_count_before,
       source_count_after,facts_import_status,facts_import_detail,error_message,completed_at
       FROM dossier_source_backfill_items

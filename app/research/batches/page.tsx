@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
 type RolloutSummary = { total:number;benchmark_complete:number;evidence_ready:number;evidence_ingestion:number;research_backlog:number };
 type QualityRule = { id:string;label:string;min_source_count:number;min_verified_claim_count:number;min_distinct_section_count:number;min_distinct_claim_type_count:number };
-type SourceBackfillBatch = { id:string;selected_count:number;success_count:number;skipped_count:number;error_count:number;source_count_added:number;status:string;started_at:string;completed_at:string|null };
+type SourceBackfillBatch = { id:string;selected_count:number;success_count:number;skipped_count:number;error_count:number;source_count_added:number;status:string;started_at:string;completed_at:string|null;is_superseded_diagnostic:number };
 type SourceBackfillItem = { batch_id:string;ticker:string;status:string;source_count_after:number;facts_import_status:string };
 
 function money(value: number) {
@@ -80,10 +80,16 @@ export default async function ResearchBatchesPage() {
   }
   try {
     const [batches, items] = await Promise.all([
-      env.DB.prepare(`SELECT id,selected_count,success_count,skipped_count,error_count,
-        source_count_added,status,started_at,completed_at
-        FROM dossier_source_backfill_batches
-        WHERE status<>'running' ORDER BY started_at DESC LIMIT 20`).all<SourceBackfillBatch>(),
+      env.DB.prepare(`SELECT b.id,b.selected_count,b.success_count,b.skipped_count,b.error_count,
+        b.source_count_added,b.status,b.started_at,b.completed_at,
+        CASE WHEN b.status='failed' AND b.success_count=0 AND b.source_count_added=0
+          AND EXISTS (
+            SELECT 1 FROM dossier_source_backfill_batches newer
+            WHERE newer.universe_name=b.universe_name AND newer.started_at>b.started_at
+              AND newer.status='completed' AND newer.success_count>0
+          ) THEN 1 ELSE 0 END AS is_superseded_diagnostic
+        FROM dossier_source_backfill_batches b
+        WHERE b.status<>'running' ORDER BY b.started_at DESC LIMIT 20`).all<SourceBackfillBatch>(),
       env.DB.prepare(`SELECT batch_id,ticker,status,source_count_after,facts_import_status
         FROM dossier_source_backfill_items
         WHERE batch_id IN (
@@ -114,8 +120,9 @@ export default async function ResearchBatchesPage() {
       <header><div><span className="kicker">LIVE SEC SOURCE BACKFILL</span><h2>Completed batch ticker ledger</h2></div><p>The Russell 3000 pass includes the Russell 2000 subset once, preventing duplicate SEC requests. These batches establish exact filing sources and normalized facts; “benchmark complete” still requires verified claims and editorial review.</p></header>
       <div className="source-backfill-batches">{sourceBackfillBatches.map(batch => {
         const items = sourceBackfillItems.filter(item => item.batch_id === batch.id);
-        return <details key={batch.id} open={batch === sourceBackfillBatches[0]}>
-          <summary><span><strong>{batch.id}</strong><small>{batch.completed_at ? new Date(batch.completed_at).toLocaleString("en-US", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Los_Angeles" }) : "Completed"}</small></span><span>{batch.success_count} sourced · {batch.source_count_added} filings added{batch.error_count ? ` · ${batch.error_count} errors` : ""}{batch.skipped_count ? ` · ${batch.skipped_count} skipped` : ""}</span></summary>
+        const superseded = Boolean(batch.is_superseded_diagnostic);
+        return <details key={batch.id} open={batch === sourceBackfillBatches[0]} className={superseded ? "superseded-diagnostic" : undefined}>
+          <summary><span><strong>{batch.id}</strong><small>{superseded ? "Superseded diagnostic run · inactive" : batch.completed_at ? new Date(batch.completed_at).toLocaleString("en-US", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Los_Angeles" }) : "Completed"}</small></span><span>{superseded ? "Superseded by a later successful batch" : <>{batch.success_count} sourced · {batch.source_count_added} filings added{batch.error_count ? ` · ${batch.error_count} errors` : ""}{batch.skipped_count ? ` · ${batch.skipped_count} skipped` : ""}</>}</span></summary>
           <div className="source-backfill-tickers">{items.map(item => <Link href={dossierPath(item.ticker)} key={`${batch.id}-${item.ticker}`} className={item.status} title={`${item.status.replaceAll("_"," ")} · ${item.source_count_after} sources · facts ${item.facts_import_status.replaceAll("_"," ")}`}><strong>{item.ticker}</strong><small>{item.source_count_after} sources</small></Link>)}</div>
         </details>;
       })}</div>
