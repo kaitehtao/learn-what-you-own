@@ -407,6 +407,27 @@ test("publishes complete S&P 500 dossier coverage in descending market-cap batch
   assert.match(secCompanies, /cik: "0000034088", name: "Exxon Mobil Corporation"/);
 });
 
+test("explains S&P constituent ticker lines and publishes the FACTS source PDF", async () => {
+  const [directory, factsPage, learnPage, styles] = await Promise.all([
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/facts/page.tsx"),
+    source("app/learn/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(directory, /500 companies, represented by constituent ticker lines/);
+  assert.match(directory, /multiple share classes can make the ticker count greater than 500/);
+  assert.match(directory, /constituent ticker lines currently matched/);
+  assert.match(factsPage, /Read the original FACTS methodology/);
+  assert.match(factsPage, /fundamental-investing-facts-methodology-kai-tao\.pdf/);
+  assert.match(learnPage, /Investigative Investing and the FACTS methodology/);
+  assert.match(styles, /\.facts-publication/);
+
+  const pdf = await readFile(new URL("public/research/fundamental-investing-facts-methodology-kai-tao.pdf", root));
+  assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
+  assert.ok(pdf.length > 100_000);
+});
+
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
   const [home, statsRoute, styles, deploy, authority, architecture] = await Promise.all([
     source("app/page.tsx"),

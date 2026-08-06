@@ -36,6 +36,7 @@ export default function LearnPage() {
         </Link>)}
       </div>
       <aside className="learn-disclaimer"><strong>Educational purpose</strong><p>These guides teach a research process. They do not provide individualized investment advice or recommend buying or selling any security.</p></aside>
+      <aside className="learn-facts-reading"><div><span className="kicker">FREE PUBLIC READING</span><h2>Investigative Investing and the FACTS methodology</h2><p>Read the 15-page source document behind the Financial, Accounting, Credibility, Timing, and Sector framework, then apply it in the public FACTS research screen or your private workspace.</p></div><div><Link className="button dark-button" href="/facts">Explore FACTS</Link><a href="/research/fundamental-investing-facts-methodology-kai-tao.pdf" target="_blank" rel="noreferrer">Read the PDF ↗</a></div></aside>
     </section>
   </main>;
 }
