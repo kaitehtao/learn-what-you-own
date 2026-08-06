@@ -609,8 +609,10 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
 
 /* Data-driven company identity: official logo when available, ticker always visible. */
 .company-logo{display:inline-flex;min-width:0;flex:none;align-items:center;flex-direction:column;gap:4px;color:var(--green);vertical-align:middle}
-.company-logo-image{display:grid;overflow:hidden;place-items:center;border:1px solid #d7dfda;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(14,41,31,.05)}
-.company-logo-image img{display:block;width:78%;height:78%;object-fit:contain}
+.company-logo-image{display:grid;overflow:hidden;place-items:center;border:1px solid #d7dfda;border-radius:8px;background:#f7f9f7;box-shadow:0 1px 2px rgba(14,41,31,.05);transition:background-color .16s ease,border-color .16s ease}
+.company-logo-image img{display:block;width:78%;height:78%;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(10,30,23,.16))}
+.company-logo-light-artwork .company-logo-image{border-color:#315b4c;background:var(--forest)}
+.company-logo-light-artwork .company-logo-image img{filter:drop-shadow(0 1px 1px rgba(0,0,0,.42))}
 .company-logo-image b{display:grid;width:100%;height:100%;place-items:center;background:var(--mint);color:#6f9584;font-size:.75rem}
 .company-logo>small{display:block;max-width:100%;overflow:hidden;color:var(--green);font:800 .58rem/1 var(--font-geist-mono);letter-spacing:.025em;text-overflow:ellipsis;white-space:nowrap}
 .company-logo-compact{width:48px}.company-logo-compact .company-logo-image{width:38px;height:38px}.company-logo-card{width:58px}.company-logo-card .company-logo-image{width:48px;height:48px}.company-logo-card>small{font-size:.64rem}.company-logo-hero{width:76px}.company-logo-hero .company-logo-image{width:66px;height:66px;border-radius:10px}.company-logo-hero>small{font-size:.7rem}

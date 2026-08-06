@@ -443,6 +443,11 @@ test("shows data-driven company logos with persistent ticker labels across dossi
   assert.match(logo, /financialmodelingprep\.com\/image-stock/);
   assert.match(logo, /replaceAll\("\."\s*,\s*"-"\)/);
   assert.match(logo, /onError=\{\(\) => setFailedSymbol\(symbol\)\}/);
+  assert.match(logo, /needsDarkLogoBackground/);
+  assert.match(logo, /brightnessTotal \/ visibleWeight >= 205/);
+  assert.match(logo, /brightWeight \/ visibleWeight >= 0\.6/);
+  assert.match(logo, /crossOrigin="anonymous"/);
+  assert.match(logo, /onLoad=\{\(event\) => detectContrast\(event\.currentTarget\)\}/);
   assert.match(logo, /<small>\{normalizedTicker\}<\/small>/);
   assert.match(logo, /import Image from "next\/image"/);
   assert.match(featured, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="hero"/);
@@ -452,6 +457,7 @@ test("shows data-driven company logos with persistent ticker labels across dossi
   assert.match(home, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="card"/);
   assert.match(styles, /\.company-logo-image img/);
   assert.match(styles, /\.company-logo-hero/);
+  assert.match(styles, /\.company-logo-light-artwork \.company-logo-image/);
   assert.match(nextConfig, /financialmodelingprep\.com/);
   assert.match(nextConfig, /unoptimized: true/);
 });
