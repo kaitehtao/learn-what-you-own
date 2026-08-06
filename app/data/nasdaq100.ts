@@ -116,13 +116,6 @@ export const nasdaq100Companies: Sp500Company[] = [
     "weight": 0
   },
   {
-    "ticker": "EA",
-    "name": "Electronic Arts Inc. Common Stock",
-    "sector": "",
-    "exchange": "NASDAQ",
-    "weight": 0
-  },
-  {
     "ticker": "CSCO",
     "name": "Cisco Systems, Inc. Common Stock (DE)",
     "sector": "",

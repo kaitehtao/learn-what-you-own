@@ -1733,6 +1733,16 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
 });
 
+test("keeps the Nasdaq-100 source snapshot aligned with the official component feed", async () => {
+  const [components, reconciliation] = await Promise.all([
+    source("app/data/nasdaq100.ts"),
+    source("drizzle/0034_reconcile_nasdaq_100_membership.sql"),
+  ]);
+  assert.doesNotMatch(components, /"ticker": "EA"/);
+  assert.match(reconciliation, /WHERE ticker = 'EA'/);
+  assert.match(reconciliation, /memberships_json = '\["S&P 500","Russell 3000"\]'/);
+});
+
 test("authority parity ignores harmless nested object key ordering", async () => {
   const verifier = await source("scripts/verify-authority-parity.mjs");
   const deployer = await source("scripts/deploy-production.mjs");
