@@ -2,6 +2,7 @@ import { researchUniverse } from "../../data/universe";
 import { CONTRIBUTION_RESEARCH_BUCKET, normalizeGoogleSheetUrl } from "../../contribution-research-assets";
 import { apiError, getSupabaseAdminClient, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
 import { enforceActionRateLimit } from "../../community-safety";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -244,6 +245,14 @@ export async function POST(request: Request) {
       }
       throw error;
     }
+    await notifyPrivilegedReviewersSafely({
+      actorId: profile.user_id,
+      title: "Research contribution awaiting review",
+      detail: `${ticker} · ${contributionType} submitted by @${profile.username}`,
+      href: "/admin#moderation",
+      entityType: "contribution_review",
+      entityId: data.id,
+    });
     return Response.json({ submission: mapContribution(data as Record<string, unknown>) }, { status: 201 });
   } catch (error) {
     return apiError(error);

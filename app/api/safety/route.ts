@@ -1,5 +1,6 @@
 import { enforceActionRateLimit } from "../../community-safety";
 import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../supabase-server";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,14 @@ export async function POST(request: Request) {
       if (!reportEntities.has(entityType) || !entityId || !reportReasons.has(reasonCode)) return Response.json({ error: "Choose a valid item and report reason." }, { status: 400 });
       const { data, error } = await admin.from("community_reports").insert({ reporter_id: profile.user_id, entity_type: entityType, entity_id: entityId, reason_code: reasonCode, details }).select("id,status,created_at").single();
       if (error) throw error;
+      await notifyPrivilegedReviewersSafely({
+        actorId: profile.user_id,
+        title: "Community report requires moderation",
+        detail: `${reasonCode} report for ${entityType} ${entityId} · submitted by @${profile.username}`,
+        href: "/admin#community-safety",
+        entityType: "community_report_review",
+        entityId: data.id,
+      });
       return Response.json({ report: data }, { status: 201 });
     }
     return Response.json({ error: "Choose a safety action." }, { status: 400 });

@@ -30,6 +30,31 @@ test("community safety records are server-only and enforced before messaging and
   assert.match(safety, /community_reports/);
 });
 
+test("administrator calls to action create private review notifications", () => {
+  const notifier = read("app/admin-action-notifications.ts");
+  const migration = read("supabase/migrations/20260806042619_admin_action_notifications.sql");
+  assert.match(notifier, /\.in\("role", \["admin", "editor"\]\)/);
+  assert.match(notifier, /kind: "moderation_update"/);
+  assert.match(notifier, /email_notification_outbox/);
+  assert.match(notifier, /notification_preferences/);
+  assert.match(migration, /notifications_href_check/);
+  assert.match(migration, /%#\.-/);
+  for (const route of [
+    "app/api/contributions/route.ts",
+    "app/api/publications/route.ts",
+    "app/api/feedback/route.ts",
+    "app/api/professional-interviews/route.ts",
+    "app/api/safety/route.ts",
+    "app/api/account/route.ts",
+    "app/api/account/deletion-request/route.ts",
+  ]) {
+    assert.match(read(route), /notifyPrivilegedReviewersSafely/);
+  }
+  const notificationCenter = read("app/notifications/NotificationsClient.tsx");
+  assert.match(notificationCenter, /ADMIN ACTION REQUIRED/);
+  assert.match(notificationCenter, /administrator review requests/);
+});
+
 test("member portability includes publications, safety records, and Markdown research", () => {
   const route = read("app/api/account/export/route.ts");
   const documentation = read("docs/PRODUCTION_BACKUP_AND_RECOVERY.md");

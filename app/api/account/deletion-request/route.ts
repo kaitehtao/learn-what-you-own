@@ -1,4 +1,5 @@
 import { apiError, getSupabaseAdminClient, requireSupabaseUser } from "../../../supabase-server";
+import { notifyPrivilegedReviewersSafely } from "../../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,14 @@ export async function POST(request: Request) {
     if (existing) return Response.json({ request: existing });
     const { data, error } = await admin.from("account_deletion_requests").insert({ user_id: user.id }).select("id,status,requested_at,resolved_at").single();
     if (error) throw error;
+    await notifyPrivilegedReviewersSafely({
+      actorId: profile.user_id,
+      title: "Account deletion request requires administrator action",
+      detail: `@${profile.username} requested account deletion`,
+      href: "/admin#accounts",
+      entityType: "account_deletion_review",
+      entityId: data.id,
+    });
     return Response.json({ request: data }, { status: 201 });
   } catch (error) {
     return apiError(error);

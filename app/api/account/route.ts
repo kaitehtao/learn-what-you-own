@@ -1,4 +1,5 @@
 import { apiError, getSupabaseAdminClient, publicProfilePhotoUrl, requireSupabaseUser } from "../../supabase-server";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,16 @@ export async function PATCH(request: Request) {
       .select("*")
       .single();
     if (publicProfileError) throw publicProfileError;
+    if ((linksChanged && (linkedinUrl || websiteUrl)) || (credentialChanged && credentialSummary)) {
+      await notifyPrivilegedReviewersSafely({
+        actorId: profile.user_id,
+        title: "Member profile requires verification",
+        detail: `@${username} updated ${linksChanged && credentialChanged ? "professional links and credentials" : linksChanged ? "professional links" : "credentials"}`,
+        href: "/admin#accounts",
+        entityType: "member_profile_review",
+        entityId: Date.now(),
+      });
+    }
     return Response.json({ profile: { ...publicProfile, avatar_url: publicProfilePhotoUrl(publicProfile.avatar_path) } });
   } catch (error) {
     return apiError(error);

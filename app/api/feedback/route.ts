@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { apiError, requireSupabaseUser } from "../../supabase-server";
 import { ensureFeedbackVotingSchema } from "../../../db/runtimeSchema";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,14 @@ export async function POST(request: Request) {
     if (details.length < 30 || details.length > 4000) return Response.json({ error: "Details must be 30–4,000 characters." }, { status: 400 });
     const result = await env.DB.prepare("INSERT INTO product_feedback (user_id,username,category,title,details,status) VALUES (?,?,?,?,?,'submitted')")
       .bind(profile.user_id, profile.username, category, title, details).run();
+    await notifyPrivilegedReviewersSafely({
+      actorId: profile.user_id,
+      title: "Product feedback awaiting review",
+      detail: `${category} · ${title} · submitted by @${profile.username}`,
+      href: "/admin#moderation",
+      entityType: "product_feedback_review",
+      entityId: result.meta.last_row_id,
+    });
     return Response.json({ id: result.meta.last_row_id }, { status: 201 });
   } catch (error) { return apiError(error); }
 }

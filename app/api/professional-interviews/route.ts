@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { ensureProfessionalInterviewsSchema } from "../../../db/runtimeSchema";
 import { apiError, requireSupabaseUser } from "../../supabase-server";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,14 @@ export async function POST(request: Request) {
     if (disclosure.length < 10 || disclosure.length > 1500) return Response.json({ error:"Position and conflict disclosure is required." }, { status:400 });
     const result = await env.DB.prepare(`INSERT INTO professional_interviews (user_id,username,guest_name,guest_title,firm,credentials,title,summary,topics_json,interview_url,transcript_url,disclosure) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(profile.user_id,profile.username,guestName,guestTitle,firm,credentials,title,summary,JSON.stringify(topics),interviewUrl,transcriptUrl,disclosure).run();
+    await notifyPrivilegedReviewersSafely({
+      actorId: profile.user_id,
+      title: "Professional interview awaiting review",
+      detail: `${title} · submitted by @${profile.username}`,
+      href: "/admin#moderation",
+      entityType: "professional_interview_review",
+      entityId: result.meta.last_row_id,
+    });
     return Response.json({ id:result.meta.last_row_id, status:"submitted" }, { status:201 });
   } catch (error) { return apiError(error); }
 }

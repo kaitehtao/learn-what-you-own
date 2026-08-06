@@ -37,6 +37,16 @@ npm run dev
    - `supabase/migrations/20260801080000_admin_email_verification.sql`
    - `supabase/migrations/20260801090000_public_profile_bio_photo.sql`
    - `supabase/migrations/20260801100000_public_profile_research_identity.sql`
+   - `supabase/migrations/20260802000000_private_research_attachments.sql`
+   - `supabase/migrations/20260802010000_public_contribution_research_assets.sql`
+   - `supabase/migrations/20260802020000_server_only_member_rpcs.sql`
+   - `supabase/migrations/20260802030000_retire_legacy_definer_rpcs.sql`
+   - `supabase/migrations/20260804215235_account_data_portability.sql`
+   - `supabase/migrations/20260805010000_long_form_research_publishing.sql`
+   - `supabase/migrations/20260805011000_community_safety_records.sql`
+   - `supabase/migrations/20260805020000_institutional_analyst_workspace.sql`
+   - `supabase/migrations/20260805030000_facts_investment_workflow.sql`
+   - `supabase/migrations/20260806042619_admin_action_notifications.sql`
 3. In **Authentication → Providers → Email**, enable email/password and require email confirmation.
 4. In **Authentication → URL Configuration**, set the production Site URL and allow:
    - `http://localhost:3000/auth/callback`

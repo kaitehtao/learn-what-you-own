@@ -1,5 +1,6 @@
 import { apiError, getSupabaseAdminClient, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
 import { enforceActionRateLimit } from "../../community-safety";
+import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +147,16 @@ export async function POST(request: Request) {
       const { data: profiles } = await admin.from("profiles").select("user_id").in("username", selected);
       if (profiles?.length) await admin.from("research_publication_recipients").insert(profiles.map(row => ({ publication_id: data.id, user_id: row.user_id })));
     }
+    if (payload.submitForReview === true) {
+      await notifyPrivilegedReviewersSafely({
+        actorId: profile.user_id,
+        title: "Long-form research awaiting editorial review",
+        detail: `${title} · submitted by @${profile.username}`,
+        href: "/admin#community-safety",
+        entityType: `research_publication_review_${data.revision_number}`,
+        entityId: data.id,
+      });
+    }
     return Response.json({ publication: output(data) }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
@@ -174,6 +185,16 @@ export async function PATCH(request: Request) {
     if (payload.submitForReview === true) updates.editorial_status = "pending";
     const { data, error } = await admin.from("research_publications").update(updates).eq("id", id).eq("user_id", profile.user_id).select(selectFields).single();
     if (error) throw error;
+    if (payload.submitForReview === true) {
+      await notifyPrivilegedReviewersSafely({
+        actorId: profile.user_id,
+        title: "Revised research awaiting editorial review",
+        detail: `${data.title} · resubmitted by @${profile.username}`,
+        href: "/admin#community-safety",
+        entityType: `research_publication_review_${data.revision_number}`,
+        entityId: data.id,
+      });
+    }
     return Response.json({ publication: output(data) });
   } catch (error) { return apiError(error); }
 }
