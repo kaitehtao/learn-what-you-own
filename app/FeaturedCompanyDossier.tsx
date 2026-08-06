@@ -53,7 +53,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <section className="company-hero">
       <div className="container dossier-head">
         <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
-        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/workspace?ticker=${encodeURIComponent(company.ticker)}`}>Private workspace</Link><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute ↗</Link></div>
+        <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/workspace?ticker=${encodeURIComponent(company.ticker)}`}>Private workspace</Link><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute Research ↗</Link></div>
       </div>
       <CompanyMarketSnapshot ticker={company.ticker} />
       <div className="container metrics-bar featured-metrics">
