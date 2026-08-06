@@ -65,6 +65,7 @@ export function Header() {
             <summary>Research</summary>
             <div>
               <Link href="/research/sp-500">S&amp;P 500 dossiers</Link>
+              <Link href="/research/russell-3000">Russell 3000 dossiers</Link>
               <Link href="/research/russell-2000">Russell 2000 dossiers</Link>
               <Link href="/research/batches">Coverage program</Link>
               <Link href="/facts">FACTS methodology</Link>

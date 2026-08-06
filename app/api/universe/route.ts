@@ -90,6 +90,8 @@ export async function GET(request: Request) {
     market === "listed" && memberships.has(membership)
       ? env.DB.prepare(`SELECT
           COUNT(*) AS total,
+          COUNT(DISTINCT COALESCE(NULLIF(c.cik,''),c.ticker)) AS company_count,
+          SUM(CASE WHEN c.market_cap IS NOT NULL THEN 1 ELSE 0 END) AS market_cap_count,
           SUM(CASE WHEN COALESCE(d.quality_tier,'starting_point')='starting_point' THEN 1 ELSE 0 END) AS starting_point,
           SUM(CASE WHEN d.quality_tier='machine_enriched' THEN 1 ELSE 0 END) AS machine_enriched,
           SUM(CASE WHEN d.quality_tier='editorial_review' THEN 1 ELSE 0 END) AS editorial_review,
