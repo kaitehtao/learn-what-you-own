@@ -96,6 +96,10 @@ The migration lineage is:
 9. `drizzle/0008_product_feedback.sql` — private, verified-member product feedback and moderation status
 10. `drizzle/0009_external_intelligence.sql` — open-data source registry and moderated external observations
 
+Later additive production migrations continue the numbered lineage. In particular,
+`drizzle/0035_russell_sec_source_backfill.sql` adds the resumable batch and
+per-ticker audit ledger for initial Russell-universe SEC evidence ingestion.
+
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 
 Example after the target has been verified:
@@ -145,8 +149,10 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled filing freshness and daily digest
 
-`vite.config.ts` declares `*/15 * * * *` for the dossier freshness monitor. Each
-invocation checks the 25 least-recently scanned published dossiers against the
+`vite.config.ts` declares `*/15 * * * *` for initial-source backfill and the
+dossier freshness monitor. Each invocation first processes up to 12 zero-source
+Russell 3000 constituents in descending market-cap order, then checks the 25
+least-recently scanned published dossiers against the
 SEC submissions feed. At the current S&P benchmark size, every published issuer
 is revisited in approximately six hours. Newly detected earnings releases,
 10-Ks, 10-Qs, definitive proxies, and material 8-Ks are recorded in
@@ -154,6 +160,16 @@ is revisited in approximately six hours. Newly detected earnings releases,
 Company Facts refresh. The event remains in `editorial_review` until an editor
 publishes or dismisses it; filing detection never silently rewrites a bull case,
 bear case, valuation conclusion, or owner summary.
+
+The initial source backfill is one deduplicated Russell 3000 pass; each batch
+item retains its Russell 2000 membership so the subset is not fetched twice.
+It stores a balanced recent pack of exact EDGAR accession links, attempts a
+normalized Company Facts import, and records the outcome in
+`dossier_source_backfill_batches` and `dossier_source_backfill_items`. Operators
+can run an additional bounded batch from **Admin → SEC source backfill**. The
+public `/research/batches` page lists every completed batch and its tickers.
+Source-foundation completion does not bypass the dossier quality rule or
+editorial review required for benchmark-complete status.
 
 The first successful scan establishes a conservative baseline by recording only
 the latest filing in each supported category. Subsequent scans ingest every new

@@ -55,6 +55,42 @@ export const dossierQualityRules = sqliteTable("dossier_quality_rules", {
   uniqueIndex("dossier_quality_active_rule_idx").on(table.isActive).where(sql`${table.isActive} = true`),
 ]);
 
+export const dossierSourceBackfillBatches = sqliteTable("dossier_source_backfill_batches", {
+  id: text("id").primaryKey(),
+  universeName: text("universe_name").notNull(),
+  selectionRule: text("selection_rule").notNull(),
+  requestedLimit: integer("requested_limit").notNull(),
+  selectedCount: integer("selected_count").notNull().default(0),
+  successCount: integer("success_count").notNull().default(0),
+  skippedCount: integer("skipped_count").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  sourceCountAdded: integer("source_count_added").notNull().default(0),
+  status: text("status", { enum: ["running", "completed", "partial", "failed"] }).notNull().default("running"),
+  startedAt: text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  completedAt: text("completed_at"),
+}, (table) => [
+  index("dossier_source_backfill_batch_status_idx").on(table.status, table.startedAt),
+]);
+
+export const dossierSourceBackfillItems = sqliteTable("dossier_source_backfill_items", {
+  batchId: text("batch_id").notNull().references(() => dossierSourceBackfillBatches.id, { onDelete: "cascade" }),
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  priorityRank: integer("priority_rank").notNull(),
+  membershipsJson: text("memberships_json").notNull().default("[]"),
+  status: text("status", { enum: ["running", "source_foundation_complete", "no_sec_match", "no_supported_filings", "error"] }).notNull().default("running"),
+  sourceCountBefore: integer("source_count_before").notNull().default(0),
+  sourceCountAfter: integer("source_count_after").notNull().default(0),
+  factsImportStatus: text("facts_import_status").notNull().default("not_attempted"),
+  factsImportDetail: text("facts_import_detail").notNull().default(""),
+  errorMessage: text("error_message").notNull().default(""),
+  startedAt: text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  completedAt: text("completed_at"),
+}, (table) => [
+  uniqueIndex("dossier_source_backfill_item_batch_ticker_idx").on(table.batchId, table.ticker),
+  index("dossier_source_backfill_item_ticker_idx").on(table.ticker, table.completedAt),
+  index("dossier_source_backfill_item_status_idx").on(table.status, table.completedAt),
+]);
+
 export const dossierSources = sqliteTable("dossier_sources", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   ticker: text("ticker").notNull().references(() => companyDossiers.ticker, { onDelete: "cascade" }),

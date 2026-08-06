@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
 type RolloutSummary = { total:number;benchmark_complete:number;evidence_ready:number;evidence_ingestion:number;research_backlog:number };
 type QualityRule = { id:string;label:string;min_source_count:number;min_verified_claim_count:number;min_distinct_section_count:number;min_distinct_claim_type_count:number };
+type SourceBackfillBatch = { id:string;selected_count:number;success_count:number;skipped_count:number;error_count:number;source_count_added:number;status:string;started_at:string;completed_at:string|null };
+type SourceBackfillItem = { batch_id:string;ticker:string;status:string;source_count_after:number;facts_import_status:string };
 
 function money(value: number) {
   if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
@@ -49,6 +51,8 @@ export default async function ResearchBatchesPage() {
   let russellRollout: RolloutCompany[] = [];
   let russellSummary: RolloutSummary | null = null;
   let qualityRule: QualityRule | null = null;
+  let sourceBackfillBatches: SourceBackfillBatch[] = [];
+  let sourceBackfillItems: SourceBackfillItem[] = [];
   try {
     const [result, summary, rule] = await Promise.all([
       env.DB.prepare(`SELECT m.priority_rank,m.ticker,c.name,c.market_cap,m.workflow_status,
@@ -74,6 +78,23 @@ export default async function ResearchBatchesPage() {
   } catch (error) {
     console.error("Unable to load active Russell dossier rollout", error);
   }
+  try {
+    const [batches, items] = await Promise.all([
+      env.DB.prepare(`SELECT id,selected_count,success_count,skipped_count,error_count,
+        source_count_added,status,started_at,completed_at
+        FROM dossier_source_backfill_batches
+        WHERE status<>'running' ORDER BY started_at DESC LIMIT 20`).all<SourceBackfillBatch>(),
+      env.DB.prepare(`SELECT batch_id,ticker,status,source_count_after,facts_import_status
+        FROM dossier_source_backfill_items
+        WHERE batch_id IN (
+          SELECT id FROM dossier_source_backfill_batches WHERE status<>'running' ORDER BY started_at DESC LIMIT 20
+        ) ORDER BY batch_id DESC,priority_rank`).all<SourceBackfillItem>(),
+    ]);
+    sourceBackfillBatches = batches.results;
+    sourceBackfillItems = items.results;
+  } catch (error) {
+    console.error("Unable to load SEC source backfill ledger", error);
+  }
   return <main className="research-batches-page">
     <Header />
     <section className="research-batch-hero">
@@ -88,6 +109,16 @@ export default async function ResearchBatchesPage() {
       <header><div><span className="kicker">RUSSELL 2000 · FULL-UNIVERSE DOSSIER PROGRAM</span><h2>{Number(russellSummary?.total??russellRollout.length).toLocaleString()} members ranked by current market capitalization</h2></div><p>Automated SEC evidence ingestion advances the full universe in controlled batches. {Number(russellSummary?.benchmark_complete??0).toLocaleString()} currently pass the benchmark; the table shows the next 100 highest-priority records. Research foundations are not labeled complete until claim-level evidence and balanced bull/bear analysis pass editorial review.</p></header>
       <ResearchFoundationList companies={russellRollout} />
       <aside className="research-batch-method"><strong>Live ranking and completion policy</strong><p>Market capitalizations refresh from Nasdaq’s listed-universe feed. D1 recalculates descending rank after each refresh; missing values appear last and are never replaced by fabricated estimates. {qualityRule ? `Completion is database-calculated under “${qualityRule.label}”: ${qualityRule.min_source_count}+ sources, ${qualityRule.min_verified_claim_count}+ verified claims, ${qualityRule.min_distinct_section_count}+ sections, and ${qualityRule.min_distinct_claim_type_count}+ evidence classes.` : "The active completion rule is read from D1 rather than a ticker list."}</p></aside>
+    </section>}
+    {sourceBackfillBatches.length > 0 && <section className="container research-batch-section source-backfill-ledger">
+      <header><div><span className="kicker">LIVE SEC SOURCE BACKFILL</span><h2>Completed batch ticker ledger</h2></div><p>The Russell 3000 pass includes the Russell 2000 subset once, preventing duplicate SEC requests. These batches establish exact filing sources and normalized facts; “benchmark complete” still requires verified claims and editorial review.</p></header>
+      <div className="source-backfill-batches">{sourceBackfillBatches.map(batch => {
+        const items = sourceBackfillItems.filter(item => item.batch_id === batch.id);
+        return <details key={batch.id} open={batch === sourceBackfillBatches[0]}>
+          <summary><span><strong>{batch.id}</strong><small>{batch.completed_at ? new Date(batch.completed_at).toLocaleString("en-US", { dateStyle:"medium", timeStyle:"short", timeZone:"America/Los_Angeles" }) : "Completed"}</small></span><span>{batch.success_count} sourced · {batch.source_count_added} filings added{batch.error_count ? ` · ${batch.error_count} errors` : ""}{batch.skipped_count ? ` · ${batch.skipped_count} skipped` : ""}</span></summary>
+          <div className="source-backfill-tickers">{items.map(item => <Link href={dossierPath(item.ticker)} key={`${batch.id}-${item.ticker}`} className={item.status} title={`${item.status.replaceAll("_"," ")} · ${item.source_count_after} sources · facts ${item.facts_import_status.replaceAll("_"," ")}`}><strong>{item.ticker}</strong><small>{item.source_count_after} sources</small></Link>)}</div>
+        </details>;
+      })}</div>
     </section>}
     <section className="container research-batch-section">
       <header><div><span className="kicker">BATCH 01</span><h2>Largest S&amp;P 500 companies</h2></div><p>Each dossier includes the business model, balanced thesis, six financial drivers, five material risks, four watchpoints, six owner questions, six comparables, and primary SEC and company sources.</p></header>

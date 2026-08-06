@@ -102,6 +102,11 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   if (!mirrorResponse.ok) console.warn(`Sites dossier freshness mirror returned ${mirrorResponse.status}`);
 }
 
+async function backfillScheduledDossierSources(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-source-backfill?limit=12", "learn-what-you-own-sec-source-backfill/1.0");
+  if (!response.ok) throw new Error(`Dossier source backfill endpoint returned ${response.status}`);
+}
+
 async function refreshScheduledRolloutMarketCaps(env: Env, ctx: ExecutionContext) {
   const pathname = "/api/internal/rollout-market-cap-refresh";
   const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-market-cap-ranking/1.0");
@@ -161,6 +166,14 @@ const worker = {
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
       if (controller.cron === "*/15 * * * *") {
+        // Initial evidence backfill is additive and lower priority than the
+        // established freshness monitor. A failed backfill must never prevent
+        // completed dossiers from receiving their normal filing scan.
+        try {
+          await backfillScheduledDossierSources(env, ctx);
+        } catch (error) {
+          console.error(error);
+        }
         await refreshScheduledDossiers(env, ctx);
         return;
       }
