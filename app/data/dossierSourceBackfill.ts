@@ -75,7 +75,7 @@ async function processCandidate(batch: string, candidate: Candidate) {
   for (const source of pack) {
     await env.DB.prepare(`INSERT INTO dossier_sources
       (ticker,source_type,title,url,evidence_date,excerpt,verified_at,created_at)
-      VALUES (?,'sec',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
+      VALUES (?,'sec_filing',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
         candidate.ticker,
         `${source.form} filed ${source.filingDate}`,
         source.sourceUrl,

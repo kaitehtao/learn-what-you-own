@@ -1745,6 +1745,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfill, /INSERT INTO company_dossiers\(ticker,status,quality_tier,published_at,updated_at\)/);
   assert.doesNotMatch(sourceBackfill, /company_dossiers\(ticker,status,quality_tier,content_json/);
   assert.match(sourceBackfill, /INSERT INTO dossier_sources/);
+  assert.match(sourceBackfill, /'sec_filing'/);
   assert.match(sourceBackfill, /evidence_date,excerpt,verified_at,created_at/);
   assert.doesNotMatch(sourceBackfill, /filing_type,filed_at,accessed_at/);
   assert.match(sourceBackfill, /importSecFilingFacts/);
