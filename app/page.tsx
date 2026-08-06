@@ -9,6 +9,7 @@ import { authenticatedFetch, loginPath } from "./supabase-browser";
 import { AccessComparison } from "./AccessComparison";
 import { followingLabel, type CompanyDemand, type CompanyFollower } from "./company-followers";
 import { formatMarketCap, formatStockPrice, type CompanyMarketSnapshot } from "./market-snapshot";
+import { CompanyLogo } from "./CompanyLogo";
 
 const companies = [
   { ticker: "AMC", name: "AMC Entertainment", sector: "Theatrical Exhibition", updated: "Today", score: 100, note: "Q2 performance, debt actions, and comparables verified" },
@@ -250,7 +251,7 @@ export default function Home() {
             <article className="company-card" key={company.ticker}>
             <Link className="company-card-link" href={dossierHref(company.ticker)} aria-label={`Open the ${company.name} dossier`}>
               <div className="card-top">
-                <div className={`ticker-icon tint-${index + 1}`}>{company.ticker}</div>
+                <CompanyLogo ticker={company.ticker} companyName={company.name} size="card" eager={index < 3} />
                 <div className="score-ring" style={{"--score": `${company.score * 3.6}deg`} as React.CSSProperties}><span>{company.score}</span></div>
               </div>
               <h3>{company.name}</h3>

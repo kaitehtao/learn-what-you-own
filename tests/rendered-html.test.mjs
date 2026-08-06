@@ -428,6 +428,34 @@ test("explains S&P constituent ticker lines and publishes the FACTS source PDF",
   assert.ok(pdf.length > 100_000);
 });
 
+test("shows data-driven company logos with persistent ticker labels across dossiers and index cards", async () => {
+  const [logo, featured, starter, directory, batches, home, styles, nextConfig] = await Promise.all([
+    source("app/CompanyLogo.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/CompanyUniverseDirectory.tsx"),
+    source("app/research/batches/page.tsx"),
+    source("app/page.tsx"),
+    source("app/globals.css"),
+    source("next.config.ts"),
+  ]);
+
+  assert.match(logo, /financialmodelingprep\.com\/image-stock/);
+  assert.match(logo, /replaceAll\("\."\s*,\s*"-"\)/);
+  assert.match(logo, /onError=\{\(\) => setFailedSymbol\(symbol\)\}/);
+  assert.match(logo, /<small>\{normalizedTicker\}<\/small>/);
+  assert.match(logo, /import Image from "next\/image"/);
+  assert.match(featured, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="hero"/);
+  assert.match(starter, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="hero"/);
+  assert.match(directory, /<CompanyLogo ticker=\{company\.ticker\}/);
+  assert.match(batches, /<CompanyLogo ticker=\{company\.ticker\}/);
+  assert.match(home, /<CompanyLogo ticker=\{company\.ticker\}[^>]*size="card"/);
+  assert.match(styles, /\.company-logo-image img/);
+  assert.match(styles, /\.company-logo-hero/);
+  assert.match(nextConfig, /financialmodelingprep\.com/);
+  assert.match(nextConfig, /unoptimized: true/);
+});
+
 test("uses authoritative live homepage coverage and deduplicated primary-source counts", async () => {
   const [home, statsRoute, styles, deploy, authority, architecture] = await Promise.all([
     source("app/page.tsx"),

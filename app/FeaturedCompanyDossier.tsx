@@ -21,6 +21,7 @@ import { AccessComparison } from "./AccessComparison";
 import { ComparableAnalysisPanel } from "./ComparableAnalysisPanel";
 import { HistoricalValuationPanel } from "./HistoricalValuationPanel";
 import { PublicFactsPanel } from "./PublicFactsPanel";
+import { CompanyLogo } from "./CompanyLogo";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -52,7 +53,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     <div className="container breadcrumbs"><Link href="/">Home</Link><span>/</span><Link href="/companies">Companies</Link><span>/</span><strong>{displayName(company.name, company.ticker)}</strong></div>
     <section className="company-hero">
       <div className="container dossier-head">
-        <div className="dossier-identity"><div className="large-ticker">{company.ticker}</div><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
+        <div className="dossier-identity"><CompanyLogo ticker={company.ticker} companyName={displayName(company.name, company.ticker)} size="hero" eager /><div><div className="eyebrow">{company.exchange} · {company.ticker}</div><h1>{displayName(company.name, company.ticker)}</h1><p>{dossier.description}</p></div></div>
         <div className="dossier-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><Link className="share-button" href={`/workspace?ticker=${encodeURIComponent(company.ticker)}`}>Private workspace</Link><Link className="share-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute Research ↗</Link></div>
       </div>
       <CompanyMarketSnapshot ticker={company.ticker} />

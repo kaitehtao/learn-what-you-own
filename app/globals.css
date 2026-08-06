@@ -606,3 +606,14 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
 .learn-facts-reading>div:last-child{display:flex;min-width:175px;align-items:stretch;flex-direction:column;gap:13px;text-align:center}
 .learn-facts-reading>div:last-child>a:last-child{color:var(--green);font-size:.82rem;font-weight:750}
 @media(max-width:700px){.facts-publication,.learn-facts-reading{grid-template-columns:1fr;gap:24px;padding:24px 18px}.learn-facts-reading>div:last-child{min-width:0}}
+
+/* Data-driven company identity: official logo when available, ticker always visible. */
+.company-logo{display:inline-flex;min-width:0;flex:none;align-items:center;flex-direction:column;gap:4px;color:var(--green);vertical-align:middle}
+.company-logo-image{display:grid;overflow:hidden;place-items:center;border:1px solid #d7dfda;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(14,41,31,.05)}
+.company-logo-image img{display:block;width:78%;height:78%;object-fit:contain}
+.company-logo-image b{display:grid;width:100%;height:100%;place-items:center;background:var(--mint);color:#6f9584;font-size:.75rem}
+.company-logo>small{display:block;max-width:100%;overflow:hidden;color:var(--green);font:800 .58rem/1 var(--font-geist-mono);letter-spacing:.025em;text-overflow:ellipsis;white-space:nowrap}
+.company-logo-compact{width:48px}.company-logo-compact .company-logo-image{width:38px;height:38px}.company-logo-card{width:58px}.company-logo-card .company-logo-image{width:48px;height:48px}.company-logo-card>small{font-size:.64rem}.company-logo-hero{width:76px}.company-logo-hero .company-logo-image{width:66px;height:66px;border-radius:10px}.company-logo-hero>small{font-size:.7rem}
+.starter-company-title>.company-logo,.dossier-identity>.company-logo{display:inline-flex;width:76px;height:auto;background:transparent;color:var(--green);place-items:unset;border-radius:0;font-family:inherit;font-weight:400}
+.company-cell>.company-logo+span{min-width:0}.company-card .card-top{align-items:flex-start}.research-batch-list .company-logo{flex:none}
+@media(max-width:620px){.company-logo-hero{width:68px}.company-logo-hero .company-logo-image{width:58px;height:58px}.catalog-row .company-cell>.company-logo{width:54px;min-width:54px}.catalog-row .company-cell>.company-logo .company-logo-image{width:40px;height:40px}}

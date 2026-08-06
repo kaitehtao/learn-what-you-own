@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { Header } from "../../ui";
 import { sp500DossierBatch01, sp500DossierBatch02, sp500DossierBatch03, sp500DossierBatch04, sp500DossierBatch05, sp500DossierBatch06, sp500DossierBatchAsOf, sp500DossierBatchSource, type DossierBatchCompany } from "../../data/sp500DossierBatches";
 import { formatMarketCap } from "../../market-snapshot";
+import { CompanyLogo } from "../../CompanyLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ function BatchList({ companies }: { companies: DossierBatchCompany[] }) {
     <div className="research-batch-head"><span>Rank</span><span>Company</span><span>Market cap</span><span>Status</span></div>
     {companies.map(company => <Link href={dossierPath(company.ticker)} key={company.rank}>
       <span>{String(company.rank).padStart(2, "0")}</span>
-      <span><i>{company.ticker}</i><strong>{company.name}</strong></span>
+      <span><CompanyLogo ticker={company.ticker} companyName={company.name} /><strong>{company.name}</strong></span>
       <span>{money(company.marketCap)}</span>
       <span className="batch-complete">Complete</span>
     </Link>)}
@@ -37,7 +38,7 @@ function ResearchFoundationList({ companies }: { companies: RolloutCompany[] }) 
     <div className="research-batch-head"><span>Rank</span><span>Company</span><span>Market cap</span><span>Status</span></div>
     {companies.map(company => <Link href={dossierPath(company.ticker)} key={company.ticker}>
       <span>{String(company.priority_rank).padStart(2, "0")}</span>
-      <span><i>{company.ticker}</i><strong>{company.name}</strong></span>
+      <span><CompanyLogo ticker={company.ticker} companyName={company.name} /><strong>{company.name}</strong></span>
       <span>{formatMarketCap(company.market_cap)}</span>
       <span className="batch-foundation">Research foundation · {company.source_count} sources</span>
     </Link>)}
