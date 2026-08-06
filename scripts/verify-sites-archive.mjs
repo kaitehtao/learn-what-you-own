@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import path from "node:path";
 
 const archive = process.argv[2];
 if (!archive) throw new Error("Usage: npm run sites:verify-archive -- <archive.tgz>");
@@ -19,12 +18,16 @@ const trackedMigrations = new Set(
   execFileSync("git", ["ls-files", "--", "drizzle"], { encoding: "utf8" })
     .split("\n")
     .filter((file) => file.endsWith(".sql"))
-    .map((file) => path.basename(file)),
+    .map((file) => `dist/.openai/${file}`),
 );
-const unexpectedMigration = entries
-  .filter((entry) => entry.startsWith("dist/.openai/drizzle/") && entry.endsWith(".sql"))
-  .map((entry) => path.basename(entry))
-  .find((name) => !trackedMigrations.has(name));
+const packagedMigrations = new Set(
+  entries.filter((entry) => entry.startsWith("dist/.openai/drizzle/") && entry.endsWith(".sql")),
+);
+const unexpectedMigration = [...packagedMigrations].find((entry) => !trackedMigrations.has(entry));
 if (unexpectedMigration) throw new Error(`Sites archive contains untracked migration ${unexpectedMigration}.`);
+const missingMigration = [...trackedMigrations].find((entry) => !packagedMigrations.has(entry));
+if (missingMigration) throw new Error(`Sites archive is missing tracked migration ${missingMigration}.`);
 
-console.log(`Verified Sites archive with ${entries.length} entries and only commit-tracked migrations.`);
+console.log(
+  `Verified Sites archive with ${entries.length} entries and ${packagedMigrations.size} commit-tracked migrations.`,
+);
