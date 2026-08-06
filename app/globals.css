@@ -574,3 +574,22 @@ button:not(.search-button):not(.menu-button){min-height:2.75rem;font-size:var(--
 @media(max-width:1100px){.public-facts-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.facts-screen-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.facts-screen-table{overflow-x:auto}.facts-screen-row{min-width:900px}.facts-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.facts-ledger-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.public-facts-panel{margin-left:0;margin-right:0;padding:24px 15px;border-left:0;border-right:0}.public-facts-heading,.facts-screener>header,.facts-workspace-heading,.facts-action-plan>header,.facts-postmortem>header{align-items:flex-start;flex-direction:column}.public-facts-heading>a{white-space:normal}.public-facts-grid,.public-facts-boundary,.facts-workflow,.facts-assessment-grid,.facts-plan-grid,.facts-postmortem-layout,.facts-signal-tools>div{grid-template-columns:1fr}.facts-hero{padding:58px 0}.facts-hero>.container{grid-template-columns:1fr;gap:35px}.facts-workflow{margin-top:28px;margin-bottom:28px}.facts-screener{padding:22px 14px}.facts-screen-controls{grid-template-columns:1fr 1fr}.facts-screen-table{overflow:visible;border:0}.facts-screen-row.labels{display:none}.facts-screen-row{grid-template-columns:1fr 1fr;min-width:0;margin-top:9px;padding:15px;border:1px solid var(--line);background:#fff}.facts-screen-row>span:first-child{grid-column:1/-1;padding-bottom:10px;border-bottom:1px solid var(--line)}.facts-screen-row>span:before{content:attr(data-label);display:block;margin-bottom:3px;color:var(--muted);font:700 .58rem/1 var(--font-geist-mono)}.facts-signal-tools{padding:42px 0 65px}.facts-completion{width:100%;text-align:left}.facts-status-row,.facts-inline-fields{grid-template-columns:1fr}.facts-assessment footer{align-items:flex-start;flex-direction:column}.facts-assessment footer button{width:100%}.facts-ledger,.facts-action-plan,.facts-postmortem,.facts-workspace-heading{padding:20px 15px}.facts-postmortem-list article header{align-items:flex-start;flex-direction:column}}
 @media(max-width:480px){.public-facts-grid,.facts-screen-controls{grid-template-columns:1fr}.facts-screen-row{grid-template-columns:1fr}.facts-screen-row>span,.facts-screen-row>span:first-child{grid-column:1}.facts-screen-row>span:not(:first-child){padding-top:8px;border-top:1px solid var(--line)}}
+
+/* Keep the complete masthead available without letting its growing option set
+   widen the document. Primary actions remain visible; the full navigation uses
+   the same accessible vertical menu at every viewport width. */
+.site-header .nav-inner>nav{display:none}
+.site-header .menu-button{display:grid;cursor:pointer;line-height:1}
+.site-header .nav-inner>nav.open{display:flex;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 88px);overflow-y:auto;overflow-x:hidden;background:#fff;flex-direction:column;align-items:stretch;gap:0;padding:12px max(24px,calc((100vw - 1180px)/2)) 22px;border-top:1px solid var(--line);box-shadow:0 18px 35px rgba(16,32,27,.12)}
+.site-header .nav-inner>nav.open>a{padding:12px 0;border-bottom:1px solid #edf0ed;white-space:normal}
+.site-header .nav-inner>nav.open .workspace-menu{display:none}
+.site-header .nav-inner>nav.open .workspace-menu.research-menu,.site-header .nav-inner>nav.open .workspace-menu.community-menu{display:block;padding:12px 0;border-bottom:1px solid #edf0ed}
+.site-header .nav-inner>nav.open .workspace-menu.research-menu>div,.site-header .nav-inner>nav.open .workspace-menu.community-menu>div{position:static;width:auto;margin-top:8px;padding:6px;background:var(--cream);border:0;box-shadow:none}
+.site-header .nav-inner>nav.open .workspace-menu.research-menu>div a,.site-header .nav-inner>nav.open .workspace-menu.community-menu>div a{padding:10px;white-space:normal}
+.site-header .nav-inner>nav.open .mobile-workspace-links{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:18px 0 8px}
+.site-header .nav-inner>nav.open .mobile-nav-actions{display:flex}
+
+@media(max-width:620px){
+  .site-header .nav-inner>nav.open{max-height:calc(100vh - 124px);padding-left:14px;padding-right:14px}
+  .site-header .nav-inner>nav.open .mobile-workspace-links{grid-template-columns:1fr 1fr}
+}

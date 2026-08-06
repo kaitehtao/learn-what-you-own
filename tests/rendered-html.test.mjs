@@ -1844,3 +1844,17 @@ test("publishes a responsive cross-company SEC insider activity research screen"
   assert.match(styles, /\.insider-ranking-row/);
   assert.match(styles, /@media\(max-width:720px\).*\.insider-ranking-row\{display:grid;grid-template-columns:1fr 1fr/s);
 });
+
+test("keeps the complete masthead inside the viewport at every width", async () => {
+  const [navigation, styles] = await Promise.all([
+    source("app/ui.tsx"),
+    source("app/globals.css"),
+  ]);
+  assert.match(navigation, /aria-controls="primary-navigation"/);
+  assert.match(navigation, /aria-expanded=\{open\}/);
+  assert.match(styles, /\.site-header \.nav-inner>nav\{display:none\}/);
+  assert.match(styles, /\.site-header \.menu-button\{display:grid/);
+  assert.match(styles, /\.site-header \.nav-inner>nav\.open\{display:flex;position:absolute/);
+  assert.match(styles, /overflow-y:auto;overflow-x:hidden/);
+  assert.match(styles, /\.workspace-menu\.research-menu,\.site-header \.nav-inner>nav\.open \.workspace-menu\.community-menu/);
+});
