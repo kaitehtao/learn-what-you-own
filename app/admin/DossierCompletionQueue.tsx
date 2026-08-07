@@ -37,43 +37,29 @@ export function DossierCompletionQueue(){
   async function createBatch(count:number){
     setBusy("batch");setError("");setNotice("");
     const response=await authenticatedFetch("/api/admin/dossier-completion",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({count})});
-    const body=await response.json() as {batchId?:string;selected?:number;tickers?:string[];reason?:string;error?:string};
+    const body=await response.json() as {batchId?:string;selected?:number;approved?:number;needsRevision?:number;tickers?:string[];reason?:string;error?:string};
     if(!response.ok)setError(body.error??"Unable to create the completion batch.");
-    else if(body.batchId)setNotice(`${body.batchId}: prepared ${body.selected} evidence packets — ${body.tickers?.join(", ")}.`);
+    else if(body.batchId)setNotice(`${body.batchId}: automatically validated ${body.selected} dossiers — ${body.approved??0} benchmark complete, ${body.needsRevision??0} exceptions.`);
     else setNotice(body.reason==="no_eligible_narrative_ready_dossiers"?"No additional validated narrative-ready dossiers are waiting.":"No candidates were selected.");
     await load();setBusy("");
   }
 
-  async function review(candidate:Candidate,action:"approve"|"needs_revision"){
-    const note=action==="needs_revision"?window.prompt(`What must be revised for ${candidate.ticker}?`,candidate.review_note):"";
-    if(action==="needs_revision"&&note===null)return;
-    if(action==="approve"&&!window.confirm(`Publish the reviewed claims for ${candidate.ticker} and run the active benchmark rule?`))return;
-    const key=`${candidate.batch_id}:${candidate.ticker}`;setBusy(key);setError("");setNotice("");
-    const response=await authenticatedFetch("/api/admin/dossier-completion",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({batchId:candidate.batch_id,ticker:candidate.ticker,action,note})});
-    const body=await response.json() as {status?:string;qualityTier?:string;error?:string};
-    if(!response.ok)setError(body.error??`Unable to review ${candidate.ticker}.`);
-    else setNotice(action==="approve"?`${candidate.ticker} passed the evidence rule and is now benchmark complete.`:`${candidate.ticker} was returned for revision.`);
-    await load();setBusy("");
-  }
-
   return <section className="dossier-completion-admin" id="dossier-completion">
-    <header><div><span className="kicker">EVIDENCE-GATED EDITORIAL COMPLETION</span><h2>Benchmark dossier completion</h2><p>Finish the closest source-backed dossiers first, ordered by current market capitalization. Preparing a packet never publishes it; an editor must inspect every claim and exact citation.</p></div><div><button disabled={Boolean(busy)} onClick={()=>void createBatch(30)}>{busy==="batch"?"Preparing…":"Prepare next 30"}</button></div></header>
+    <header><div><span className="kicker">EVIDENCE-GATED AUTOMATIC COMPLETION</span><h2>Benchmark dossier completion</h2><p>The active database rule automatically validates required sections, claim diversity, exact citations, and source depth. Passing dossiers publish immediately; failures remain visible as exceptions.</p></div><div><button disabled={Boolean(busy)} onClick={()=>void createBatch(30)}>{busy==="batch"?"Validating…":"Validate next 30 automatically"}</button></div></header>
     {error&&<p className="form-error">{error}</p>}{notice&&<p className="admin-notice">{notice}</p>}
     <div className="dossier-completion-stats"><div><strong>{Number(data?.summary?.benchmark_complete??0).toLocaleString()}</strong><span>Benchmark complete</span></div><div><strong>{Number(data?.summary?.narrative_ready??0).toLocaleString()}</strong><span>Narrative ready</span></div><div><strong>{Number(data?.summary?.machine_enriched??0).toLocaleString()}</strong><span>Machine enriched</span></div><div><strong>{Number(data?.summary?.starting_point??0).toLocaleString()}</strong><span>Source foundation pending</span></div></div>
-    <p className="completion-policy-note"><strong>No automatic thesis publishing.</strong> A source count establishes evidence availability; only reviewed claims across the required sections can earn benchmark status. <Link href="/learn/how-to-research-a-stock">Review the owner-research standard →</Link></p>
-    {data?.batches[0]&&<div className="completion-batch-heading"><div><small>LATEST BATCH</small><strong>{data.batches[0].id}</strong><span>{label(data.batches[0].status)}</span></div><p>{data.batches[0].approved_count}/{data.batches[0].selected_count} approved · {data.batches[0].needs_revision_count} need revision</p></div>}
+    <p className="completion-policy-note"><strong>Automatic benchmark publication.</strong> No per-ticker approval is required. The system publishes only when every active evidence and completeness threshold passes, records the validating rule and system identity, and leaves exceptions unpublished at benchmark status. <Link href="/learn/how-to-research-a-stock">Review the owner-research standard →</Link></p>
+    {data?.batches[0]&&<div className="completion-batch-heading"><div><small>LATEST AUTOMATIC BATCH</small><strong>{data.batches[0].id}</strong><span>{label(data.batches[0].status)}</span></div><p>{data.batches[0].approved_count}/{data.batches[0].selected_count} automatically complete · {data.batches[0].needs_revision_count} exceptions</p></div>}
     <div className="completion-candidate-list">{visible.map(candidate=>{
       const preview=claims(candidate.claim_preview_json);
-      const candidateBusy=busy===`${candidate.batch_id}:${candidate.ticker}`;
       return <details key={`${candidate.batch_id}:${candidate.ticker}`} className={candidate.status}>
         <summary><span><b>#{candidate.priority_rank} · {candidate.ticker}</b><strong>{candidate.name}</strong></span><span><b>{marketCap(candidate.market_cap)}</b><small>{candidate.source_count} sources · {preview.length} claim previews · {label(candidate.status)}</small></span></summary>
         <div className="completion-candidate-body"><div className="completion-candidate-meta"><Link href={`/company/${candidate.ticker.toLowerCase().replaceAll(".","-")}`}>Open current dossier ↗</Link><span>Evidence date {candidate.evidence_date??"pending"}</span><span>Current tier {label(candidate.quality_tier)}</span></div>
           <div className="completion-claim-preview">{preview.map((item,index)=><article key={`${item.section}:${index}`}><header><span>{label(item.section)}</span><em>{label(item.claimType)}</em></header><p>{item.claim}</p><small>{item.whyItMatters}</small><a href={item.sourceUrl} target="_blank" rel="noreferrer">{item.sourceTitle} ↗</a></article>)}</div>
-          {candidate.review_note&&<p className="completion-review-note"><strong>Revision note:</strong> {candidate.review_note}</p>}
-          <div className="completion-review-actions"><button disabled={candidateBusy||candidate.status==="approved"} onClick={()=>void review(candidate,"approve")}>{candidateBusy?"Saving…":candidate.status==="approved"?"Approved":"Approve benchmark normalization"}</button><button className="secondary" disabled={candidateBusy||candidate.status==="approved"} onClick={()=>void review(candidate,"needs_revision")}>Return for revision</button></div>
+          {candidate.review_note&&<p className="completion-review-note"><strong>{candidate.status==="approved"?"Automatic validation:":"Exception:"}</strong> {candidate.review_note}</p>}
         </div>
       </details>;
     })}</div>
-    {!visible.length&&<div className="research-foundation-state compact"><strong>No completion batch has been prepared yet.</strong><p>Prepare the next 30 validated, source-backed dossiers to begin editorial review.</p></div>}
+    {!visible.length&&<div className="research-foundation-state compact"><strong>No automatic completion batch has run yet.</strong><p>The scheduler will process eligible source-backed dossiers, or an administrator can run the next 30 now.</p></div>}
   </section>;
 }

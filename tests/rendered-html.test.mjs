@@ -1674,7 +1674,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
 });
 
 test("separates publication from dossier quality and ranks index research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration, automaticFreshnessMigration] = await Promise.all([
+  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration, automaticFreshnessMigration, dossierCompletion, completionAdminApi, completionInternalApi, completionAdmin, completionMigration] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0032_activate_ranked_research_foundations.sql"),
@@ -1701,6 +1701,11 @@ test("separates publication from dossier quality and ranks index research from t
     source("app/admin/SourceBackfillQueue.tsx"),
     source("drizzle/0035_russell_sec_source_backfill.sql"),
     source("drizzle/0040_automatic_sec_filing_publication.sql"),
+    source("app/data/dossierCompletion.ts"),
+    source("app/api/admin/dossier-completion/route.ts"),
+    source("app/api/internal/dossier-completion/route.ts"),
+    source("app/admin/DossierCompletionQueue.tsx"),
+    source("drizzle/0041_automatic_benchmark_completion.sql"),
   ]);
   assert.match(schema, /qualityTier: text\("quality_tier"/);
   assert.match(migration, /benchmark_complete/);
@@ -1771,6 +1776,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.doesNotMatch(freshnessAdmin, /Publish package update/);
   assert.match(worker, /dossier-freshness\?limit=10/);
   assert.match(worker, /dossier-source-backfill\?limit=12/);
+  assert.match(worker, /dossier-completion\?limit=10/);
   assert.match(worker, /controller\.cron === "2-59\/5 \* \* \* \*"/);
   assert.match(worker, /rollout-market-cap-refresh/);
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
@@ -1807,6 +1813,21 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfillAdmin, /Superseded diagnostic run · inactive/);
   assert.match(sourceBackfillAdmin, /is_superseded_diagnostic/);
   assert.match(sourceBackfillMigration, /dossier_source_backfill_batches/);
+  assert.match(dossierCompletion, /system:evidence-benchmark/);
+  assert.match(dossierCompletion, /processAutomaticBenchmarkBatch/);
+  assert.match(dossierCompletion, /missing\.length/);
+  assert.match(dossierCompletion, /reconcileDossierQuality/);
+  assert.match(dossierCompletion, /status='needs_revision'/);
+  assert.match(completionAdminApi, /processAutomaticBenchmarkBatch/);
+  assert.match(completionAdminApi, /status: 405/);
+  assert.match(completionInternalApi, /NOTIFICATION_CRON_SECRET/);
+  assert.match(completionInternalApi, /processAutomaticBenchmarkBatch/);
+  assert.match(completionAdmin, /Automatic benchmark publication/);
+  assert.match(completionAdmin, /Validate next 30 automatically/);
+  assert.doesNotMatch(completionAdmin, /Approve benchmark normalization/);
+  assert.doesNotMatch(completionAdmin, /Return for revision/);
+  assert.match(completionMigration, /automatic_validation/);
+  assert.match(completionMigration, /NOT EXISTS/);
   assert.match(batches, /Completed batch ticker ledger/);
   assert.match(batches, /Superseded diagnostic run · inactive/);
   assert.match(batches, /newer\.universe_name=b\.universe_name/);

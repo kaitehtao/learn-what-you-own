@@ -79,7 +79,7 @@ export const dossierCompletionBatches = sqliteTable("dossier_completion_batches"
   selectedCount: integer("selected_count").notNull().default(0),
   approvedCount: integer("approved_count").notNull().default(0),
   needsRevisionCount: integer("needs_revision_count").notNull().default(0),
-  status: text("status", { enum: ["editorial_review", "completed"] }).notNull().default("editorial_review"),
+  status: text("status", { enum: ["automatic_validation", "completed"] }).notNull().default("automatic_validation"),
   createdBy: text("created_by").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   completedAt: text("completed_at"),

@@ -24,7 +24,7 @@ export function ensureDossierCompletionSchema() {
         selected_count INTEGER NOT NULL DEFAULT 0,
         approved_count INTEGER NOT NULL DEFAULT 0,
         needs_revision_count INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'editorial_review',
+        status TEXT NOT NULL DEFAULT 'automatic_validation',
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         completed_at TEXT

@@ -13,9 +13,11 @@ Management assertions are not independently verified facts. Estimates and infere
 
 - Every material factual claim needs a real, accessible citation.
 - SEC filings, official releases, and external coverage remain separate source classes.
-- AI may extract, compare, and draft, but an editor approves thesis language and corrections.
-- A research foundation requires at least five distinct sources. Benchmark completion additionally follows the active database quality rule.
-- Earnings, 10-K, 10-Q, definitive proxy, and material 8-K detections are published automatically as evidence-preserving filing packages with exact EDGAR links. Automation may refresh filed facts but may not silently change bull, bear, valuation, or owner-summary conclusions; those interpretations remain separately moderated.
+- AI may extract, compare, and draft. Initial benchmark completion is published automatically only after the active deterministic evidence rule validates the required narrative structure, minimum exact-source depth, verified-claim count, section coverage, claim-type diversity, and citation resolution.
+- A research foundation requires at least five distinct sources. Benchmark status is computed by the active database quality rule and is never granted by an unchecked model assertion or a manual status toggle.
+- Dossiers that fail automatic benchmark validation remain in an administrator exception ledger; they do not receive benchmark-complete status.
+- Earnings, 10-K, 10-Q, definitive proxy, and material 8-K detections are published automatically as evidence-preserving filing packages with exact EDGAR links. Automation may refresh filed facts but may not silently rewrite an existing bull, bear, valuation, or owner-summary conclusion after a new filing; later interpretive changes remain separately moderated.
+- Community research, corrections, position-sensitive submissions, and rights-sensitive third-party material remain subject to moderation.
 
 ## Corrections and rights
 

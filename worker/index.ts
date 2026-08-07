@@ -88,9 +88,9 @@ async function refreshScheduledEarningsAlerts(env: Env, ctx: ExecutionContext) {
 }
 
 async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
-  // Cloudflare is authoritative. Twenty-five dossiers per quarter-hour can
-  // revisit a roughly 2,000-company Russell universe within a day. The Sites
-  // mirror is best-effort and must never block the canonical scan.
+  // Cloudflare is authoritative. A bounded ten-dossier cycle stays within the
+  // Worker subrequest limit. The Sites mirror is best-effort and must never
+  // block the canonical scan.
   const pathname = "/api/internal/dossier-freshness?limit=10";
   const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-dossier-freshness/1.0");
   const mirrorRequest = env.SITES_MIRROR_CRON_SECRET
@@ -112,6 +112,11 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
 async function backfillScheduledDossierSources(env: Env, ctx: ExecutionContext) {
   const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-source-backfill?limit=12", "learn-what-you-own-sec-source-backfill/1.0");
   if (!response.ok) throw new Error(`Dossier source backfill endpoint returned ${response.status}`);
+}
+
+async function completeScheduledDossiers(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-completion?limit=10", "learn-what-you-own-benchmark-completion/1.0");
+  if (!response.ok) throw new Error(`Automatic benchmark completion endpoint returned ${response.status}`);
 }
 
 async function refreshScheduledRolloutMarketCaps(env: Env, ctx: ExecutionContext) {
@@ -173,7 +178,10 @@ const worker = {
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
       if (controller.cron === "2-59/5 * * * *") {
-        await backfillScheduledDossierSources(env, ctx);
+        await Promise.all([
+          backfillScheduledDossierSources(env, ctx),
+          completeScheduledDossiers(env, ctx),
+        ]);
         return;
       }
       if (controller.cron === "*/15 * * * *") {

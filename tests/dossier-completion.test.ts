@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
 
-test("completion packets satisfy the active evidence dimensions without publishing", () => {
+test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
     lede: "The owner lens depends on durable demand and disciplined capital allocation.",
     sells: "The company sells a documented portfolio of products and services.",

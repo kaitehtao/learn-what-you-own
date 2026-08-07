@@ -14,7 +14,7 @@ The filing-freshness monitor detects earnings releases, periodic reports, defini
 2. Periodic and earnings filings continue to refresh normalized Company Facts automatically.
 3. The system records `system:sec-freshness` as the automated publisher and retains accession, timestamps, fact-refresh outcome, and exact source URL.
 4. The admin freshness section becomes a read-only operational ledger with a manual “scan now” control, not a per-ticker approval queue.
-5. Bull, bear, owner-summary, risk, catalyst, valuation, and other interpretive changes remain separate and require the dossier-completion or editorial workflow.
+5. Bull, bear, owner-summary, risk, catalyst, valuation, and other interpretive changes remain separate. Initial benchmark completion follows the deterministic automatic evidence gate in ADR-0005; later interpretive changes after new evidence remain moderated.
 6. Existing pending SEC filing events are migrated to published evidence without manufacturing an editorial summary.
 
 ## Options considered
@@ -36,4 +36,4 @@ Keeps dossiers current immediately while preserving the human accountability req
 - Filing evidence and filed financial facts become current without administrator action.
 - The admin screen measures monitor health, published packages, and failures instead of requesting repetitive approvals.
 - Editorial capacity can focus on material thesis changes rather than verifying that an SEC accession exists.
-- Automated publication must remain limited to exact regulator evidence and deterministic filed facts; management interpretation and AI synthesis do not inherit this privilege.
+- Automated filing publication remains limited to exact regulator evidence and deterministic filed facts. Initial benchmark synthesis may publish only through ADR-0005's stricter evidence gate; later interpretation does not silently inherit filing-publication privileges.

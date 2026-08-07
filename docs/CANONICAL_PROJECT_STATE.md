@@ -55,7 +55,7 @@ The following decisions originated across earlier product and implementation con
 4. Keep SEC filings separate from official company/IR press releases and external journalistic coverage.
 5. Treat live prices, market capitalizations, earnings dates, ownership, index membership, and filing facts as sourced data with an as-of date; do not hard-code them as permanent truth.
 6. Label index membership clearly while maintaining one deduplicated research universe. S&P 500, Nasdaq-100, Russell 2000, and Russell 3000 pages are views over that universe.
-7. Automatically publish exact SEC filing evidence and refresh filed facts after earnings releases, 10-Ks, 10-Qs, definitive proxies, and material 8-Ks. Only thesis and interpretation changes remain under editorial review.
+7. Automatically publish exact SEC filing evidence and refresh filed facts after earnings releases, 10-Ks, 10-Qs, definitive proxies, and material 8-Ks. Automatically grant initial benchmark completion when the active deterministic evidence rule passes; keep failures in an exception ledger. Later thesis changes and community interpretations remain under moderation.
 8. Provide member watchlists, portfolios, earnings alerts, notes, public profiles, messaging, contributions, rewards, feedback, and administrator moderation tools.
 9. Preserve claim-level citations and distinguish primary sources from licensed or community-provided material. Do not republish restricted analyst research without rights.
 10. Use GitHub `main` as the authoritative code history. A Sites version number, a local build, or a chat description alone is never proof that production is synchronized.

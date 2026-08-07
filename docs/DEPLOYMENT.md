@@ -177,8 +177,11 @@ normalized Company Facts import, and records the outcome in
 stays unpublished until at least five exact dossier sources exist. Operators can
 enqueue an additional bounded batch from **Admin → SEC source backfill**. The
 public `/research/batches` page lists every completed batch and its tickers.
-Source-foundation completion does not bypass the dossier quality rule or
-editorial review required for benchmark-complete status.
+Source-foundation completion does not bypass the dossier quality rule. The
+scheduled automatic benchmark validator checks exact citation resolution,
+source depth, claim count, section coverage, and claim-type diversity before it
+marks a dossier benchmark complete. Failed candidates stay in the administrator
+exception ledger without a per-ticker approval queue.
 
 Freshness accessions are presented to administrators as recent automatic
 company-and-reporting-period packages. The raw event records remain individually
@@ -192,7 +195,7 @@ the exact accession and primary document.
 
 `vite.config.ts` declares `0 15,16 * * *`. These are the two UTC hours that can correspond to 08:00 Pacific across daylight-saving changes. `worker/index.ts` checks `America/Los_Angeles` and only proceeds during the invocation that is actually 08:00.
 
-The Worker posts to `/api/notifications/email-digest` and `/api/internal/sec-facts-refresh` using `NOTIFICATION_CRON_SECRET`. The digest endpoint processes only queued daily notifications and leaves the no-message case empty. The SEC refresh endpoint selects the five least-recently attempted published dossiers, imports only normalized SEC Company Facts, and records success, unsupported-XBRL, or error status. This bounded rotation avoids aggressive SEC traffic while keeping published financial evidence fresh.
+The Worker posts to `/api/notifications/email-digest`, `/api/internal/sec-facts-refresh`, and `/api/internal/dossier-completion` using `NOTIFICATION_CRON_SECRET`. The digest endpoint processes only queued daily notifications and leaves the no-message case empty. The SEC refresh endpoint selects the five least-recently attempted published dossiers, imports only normalized SEC Company Facts, and records success, unsupported-XBRL, or error status. The dossier-completion endpoint consumes a bounded evidence-ready batch every five minutes and records automatic successes or exceptions. This bounded rotation avoids aggressive SEC traffic while keeping published financial evidence fresh.
 
 Before deploying this architecture, create `lwyo-dossier-ingestion` and
 `lwyo-dossier-ingestion-dlq` in the authoritative Cloudflare account and apply
