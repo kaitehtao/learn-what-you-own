@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   try {
     await requireEditor(request);
     const payload = await request.json().catch(() => ({})) as { limit?: number };
-    return Response.json(await processDossierFreshnessBatch(Number(payload.limit) || 25));
+    return Response.json(await processDossierFreshnessBatch(Number(payload.limit) || 10));
   } catch (error) { return apiError(error); }
 }
 

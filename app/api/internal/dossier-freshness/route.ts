@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) return Response.json({ error: "Unauthorized." }, { status: 401 });
   const requested = Number(new URL(request.url).searchParams.get("limit") ?? 25);
   try {
-    return Response.json(await processDossierFreshnessBatch(Number.isFinite(requested) ? requested : 25));
+    return Response.json(await processDossierFreshnessBatch(Number.isFinite(requested) ? requested : 10));
   } catch (error) {
     console.error(error);
     return Response.json({ error: error instanceof Error ? error.message : "Dossier freshness scan failed." }, { status: 500 });

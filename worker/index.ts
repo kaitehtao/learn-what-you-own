@@ -91,7 +91,7 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   // Cloudflare is authoritative. Twenty-five dossiers per quarter-hour can
   // revisit a roughly 2,000-company Russell universe within a day. The Sites
   // mirror is best-effort and must never block the canonical scan.
-  const pathname = "/api/internal/dossier-freshness?limit=50";
+  const pathname = "/api/internal/dossier-freshness?limit=10";
   const localRequest = runScheduledEndpoint(env, ctx, pathname, "learn-what-you-own-dossier-freshness/1.0");
   const mirrorRequest = env.SITES_MIRROR_CRON_SECRET
     ? fetch(`${SITES_MIRROR_ORIGIN}${pathname}`, {

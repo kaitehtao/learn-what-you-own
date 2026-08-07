@@ -80,7 +80,7 @@ async function scanCandidate(candidate: Candidate) {
   }
 }
 
-export async function processDossierFreshnessBatch(limit = 25) {
+export async function processDossierFreshnessBatch(limit = 10) {
   await ensureDossierFreshnessSchema();
   const database = env.DB;
   const result = await database.prepare(`SELECT d.ticker,c.cik,c.name,f.last_success_at
@@ -88,7 +88,7 @@ export async function processDossierFreshnessBatch(limit = 25) {
     LEFT JOIN dossier_freshness_checks f ON f.ticker=d.ticker
     WHERE d.status='published' AND c.cik IS NOT NULL AND c.cik<>''
     ORDER BY CASE WHEN f.error_message IS NOT NULL THEN 0 ELSE 1 END,
-      COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 50))).all<Candidate>();
+      COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 10))).all<Candidate>();
   const scans = [];
   for (const candidate of result.results) {
     scans.push(await scanCandidate(candidate));

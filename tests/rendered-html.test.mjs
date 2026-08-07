@@ -1132,7 +1132,7 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
   assert.match(worker, /SITES_MIRROR_CRON_SECRET/);
   assert.match(worker, /x-lwyo-sites-mirror/);
-  assert.match(worker, /dossier-freshness\?limit=50/);
+  assert.match(worker, /dossier-freshness\?limit=10/);
   assert.match(worker, /Promise\.all\(\[localRequest, mirrorRequest\]\)/);
   assert.match(worker, /Sites dossier freshness mirror returned/);
   assert.match(worker, /handler\.fetch\(new Request/);
@@ -1769,7 +1769,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(freshnessAdmin, /Automatic SEC filing updates/);
   assert.match(freshnessAdmin, /Automatically published/);
   assert.doesNotMatch(freshnessAdmin, /Publish package update/);
-  assert.match(worker, /dossier-freshness\?limit=50/);
+  assert.match(worker, /dossier-freshness\?limit=10/);
   assert.match(worker, /dossier-source-backfill\?limit=12/);
   assert.match(worker, /controller\.cron === "2-59\/5 \* \* \* \*"/);
   assert.match(worker, /rollout-market-cap-refresh/);

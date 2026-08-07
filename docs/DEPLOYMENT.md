@@ -160,7 +160,7 @@ batch with concurrency capped at two, bounded retry delay, and
 scheduler reconciles any queued or running ledger batch left for more than 20
 minutes: complete source packs are preserved and unfinished tickers become
 eligible for retry. The separate
-quarter-hour freshness invocation checks the 50 least-recently scanned published dossiers against the
+quarter-hour freshness invocation checks the 10 highest-priority published dossiers against the
 SEC submissions feed. Failed checks are retried before the normal least-recently
 scanned rotation. Newly detected earnings releases,
 10-Ks, 10-Qs, definitive proxies, and material 8-Ks are recorded in
