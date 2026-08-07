@@ -1797,6 +1797,9 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(dossierFreshness, /evidence_date,excerpt,verified_at,created_at/);
   assert.match(dossierFreshness, /'published','','system:sec-freshness'/);
   assert.match(dossierFreshness, /CASE WHEN f\.error_message IS NOT NULL THEN 0 ELSE 1 END/);
+  assert.match(dossierFreshness, /reconcileLegacyFreshnessSchemaErrors/);
+  assert.match(dossierFreshness, /dossier_sources has no column named filing_type/);
+  assert.match(dossierFreshness, /COUNT\(DISTINCT ds\.url\)[\s\S]*>=5/);
   assert.doesNotMatch(dossierFreshness, /filing_type,filed_at,accessed_at/);
   assert.match(automaticFreshnessMigration, /WHERE status='editorial_review'/);
   assert.match(automaticFreshnessMigration, /system:sec-freshness-backfill/);

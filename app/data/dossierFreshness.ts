@@ -14,6 +14,27 @@ function bootstrapFilings(rows: ClassifiedSecFiling[]) {
 
 type Candidate = { ticker: string; cik: string; name: string; last_success_at: string | null };
 
+const LEGACY_SOURCE_COLUMN_ERROR = "D1_ERROR: table dossier_sources has no column named filing_type:%";
+
+// A prior Worker revision attempted to write retired dossier_sources columns.
+// The durable source-backfill subsequently wrote the same exact SEC filings
+// using the canonical schema. Reconcile only dossiers that now have a complete
+// five-source foundation; sparse dossiers continue through the normal scanner.
+export async function reconcileLegacyFreshnessSchemaErrors() {
+  const result = await env.DB.prepare(`UPDATE dossier_freshness_checks SET
+    last_attempted_at=CURRENT_TIMESTAMP,
+    last_success_at=CURRENT_TIMESTAMP,
+    latest_filing_date=COALESCE(
+      (SELECT MAX(ds.evidence_date) FROM dossier_sources ds WHERE ds.ticker=dossier_freshness_checks.ticker),
+      latest_filing_date
+    ),
+    error_message=NULL
+    WHERE error_message LIKE ?
+      AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_freshness_checks.ticker)>=5`)
+    .bind(LEGACY_SOURCE_COLUMN_ERROR).run();
+  return Number(result.meta.changes ?? 0);
+}
+
 async function scanCandidate(candidate: Candidate) {
   const database = env.DB;
   const paddedCik = candidate.cik.padStart(10, "0");
@@ -83,6 +104,7 @@ async function scanCandidate(candidate: Candidate) {
 export async function processDossierFreshnessBatch(limit = 10) {
   await ensureDossierFreshnessSchema();
   const database = env.DB;
+  const legacyErrorsReconciled = await reconcileLegacyFreshnessSchemaErrors();
   const result = await database.prepare(`SELECT d.ticker,c.cik,c.name,f.last_success_at
     FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
     LEFT JOIN dossier_freshness_checks f ON f.ticker=d.ticker
@@ -94,5 +116,5 @@ export async function processDossierFreshnessBatch(limit = 10) {
     scans.push(await scanCandidate(candidate));
     await new Promise((resolve) => setTimeout(resolve, 125));
   }
-  return { processed: scans.length, detected: scans.reduce((total, scan) => total + scan.detected, 0), errors: scans.filter((scan) => "error" in scan).length, scans };
+  return { processed: scans.length, detected: scans.reduce((total, scan) => total + scan.detected, 0), errors: scans.filter((scan) => "error" in scan).length, legacyErrorsReconciled, scans };
 }
