@@ -1,6 +1,6 @@
 # Deployment and integration runbook
 
-Use this runbook for local setup, database migrations, and production releases. Read `ARCHITECTURE.md` first.
+Use this runbook for local setup, database migrations, and production releases. Read `docs/ARCHITECTURE.md` first.
 
 ## Prerequisites
 
@@ -149,13 +149,17 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled filing freshness and daily digest
 
-`vite.config.ts` declares `2-59/5 * * * *` for the initial-source backfill and
-`*/15 * * * *` for the dossier freshness monitor. Each backfill invocation
-processes up to 12 Russell 3000 constituents with fewer than five sources in
-descending market-cap order. This includes partially written source packs, not
-only zero-source dossiers. Before selection it reconciles any batch lease left in a
-running state for more than 20 minutes: complete source packs are preserved and
-unfinished tickers become immediately eligible for retry. The separate
+`vite.config.ts` declares `2-59/5 * * * *` for the initial-source scheduler and
+`*/15 * * * *` for the dossier freshness monitor. Each scheduler invocation
+acquires a short D1 selection lease, records up to 12 Russell 3000 constituents
+with fewer than five sources in descending market-cap order, and publishes one
+durable Queue message per ticker. It does not perform SEC ingestion inside the
+scheduled HTTP request. `lwyo-dossier-ingestion` delivers one ticker per consumer
+batch with concurrency capped at two, bounded retry delay, and
+`lwyo-dossier-ingestion-dlq` as the dead-letter queue. Before selection the
+scheduler reconciles any queued or running ledger batch left for more than 20
+minutes: complete source packs are preserved and unfinished tickers become
+eligible for retry. The separate
 quarter-hour freshness invocation checks the 25 least-recently scanned published dossiers against the
 SEC submissions feed. At the current S&P benchmark size, every published issuer
 is revisited in approximately six hours. Newly detected earnings releases,
@@ -169,11 +173,17 @@ The initial source backfill is one deduplicated Russell 3000 pass; each batch
 item retains its Russell 2000 membership so the subset is not fetched twice.
 It stores a balanced recent pack of exact EDGAR accession links, attempts a
 normalized Company Facts import, and records the outcome in
-`dossier_source_backfill_batches` and `dossier_source_backfill_items`. Operators
-can run an additional bounded batch from **Admin → SEC source backfill**. The
+`dossier_source_backfill_batches` and `dossier_source_backfill_items`. A ticker
+stays unpublished until at least five exact dossier sources exist. Operators can
+enqueue an additional bounded batch from **Admin → SEC source backfill**. The
 public `/research/batches` page lists every completed batch and its tickers.
 Source-foundation completion does not bypass the dossier quality rule or
 editorial review required for benchmark-complete status.
+
+Pending freshness accessions are presented to administrators as prioritized
+company-and-reporting-period packages. The raw event records remain individually
+auditable. Publishing or dismissing a package records the decision on each filing;
+no automated scan changes bull, bear, valuation, or owner-summary conclusions.
 
 The first successful scan establishes a conservative baseline by recording only
 the latest filing in each supported category. Subsequent scans ingest every new
@@ -184,7 +194,13 @@ the exact accession and primary document.
 
 The Worker posts to `/api/notifications/email-digest` and `/api/internal/sec-facts-refresh` using `NOTIFICATION_CRON_SECRET`. The digest endpoint processes only queued daily notifications and leaves the no-message case empty. The SEC refresh endpoint selects the five least-recently attempted published dossiers, imports only normalized SEC Company Facts, and records success, unsupported-XBRL, or error status. This bounded rotation avoids aggressive SEC traffic while keeping published financial evidence fresh.
 
-After deployment, verify all four cron triggers exist on the `learn-what-you-own` Worker and inspect at least one backfill invocation, one freshness invocation, and one daily scheduled invocation. Never point the digest to a preview origin.
+Before deploying this architecture, create `lwyo-dossier-ingestion` and
+`lwyo-dossier-ingestion-dlq` in the authoritative Cloudflare account and apply
+`drizzle/0038_dossier_ingestion_queue_reliability.sql` to the authoritative D1
+database. After deployment, verify all four cron triggers, the producer binding,
+the queue consumer, and the dead-letter queue on the `learn-what-you-own` Worker.
+Inspect at least one completed ticker job, one freshness invocation, and one daily
+scheduled invocation. Never point the digest to a preview origin.
 
 ## Build and deploy
 

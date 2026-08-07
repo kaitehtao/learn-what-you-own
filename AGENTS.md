@@ -6,7 +6,7 @@ The canonical checkout is `/Users/remarkai/Documents/LearnWhatYouOwn`. Before su
 
 - `docs/CANONICAL_PROJECT_STATE.md`
 - `PRODUCT.md`
-- `ARCHITECTURE.md`
+- `docs/ARCHITECTURE.md`
 - `DATA_MODEL.md`
 - `EDITORIAL_STANDARDS.md`
 - `docs/DEPLOYMENT.md`

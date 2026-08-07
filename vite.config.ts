@@ -5,6 +5,8 @@ import { sites } from "./build/sites-vite-plugin.ts";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557";
+const DOSSIER_INGESTION_QUEUE = "lwyo-dossier-ingestion";
+const DOSSIER_INGESTION_DEAD_LETTER_QUEUE = "lwyo-dossier-ingestion-dlq";
 
 const { d1, r2 } = hostingConfig;
 
@@ -33,6 +35,22 @@ const localBindingConfig = {
   // 15:00 UTC is 08:00 PDT and 16:00 UTC is 08:00 PST; the Worker confirms
   // local time before member alerts and the digest are delivered.
   triggers: { crons: ["2-59/5 * * * *", "*/15 * * * *", "0 0,6,12,18 * * *", "0 15,16 * * *"] },
+  queues: {
+    producers: [
+      { binding: "DOSSIER_INGESTION_QUEUE", queue: DOSSIER_INGESTION_QUEUE },
+    ],
+    consumers: [
+      {
+        queue: DOSSIER_INGESTION_QUEUE,
+        max_batch_size: 1,
+        max_batch_timeout: 5,
+        max_retries: 5,
+        retry_delay: 30,
+        max_concurrency: 2,
+        dead_letter_queue: DOSSIER_INGESTION_DEAD_LETTER_QUEUE,
+      },
+    ],
+  },
   d1_databases: d1
     ? [
         {

@@ -1,6 +1,11 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import {
+  processDossierSourceBackfillMessage,
+  recordDossierSourceBackfillFailure,
+  type DossierSourceBackfillMessage,
+} from "../app/data/dossierSourceBackfill";
 
 interface Env {
   ASSETS: Fetcher;
@@ -10,6 +15,7 @@ interface Env {
   NOTIFICATION_CRON_SECRET: string;
   SITES_MIRROR_CRON_SECRET?: string;
   NOTIFICATION_SITE_URL?: string;
+  DOSSIER_INGESTION_QUEUE: Queue<DossierSourceBackfillMessage>;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -21,6 +27,7 @@ interface Env {
 
 const DIGEST_TIME_ZONE = "America/Los_Angeles";
 const DIGEST_HOUR = "08";
+const DOSSIER_QUEUE_MAX_ATTEMPTS = 5;
 const CANONICAL_ORIGIN = "https://learnwhatyouown.com";
 const SITES_MIRROR_ORIGIN = "https://learn-what-you-own.julianspencer.chatgpt.site";
 const PUBLIC_ALIAS_HOSTS = new Set([
@@ -180,6 +187,26 @@ const worker = {
       await refreshScheduledEarningsAlerts(env, ctx);
       await deliverScheduledDigest(env, ctx);
     })());
+  },
+
+  async queue(batch: MessageBatch<DossierSourceBackfillMessage>): Promise<void> {
+    for (const message of batch.messages) {
+      try {
+        await processDossierSourceBackfillMessage(message.body);
+        message.ack();
+      } catch (error) {
+        const terminal = message.attempts >= DOSSIER_QUEUE_MAX_ATTEMPTS;
+        await recordDossierSourceBackfillFailure(message.body, error, terminal);
+        if (terminal) {
+          console.error(`Dossier ingestion permanently failed for ${message.body.ticker}`, error);
+          message.ack();
+        } else {
+          const delaySeconds = Math.min(3_600, 30 * (2 ** Math.max(0, message.attempts - 1)));
+          console.warn(`Dossier ingestion retry ${message.attempts} for ${message.body.ticker} in ${delaySeconds}s`);
+          message.retry({ delaySeconds });
+        }
+      }
+    }
   },
 };
 

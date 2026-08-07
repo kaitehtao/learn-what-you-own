@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { ensureDossierFreshnessSchema } from "../../db/runtimeSchema";
 import { importSecFilingFacts } from "./secFactsRepository";
+import { fetchSecJson } from "./secRequest";
 import { relevantSecFilings, type ClassifiedSecFiling, type FreshnessEventType, type SecSubmissionFeed } from "./dossierFreshnessClassification";
 
 const SEC_AGENT = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com";
@@ -18,9 +19,8 @@ async function scanCandidate(candidate: Candidate) {
   const paddedCik = candidate.cik.padStart(10, "0");
   const submissionsUrl = `https://data.sec.gov/submissions/CIK${paddedCik}.json`;
   try {
-    const response = await fetch(submissionsUrl, { headers: { accept: "application/json", "user-agent": SEC_AGENT } });
-    if (!response.ok) throw new Error(`SEC submissions returned ${response.status}.`);
-    const allRelevant = relevantSecFilings(candidate.cik, await response.json() as SecSubmissionFeed, candidate.last_success_at?.slice(0, 10));
+    const submissions = await fetchSecJson<SecSubmissionFeed>(submissionsUrl, SEC_AGENT);
+    const allRelevant = relevantSecFilings(candidate.cik, submissions, candidate.last_success_at?.slice(0, 10));
     const selected = candidate.last_success_at ? allRelevant.slice(0, 30) : bootstrapFilings(allRelevant);
     const inserted: ClassifiedSecFiling[] = [];
     for (const filing of selected) {

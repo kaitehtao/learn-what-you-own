@@ -5,6 +5,7 @@ import { companies, companyDossiers, dossierSources, filingFactImports, filingFa
 import { featuredDossiers } from "./featuredDossiers";
 import { getSecCompany } from "./secCompanies.generated";
 import { normalizeCompanyFacts, type SecCompanyFacts } from "./secMetrics";
+import { fetchSecJson } from "./secRequest";
 import { researchUniverse } from "./universe";
 
 const D1_FACT_BATCH_SIZE = 5;
@@ -128,15 +129,8 @@ export async function importSecFilingFacts(tickerValue: string): Promise<SecFact
   const source = `https://data.sec.gov/api/xbrl/companyfacts/CIK${paddedCik}.json`;
 
   try {
-    const response = await fetch(source, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "LearnWhatYouOwn/1.0 research@learnwhatyouown.com",
-      },
-    });
-    if (!response.ok) throw new Error(`SEC Company Facts returned ${response.status}.`);
-
-    const normalized = normalizeCompanyFacts(paddedCik, await response.json() as SecCompanyFacts);
+    const companyFacts = await fetchSecJson<SecCompanyFacts>(source, "LearnWhatYouOwn/1.0 research@learnwhatyouown.com");
+    const normalized = normalizeCompanyFacts(paddedCik, companyFacts);
     for (let index = 0; index < normalized.length; index += D1_FACT_BATCH_SIZE) {
       const values = normalized.slice(index, index + D1_FACT_BATCH_SIZE).map((fact) => ({ ticker, ...fact }));
       if (!values.length) continue;

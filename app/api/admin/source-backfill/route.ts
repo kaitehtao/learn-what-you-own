@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 async function dashboardData() {
   await ensureDossierSourceBackfillSchema();
-  const [batches, items, coverage] = await Promise.all([
+  const [batches, items, coverage, operations] = await Promise.all([
     env.DB.prepare(`SELECT b.id,b.universe_name,b.selection_rule,b.requested_limit,b.selected_count,
       b.success_count,b.skipped_count,b.error_count,b.source_count_added,b.status,b.started_at,b.completed_at,
       CASE WHEN b.status='failed' AND b.success_count=0 AND b.source_count_added=0
@@ -28,8 +28,15 @@ async function dashboardData() {
       SUM(CASE WHEN memberships_json LIKE '%Russell 2000%' THEN 1 ELSE 0 END) AS russell_2000_total,
       SUM(CASE WHEN memberships_json LIKE '%Russell 2000%' AND NOT EXISTS (SELECT 1 FROM dossier_sources ds WHERE ds.ticker=companies.ticker) THEN 1 ELSE 0 END) AS russell_2000_zero_sources
       FROM companies WHERE is_active=1 AND listing_scope='listed'`).first(),
+    env.DB.prepare(`SELECT
+      SUM(CASE WHEN status='queued' THEN 1 ELSE 0 END) AS queued,
+      SUM(CASE WHEN status='running' THEN 1 ELSE 0 END) AS running,
+      SUM(CASE WHEN status='error' AND completed_at>=datetime('now','-24 hours') THEN 1 ELSE 0 END) AS errors_24h,
+      SUM(CASE WHEN status='source_foundation_complete' AND completed_at>=datetime('now','-1 hour') THEN 1 ELSE 0 END) AS completed_1h,
+      MIN(CASE WHEN status IN ('queued','running') THEN started_at END) AS oldest_pending
+      FROM dossier_source_backfill_items`).first(),
   ]);
-  return { batches: batches.results, items: items.results, coverage };
+  return { batches: batches.results, items: items.results, coverage, operations };
 }
 
 export async function GET(request: Request) {

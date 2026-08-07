@@ -47,6 +47,13 @@ export function ensureDossierSourceBackfillSchema() {
       )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_source_backfill_item_ticker_idx ON dossier_source_backfill_items(ticker,completed_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_source_backfill_item_status_idx ON dossier_source_backfill_items(status,completed_at)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_ingestion_locks (
+        lock_name TEXT PRIMARY KEY NOT NULL,
+        owner_id TEXT NOT NULL,
+        lease_until TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_ingestion_lock_lease_idx ON dossier_ingestion_locks(lease_until)"),
     ]).catch((error) => {
       dossierSourceBackfillSchemaPromise = null;
       throw error;
