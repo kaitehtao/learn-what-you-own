@@ -21,6 +21,7 @@ import { HistoricalValuationPanel } from "../../HistoricalValuationPanel";
 import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 import { PublicFactsPanel } from "../../PublicFactsPanel";
 import { CompanyLogo } from "../../CompanyLogo";
+import { findPublishedDossier } from "../../../db/publishedDossier";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
 // after editorial content for the same ticker has been promoted to flagship depth.
@@ -83,7 +84,8 @@ export default async function CompanyStarterPage({
     memberships: ["Extended Coverage"],
     indexWeights: {},
   });
-  const featuredDossier = featuredDossiers[company.ticker];
+  const storedDossier = await findPublishedDossier(company.ticker);
+  const featuredDossier = storedDossier ?? featuredDossiers[company.ticker];
   if (featuredDossier) return <FeaturedCompanyDossier company={company} dossier={featuredDossier} />;
   const qualityTier = catalogCompany?.dossier_quality_tier ?? "starting_point";
   const hasResearchFoundation = catalogCompany?.dossier_status === "published" && qualityTier !== "starting_point";

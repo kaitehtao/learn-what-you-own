@@ -29,17 +29,11 @@ export async function POST(request: Request) {
       await db.insert(companyDossiers).values({
         ticker,
         status: "published",
-        contentJson: JSON.stringify({ coverage: "SEC facts and filing-grounded narrative", claimCount: dossier.claims.length }),
-        verifiedBy: profile.username,
-        verifiedAt: sql`CURRENT_TIMESTAMP`,
         publishedAt: sql`CURRENT_TIMESTAMP`,
       }).onConflictDoUpdate({
         target: companyDossiers.ticker,
         set: {
           status: "published",
-          contentJson: JSON.stringify({ coverage: "SEC facts and filing-grounded narrative", claimCount: dossier.claims.length }),
-          verifiedBy: profile.username,
-          verifiedAt: sql`CURRENT_TIMESTAMP`,
           publishedAt: sql`CURRENT_TIMESTAMP`,
           updatedAt: sql`CURRENT_TIMESTAMP`,
         },
@@ -50,8 +44,9 @@ export async function POST(request: Request) {
         sourceType: "sec",
         title: dossier.sourceTitle,
         url: dossier.sourceUrl,
-        filingType: dossier.filingType,
-        filedAt: dossier.filedAt,
+        evidenceDate: dossier.filedAt,
+        excerpt: `${dossier.filingType} primary evidence used for the reviewed claim ledger.`,
+        verifiedAt: sql`CURRENT_TIMESTAMP`,
       }).onConflictDoNothing();
 
       for (const claim of dossier.claims) {
