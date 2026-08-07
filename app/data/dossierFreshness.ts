@@ -14,7 +14,7 @@ function bootstrapFilings(rows: ClassifiedSecFiling[]) {
 
 type Candidate = { ticker: string; cik: string; name: string; last_success_at: string | null };
 
-const LEGACY_SOURCE_COLUMN_ERROR = "D1_ERROR: table dossier_sources has no column named filing_type:%";
+const LEGACY_SOURCE_COLUMN_ERROR = "D1_ERROR: table dossier_sources has no column named filing_type: SQLITE_ERROR";
 
 // A prior Worker revision attempted to write retired dossier_sources columns.
 // The durable source-backfill subsequently wrote the same exact SEC filings
@@ -29,7 +29,7 @@ export async function reconcileLegacyFreshnessSchemaErrors() {
       latest_filing_date
     ),
     error_message=NULL
-    WHERE error_message LIKE ?
+    WHERE error_message=?
       AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_freshness_checks.ticker)>=5`)
     .bind(LEGACY_SOURCE_COLUMN_ERROR).run();
   return Number(result.meta.changes ?? 0);
