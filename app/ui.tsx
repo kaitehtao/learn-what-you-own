@@ -61,6 +61,7 @@ export function Header() {
           <Link href="/insider-activity">Insider Activity</Link>
           <Link href="/facts">FACTS</Link>
           <Link href="/comps">Comps</Link>
+          <Link href="/emerging-companies">Private Companies &amp; YC</Link>
           <details className="workspace-menu research-menu">
             <summary>Research</summary>
             <div>
