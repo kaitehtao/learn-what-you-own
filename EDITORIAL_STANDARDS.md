@@ -15,7 +15,7 @@ Management assertions are not independently verified facts. Estimates and infere
 - SEC filings, official releases, and external coverage remain separate source classes.
 - AI may extract, compare, and draft, but an editor approves thesis language and corrections.
 - A research foundation requires at least five distinct sources. Benchmark completion additionally follows the active database quality rule.
-- Earnings, 10-K, 10-Q, definitive proxy, and material 8-K detections enter an evidence-preserving review package. Automation may refresh filed facts but may not silently change bull, bear, valuation, or owner-summary conclusions.
+- Earnings, 10-K, 10-Q, definitive proxy, and material 8-K detections are published automatically as evidence-preserving filing packages with exact EDGAR links. Automation may refresh filed facts but may not silently change bull, bear, valuation, or owner-summary conclusions; those interpretations remain separately moderated.
 
 ## Corrections and rights
 

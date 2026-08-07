@@ -25,8 +25,8 @@ async function scanCandidate(candidate: Candidate) {
     const inserted: ClassifiedSecFiling[] = [];
     for (const filing of selected) {
       const result = await database.prepare(`INSERT OR IGNORE INTO dossier_freshness_events
-        (ticker,accession_number,form,filing_date,report_date,primary_document,source_url,event_type,sec_items_json,materiality_reason,review_focus_json,facts_refresh_status,status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'editorial_review')`).bind(
+        (ticker,accession_number,form,filing_date,report_date,primary_document,source_url,event_type,sec_items_json,materiality_reason,review_focus_json,facts_refresh_status,status,editorial_summary,reviewed_by,reviewed_at,published_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'published','','system:sec-freshness',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
           candidate.ticker, filing.accessionNumber, filing.form, filing.filingDate, filing.reportDate,
           filing.primaryDocument, filing.sourceUrl, filing.eventType, JSON.stringify(filing.items),
           filing.materialityReason, JSON.stringify(filing.reviewFocus), filing.refreshFacts ? "pending" : "not_applicable",
@@ -35,15 +35,22 @@ async function scanCandidate(candidate: Candidate) {
       // The permanent dossier source ledger must point to the exact filing,
       // not merely the SEC company search page. This also lets the rollout
       // measure evidence depth without inventing editorial conclusions.
-      await database.prepare(`INSERT OR IGNORE INTO dossier_sources
-        (ticker,source_type,title,url,filing_type,filed_at,accessed_at,created_at)
-        VALUES (?,'sec',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
+      await database.prepare(`INSERT INTO dossier_sources
+        (ticker,source_type,title,url,evidence_date,excerpt,verified_at,created_at)
+        VALUES (?,'sec_filing',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        ON CONFLICT(ticker,url) DO UPDATE SET source_type=excluded.source_type,title=excluded.title,
+          evidence_date=excluded.evidence_date,excerpt=excluded.excerpt,verified_at=CURRENT_TIMESTAMP`).bind(
           candidate.ticker,
           `${filing.form} filed ${filing.filingDate}`,
           filing.sourceUrl,
-          filing.form,
           filing.filingDate,
+          `Official SEC ${filing.form} filing detected automatically by the dossier freshness monitor.`,
         ).run();
+    }
+
+    if (inserted.length) {
+      await database.prepare("UPDATE company_dossiers SET updated_at=CURRENT_TIMESTAMP WHERE ticker=?")
+        .bind(candidate.ticker).run();
     }
 
     const factEvents = inserted.filter((filing) => filing.refreshFacts);
@@ -80,7 +87,8 @@ export async function processDossierFreshnessBatch(limit = 25) {
     FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
     LEFT JOIN dossier_freshness_checks f ON f.ticker=d.ticker
     WHERE d.status='published' AND c.cik IS NOT NULL AND c.cik<>''
-    ORDER BY COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 50))).all<Candidate>();
+    ORDER BY CASE WHEN f.error_message IS NOT NULL THEN 0 ELSE 1 END,
+      COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 50))).all<Candidate>();
   const scans = [];
   for (const candidate of result.results) {
     scans.push(await scanCandidate(candidate));

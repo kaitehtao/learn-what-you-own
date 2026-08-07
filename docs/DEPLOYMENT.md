@@ -160,14 +160,14 @@ batch with concurrency capped at two, bounded retry delay, and
 scheduler reconciles any queued or running ledger batch left for more than 20
 minutes: complete source packs are preserved and unfinished tickers become
 eligible for retry. The separate
-quarter-hour freshness invocation checks the 25 least-recently scanned published dossiers against the
-SEC submissions feed. At the current S&P benchmark size, every published issuer
-is revisited in approximately six hours. Newly detected earnings releases,
+quarter-hour freshness invocation checks the 50 least-recently scanned published dossiers against the
+SEC submissions feed. Failed checks are retried before the normal least-recently
+scanned rotation. Newly detected earnings releases,
 10-Ks, 10-Qs, definitive proxies, and material 8-Ks are recorded in
 `dossier_freshness_events`. Periodic reports and earnings events also trigger a
-Company Facts refresh. The event remains in `editorial_review` until an editor
-publishes or dismisses it; filing detection never silently rewrites a bull case,
-bear case, valuation conclusion, or owner summary.
+Company Facts refresh. The exact filing event and source publish automatically
+with a system audit identity; filing detection never silently rewrites a bull
+case, bear case, valuation conclusion, or owner summary.
 
 The initial source backfill is one deduplicated Russell 3000 pass; each batch
 item retains its Russell 2000 membership so the subset is not fetched twice.
@@ -180,10 +180,10 @@ public `/research/batches` page lists every completed batch and its tickers.
 Source-foundation completion does not bypass the dossier quality rule or
 editorial review required for benchmark-complete status.
 
-Pending freshness accessions are presented to administrators as prioritized
+Freshness accessions are presented to administrators as recent automatic
 company-and-reporting-period packages. The raw event records remain individually
-auditable. Publishing or dismissing a package records the decision on each filing;
-no automated scan changes bull, bear, valuation, or owner-summary conclusions.
+auditable, but official SEC evidence does not require per-ticker approval. No
+automated scan changes bull, bear, valuation, or owner-summary conclusions.
 
 The first successful scan establishes a conservative baseline by recording only
 the latest filing in each supported category. Subsequent scans ingest every new

@@ -132,8 +132,8 @@ function RelationshipNode({ relationship }: { relationship: CompanyRelationship 
 
 function quarterlyStatusLabel(status: QuarterlyDossierUpdate["status"]) {
   if (status === "published") return "Editorial update published";
-  if (status === "editorial_review") return "Analyst review in progress";
-  return "Filed facts refreshed · thesis review queued";
+  if (status === "editorial_review") return "Optional analyst interpretation in progress";
+  return "Filing and facts automatically added";
 }
 
 export function ResearchFoundationPanel({ ticker, companyName, editorialUpdatedAt }: { ticker: string; companyName: string; editorialUpdatedAt?: string }) {
@@ -178,10 +178,10 @@ export function ResearchFoundationPanel({ ticker, companyName, editorialUpdatedA
     {loading ? <div className="research-foundation-state">Loading filing-grounded research…</div> : error ? <div className="research-foundation-state error">{error}</div> : <>
       <div className="evidence-layer-legend"><span className="fact-layer">FILED FACT</span><span className="statement-layer">COMPANY STATEMENT</span><span className="analysis-layer">EDITORIAL ANALYSIS</span><span className="community-layer">MEMBER INSIGHT</span></div>
 
-      {data.freshnessEvents[0] && <div className="freshness-public-block"><div><small>AUTOMATED FILING MONITOR</small><h3>{data.freshnessEvents[0].form} · {data.freshnessEvents[0].eventType.replaceAll("_", " ")}</h3><p>{data.freshnessEvents[0].materialityReason}</p>{data.freshnessEvents[0].editorialSummary && <blockquote>{data.freshnessEvents[0].editorialSummary}</blockquote>}</div><aside><span className={`freshness-public-status ${data.freshnessEvents[0].status}`}>{data.freshnessEvents[0].status === "editorial_review" ? "Editorial review queued" : data.freshnessEvents[0].status.replaceAll("_", " ")}</span><strong>Filed {shortDate(data.freshnessEvents[0].filingDate)}</strong><small>{data.freshnessEvents[0].factsRefreshStatus === "refreshed" ? "Filed facts refreshed" : data.freshnessEvents[0].factsRefreshStatus.replaceAll("_", " ")}</small><a href={data.freshnessEvents[0].sourceUrl} target="_blank" rel="noreferrer">Open exact SEC filing ↗</a>{data.freshnessCheck?.lastSuccessAt && <em>Monitor checked {shortDate(data.freshnessCheck.lastSuccessAt)}</em>}</aside></div>}
+      {data.freshnessEvents[0] && <div className="freshness-public-block"><div><small>AUTOMATED FILING MONITOR</small><h3>{data.freshnessEvents[0].form} · {data.freshnessEvents[0].eventType.replaceAll("_", " ")}</h3><p>{data.freshnessEvents[0].materialityReason}</p>{data.freshnessEvents[0].editorialSummary && <blockquote>{data.freshnessEvents[0].editorialSummary}</blockquote>}</div><aside><span className={`freshness-public-status ${data.freshnessEvents[0].status}`}>{data.freshnessEvents[0].status === "published" ? "Automatically added" : data.freshnessEvents[0].status.replaceAll("_", " ")}</span><strong>Filed {shortDate(data.freshnessEvents[0].filingDate)}</strong><small>{data.freshnessEvents[0].factsRefreshStatus === "refreshed" ? "Filed facts refreshed" : data.freshnessEvents[0].factsRefreshStatus.replaceAll("_", " ")}</small><a href={data.freshnessEvents[0].sourceUrl} target="_blank" rel="noreferrer">Open exact SEC filing ↗</a>{data.freshnessCheck?.lastSuccessAt && <em>Monitor checked {shortDate(data.freshnessCheck.lastSuccessAt)}</em>}</aside></div>}
 
       {data.quarterlyUpdates[0] && <div className="quarterly-update-block">
-        <div><small>QUARTERLY DOSSIER REFRESH</small><h3>{data.quarterlyUpdates[0].form} filed {shortDate(data.quarterlyUpdates[0].filedAt)}</h3><p>Primary financial facts now reflect the period ended {data.quarterlyUpdates[0].periodEnd}. The filing is recorded automatically; changes to the owner summary, bull case, bear case, risks, and valuation framing stay in the moderated editorial workflow.</p></div>
+        <div><small>QUARTERLY DOSSIER REFRESH</small><h3>{data.quarterlyUpdates[0].form} filed {shortDate(data.quarterlyUpdates[0].filedAt)}</h3><p>Primary financial facts now reflect the period ended {data.quarterlyUpdates[0].periodEnd}. The filing and filed facts appear automatically without analyst approval. Any later change to the owner summary, bull case, bear case, risks, or valuation framing remains separately moderated.</p></div>
         <div className={`quarterly-update-status ${data.quarterlyUpdates[0].status.replaceAll("_", "-")}`}><span>{quarterlyStatusLabel(data.quarterlyUpdates[0].status)}</span><a href={data.quarterlyUpdates[0].sourceUrl} target="_blank" rel="noreferrer">Open exact SEC filing ↗</a></div>
         {data.quarterlyUpdates[0].editorialSummary && <blockquote>{data.quarterlyUpdates[0].editorialSummary}</blockquote>}
       </div>}

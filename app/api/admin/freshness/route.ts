@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { ensureDossierFreshnessSchema, ensureQuarterlyDossierUpdatesSchema } from "../../../../db/runtimeSchema";
+import { ensureDossierFreshnessSchema } from "../../../../db/runtimeSchema";
 import { processDossierFreshnessBatch } from "../../../data/dossierFreshness";
 import { apiError, requireEditor } from "../../../supabase-server";
 
@@ -24,9 +24,9 @@ export async function GET(request: Request) {
           'editorial_summary',e.editorial_summary,'detected_at',e.detected_at
         )) AS events_json
         FROM dossier_freshness_events e JOIN companies c ON c.ticker=e.ticker
-        WHERE e.status='editorial_review'
+        WHERE e.status='published'
         GROUP BY e.ticker,review_period
-        ORDER BY priority_score DESC,latest_filing_date DESC,c.market_cap IS NULL,c.market_cap DESC,e.ticker
+        ORDER BY latest_filing_date DESC,oldest_detected_at DESC,c.market_cap IS NULL,c.market_cap DESC,e.ticker
         LIMIT 200`).all(),
       env.DB.prepare("SELECT status,COUNT(*) AS count FROM dossier_freshness_events GROUP BY status").all(),
       env.DB.prepare(`SELECT status,COUNT(*) AS count FROM (
@@ -60,39 +60,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { profile } = await requireEditor(request);
-    await ensureDossierFreshnessSchema();
-    const payload = await request.json() as { id?: number; eventIds?: number[]; action?: "publish" | "ignore" | "reopen"; editorialSummary?: string };
-    const ids = [...new Set([...(Array.isArray(payload.eventIds) ? payload.eventIds : []), ...(payload.id ? [payload.id] : [])]
-      .map(Number).filter((id) => Number.isInteger(id) && id > 0))].slice(0, 50);
-    if (!ids.length) return Response.json({ error: "At least one valid freshness event is required." }, { status: 400 });
-    const placeholders = ids.map(() => "?").join(",");
-    const selected = await env.DB.prepare(`SELECT id,ticker,accession_number,form,status FROM dossier_freshness_events WHERE id IN (${placeholders})`).bind(...ids).all<{id:number;ticker:string;accession_number:string;form:string;status:string}>();
-    if (selected.results.length !== ids.length) return Response.json({ error: "One or more freshness events were not found." }, { status: 404 });
-    const tickers = [...new Set(selected.results.map((event) => event.ticker))];
-    if (tickers.length !== 1) return Response.json({ error: "A review package must belong to one company." }, { status: 400 });
-    if (payload.action === "reopen") {
-      await env.DB.prepare(`UPDATE dossier_freshness_events SET status='editorial_review',reviewed_by=NULL,reviewed_at=NULL,published_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id IN (${placeholders})`).bind(...ids).run();
-      return Response.json({ updated: ids.length });
-    }
-    if (payload.action === "ignore") {
-      await env.DB.prepare(`UPDATE dossier_freshness_events SET status='ignored',reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP,published_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id IN (${placeholders})`).bind(profile.username, ...ids).run();
-      return Response.json({ updated: ids.length });
-    }
-    if (payload.action !== "publish") return Response.json({ error: "Choose publish, ignore, or reopen." }, { status: 400 });
-    const summary = String(payload.editorialSummary ?? "").trim();
-    if (summary.length < 40) return Response.json({ error: "Add an evidence-grounded editorial summary of at least 40 characters." }, { status: 400 });
-    await env.DB.batch([
-      env.DB.prepare(`UPDATE dossier_freshness_events SET status='published',editorial_summary=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id IN (${placeholders})`).bind(summary, profile.username, ...ids),
-      env.DB.prepare("UPDATE company_dossiers SET updated_at=CURRENT_TIMESTAMP WHERE ticker=?").bind(tickers[0]),
-    ]);
-    const periodic = selected.results.filter((event) => /^10-[KQ](?:\/A)?$/.test(event.form));
-    if (periodic.length) {
-      await ensureQuarterlyDossierUpdatesSchema();
-      for (const event of periodic) {
-        await env.DB.prepare("UPDATE quarterly_dossier_updates SET status='published',editorial_summary=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE ticker=? AND accession_number=?").bind(summary, profile.username, event.ticker, event.accession_number).run();
-      }
-    }
-    return Response.json({ updated: ids.length });
+    await requireEditor(request);
+    return Response.json({
+      error: "Official SEC filing evidence publishes automatically. Use the separate dossier completion workflow for thesis or interpretation changes.",
+    }, { status: 405, headers: { allow: "GET, POST" } });
   } catch (error) { return apiError(error); }
 }

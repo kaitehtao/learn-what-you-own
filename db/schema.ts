@@ -202,8 +202,8 @@ export const filingFactImports = sqliteTable("filing_fact_imports", {
 ]);
 
 // Each newly detected 10-Q or 10-K creates one durable quarterly update. Filed
-// facts can refresh automatically; thesis prose remains visibly queued for
-// editorial review until a human publishes the interpretation.
+// facts and the exact filing appear automatically; any analyst interpretation
+// remains a separate, explicitly moderated layer.
 export const quarterlyDossierUpdates = sqliteTable("quarterly_dossier_updates", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   ticker: text("ticker").notNull().references(() => companyDossiers.ticker, { onDelete: "cascade" }),
@@ -226,8 +226,8 @@ export const quarterlyDossierUpdates = sqliteTable("quarterly_dossier_updates", 
 ]);
 
 // SEC submission monitoring is intentionally separate from published dossier
-// prose. A newly filed document becomes a durable review event immediately;
-// an editor must still decide how it changes the ownership thesis.
+// prose. A newly filed document becomes public evidence immediately; changing
+// the ownership thesis still requires a separate editorial action.
 export const dossierFreshnessChecks = sqliteTable("dossier_freshness_checks", {
   ticker: text("ticker").primaryKey().references(() => companyDossiers.ticker, { onDelete: "cascade" }),
   lastAttemptedAt: text("last_attempted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -254,7 +254,7 @@ export const dossierFreshnessEvents = sqliteTable("dossier_freshness_events", {
   reviewFocusJson: text("review_focus_json").notNull().default("[]"),
   factsRefreshStatus: text("facts_refresh_status", { enum: ["not_applicable", "pending", "refreshed", "failed"] }).notNull().default("not_applicable"),
   factsRefreshDetail: text("facts_refresh_detail").notNull().default(""),
-  status: text("status", { enum: ["editorial_review", "published", "ignored", "failed"] }).notNull().default("editorial_review"),
+  status: text("status", { enum: ["editorial_review", "published", "ignored", "failed"] }).notNull().default("published"),
   editorialSummary: text("editorial_summary").notNull().default(""),
   reviewedBy: text("reviewed_by"),
   reviewedAt: text("reviewed_at"),

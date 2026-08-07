@@ -1132,7 +1132,7 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
   assert.match(worker, /SITES_MIRROR_CRON_SECRET/);
   assert.match(worker, /x-lwyo-sites-mirror/);
-  assert.match(worker, /dossier-freshness\?limit=25/);
+  assert.match(worker, /dossier-freshness\?limit=50/);
   assert.match(worker, /Promise\.all\(\[localRequest, mirrorRequest\]\)/);
   assert.match(worker, /Sites dossier freshness mirror returned/);
   assert.match(worker, /handler\.fetch\(new Request/);
@@ -1661,7 +1661,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(researchApi, /continuing with core research sources/);
   assert.match(runtimeSchema, /CREATE TABLE IF NOT EXISTS quarterly_dossier_updates/);
   assert.match(panel, /QUARTERLY DOSSIER REFRESH/);
-  assert.match(panel, /thesis review queued/);
+  assert.match(panel, /Filing and facts automatically added/);
   assert.match(worker, /learn-what-you-own\.julianspencer\.chatgpt\.site/);
   assert.match(worker, /www\.learnwhatyouown\.com/);
   assert.match(worker, /Response\.redirect\(canonicalUrl, 308\)/);
@@ -1674,7 +1674,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
 });
 
 test("separates publication from dossier quality and ranks index research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration] = await Promise.all([
+  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration, automaticFreshnessMigration] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0032_activate_ranked_research_foundations.sql"),
@@ -1700,6 +1700,7 @@ test("separates publication from dossier quality and ranks index research from t
     source("app/api/internal/dossier-source-backfill/route.ts"),
     source("app/admin/SourceBackfillQueue.tsx"),
     source("drizzle/0035_russell_sec_source_backfill.sql"),
+    source("drizzle/0040_automatic_sec_filing_publication.sql"),
   ]);
   assert.match(schema, /qualityTier: text\("quality_tier"/);
   assert.match(migration, /benchmark_complete/);
@@ -1715,7 +1716,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(rankingRoute, /evidence_ready/);
   assert.match(researchRoute, /importSecFilingFacts\(ticker\)/);
   assert.match(secFacts, /data\.sec\.gov\/api\/xbrl\/companyfacts/);
-  assert.match(dossierFreshness, /INSERT OR IGNORE INTO dossier_sources/);
+  assert.match(dossierFreshness, /INSERT INTO dossier_sources/);
   assert.match(universeRoute, /dossier_quality_tier/);
   assert.match(universeRoute, /dossier_source_count/);
   assert.match(universeRoute, /qualitySummary/);
@@ -1761,12 +1762,14 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(marketQuotes, /download=true/);
   assert.match(freshnessApi, /WHEN 'earnings_release' THEN 100/);
   assert.match(freshnessApi, /json_group_array\(json_object/);
-  assert.match(freshnessApi, /eventIds\?: number\[\]/);
-  assert.match(freshnessApi, /A review package must belong to one company/);
+  assert.match(freshnessApi, /WHERE e\.status='published'/);
+  assert.match(freshnessApi, /Official SEC filing evidence publishes automatically/);
+  assert.doesNotMatch(freshnessApi, /eventIds\?: number\[\]/);
   assert.match(freshnessAdmin, /full-universe dossier program/);
-  assert.match(freshnessAdmin, /Prioritized filing review packages/);
-  assert.match(freshnessAdmin, /Publish package update/);
-  assert.match(worker, /dossier-freshness\?limit=25/);
+  assert.match(freshnessAdmin, /Automatic SEC filing updates/);
+  assert.match(freshnessAdmin, /Automatically published/);
+  assert.doesNotMatch(freshnessAdmin, /Publish package update/);
+  assert.match(worker, /dossier-freshness\?limit=50/);
   assert.match(worker, /dossier-source-backfill\?limit=12/);
   assert.match(worker, /controller\.cron === "2-59\/5 \* \* \* \*"/);
   assert.match(worker, /rollout-market-cap-refresh/);
@@ -1785,6 +1788,12 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfill, /'sec_filing'/);
   assert.match(sourceBackfill, /evidence_date,excerpt,verified_at,created_at/);
   assert.doesNotMatch(sourceBackfill, /filing_type,filed_at,accessed_at/);
+  assert.match(dossierFreshness, /evidence_date,excerpt,verified_at,created_at/);
+  assert.match(dossierFreshness, /'published','','system:sec-freshness'/);
+  assert.match(dossierFreshness, /CASE WHEN f\.error_message IS NOT NULL THEN 0 ELSE 1 END/);
+  assert.doesNotMatch(dossierFreshness, /filing_type,filed_at,accessed_at/);
+  assert.match(automaticFreshnessMigration, /WHERE status='editorial_review'/);
+  assert.match(automaticFreshnessMigration, /system:sec-freshness-backfill/);
   assert.match(sourceBackfill, /importSecFilingFacts/);
   assert.match(sourceBackfill, /reconcileDossierQuality/);
   assert.match(sourceBackfill, /recoverStaleDossierSourceBackfills/);

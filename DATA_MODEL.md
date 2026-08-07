@@ -12,7 +12,7 @@
 - `dossier_sources`: deduplicated exact source URLs and evidence metadata.
 - `dossier_claims`: typed claims with section, status, and source linkage.
 - `filing_facts` and `filing_fact_imports`: normalized SEC facts plus import provenance.
-- `dossier_freshness_events`: immutable filing detections and editorial decisions.
+- `dossier_freshness_events`: immutable filing detections published automatically as primary evidence, with optional separately moderated interpretation metadata.
 - `dossier_source_backfill_batches` and `dossier_source_backfill_items`: auditable scheduling and per-ticker ingestion state.
 - `dossier_quality_rules`: the active evidence threshold; completion is computed, never manually asserted.
 

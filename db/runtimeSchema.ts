@@ -166,7 +166,7 @@ export function ensureDossierFreshnessSchema() {
         review_focus_json TEXT NOT NULL DEFAULT '[]',
         facts_refresh_status TEXT NOT NULL DEFAULT 'not_applicable',
         facts_refresh_detail TEXT NOT NULL DEFAULT '',
-        status TEXT NOT NULL DEFAULT 'editorial_review',
+        status TEXT NOT NULL DEFAULT 'published',
         editorial_summary TEXT NOT NULL DEFAULT '',
         reviewed_by TEXT,
         reviewed_at TEXT,
