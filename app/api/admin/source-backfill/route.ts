@@ -28,13 +28,22 @@ async function dashboardData() {
       SUM(CASE WHEN memberships_json LIKE '%Russell 2000%' THEN 1 ELSE 0 END) AS russell_2000_total,
       SUM(CASE WHEN memberships_json LIKE '%Russell 2000%' AND NOT EXISTS (SELECT 1 FROM dossier_sources ds WHERE ds.ticker=companies.ticker) THEN 1 ELSE 0 END) AS russell_2000_zero_sources
       FROM companies WHERE is_active=1 AND listing_scope='listed'`).first(),
-    env.DB.prepare(`SELECT
-      SUM(CASE WHEN status='queued' THEN 1 ELSE 0 END) AS queued,
-      SUM(CASE WHEN status='running' THEN 1 ELSE 0 END) AS running,
-      SUM(CASE WHEN status='error' AND completed_at>=datetime('now','-24 hours') THEN 1 ELSE 0 END) AS errors_24h,
-      SUM(CASE WHEN status='source_foundation_complete' AND completed_at>=datetime('now','-1 hour') THEN 1 ELSE 0 END) AS completed_1h,
-      MIN(CASE WHEN status IN ('queued','running') THEN started_at END) AS oldest_pending
-      FROM dossier_source_backfill_items`).first(),
+    env.DB.prepare(`WITH latest AS (
+      SELECT item.* FROM dossier_source_backfill_items item
+      WHERE NOT EXISTS (
+        SELECT 1 FROM dossier_source_backfill_items newer
+        WHERE newer.ticker=item.ticker AND (
+          newer.started_at>item.started_at OR (newer.started_at=item.started_at AND newer.batch_id>item.batch_id)
+        )
+      )
+    ) SELECT
+      (SELECT COUNT(*) FROM dossier_source_backfill_items WHERE status='queued') AS queued,
+      (SELECT COUNT(*) FROM dossier_source_backfill_items WHERE status='running') AS running,
+      SUM(CASE WHEN status='error' AND source_count_after<5 THEN 1 ELSE 0 END) AS unresolved_errors,
+      SUM(CASE WHEN status IN ('no_sec_match','no_supported_filings','partial_evidence') AND source_count_after<5 THEN 1 ELSE 0 END) AS source_limitations,
+      (SELECT COUNT(*) FROM dossier_source_backfill_items WHERE status='source_foundation_complete' AND completed_at>=datetime('now','-1 hour')) AS completed_1h,
+      (SELECT MIN(started_at) FROM dossier_source_backfill_items WHERE status IN ('queued','running')) AS oldest_pending
+      FROM latest`).first(),
   ]);
   return { batches: batches.results, items: items.results, coverage, operations };
 }

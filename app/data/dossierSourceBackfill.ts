@@ -29,11 +29,49 @@ type QueueBinding = {
 type Candidate = {
   ticker: string;
   name: string;
+  sector: string;
+  exchange: string;
+  market_cap: number | null;
   cik: string | null;
   memberships_json: string;
+  index_weights_json: string;
   priority_rank: number;
   source_count: number;
 };
+
+let legacyResearchCompaniesTablePromise: Promise<boolean> | null = null;
+
+async function hasLegacyResearchCompaniesTable() {
+  if (!legacyResearchCompaniesTablePromise) {
+    legacyResearchCompaniesTablePromise = env.DB.prepare(`SELECT 1 AS present FROM sqlite_master
+      WHERE type='table' AND name='research_companies'`).first<{ present: number }>()
+      .then((row) => Boolean(row?.present));
+  }
+  return legacyResearchCompaniesTablePromise;
+}
+
+// Production historically keyed company_dossiers to research_companies while
+// the current universe is keyed to companies. Preserve compatibility until a
+// controlled table rebuild removes that legacy foreign key. This is especially
+// important for class-share tickers added after the original 2,995-row seed.
+async function ensureLegacyResearchCompany(candidate: Candidate) {
+  if (!await hasLegacyResearchCompaniesTable()) return;
+  await env.DB.prepare(`INSERT INTO research_companies
+    (ticker,name,sector,exchange,market_cap,memberships_json,index_weights_json,updated_at)
+    VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(ticker) DO UPDATE SET name=excluded.name,sector=excluded.sector,
+      exchange=excluded.exchange,market_cap=excluded.market_cap,
+      memberships_json=excluded.memberships_json,index_weights_json=excluded.index_weights_json,
+      updated_at=CURRENT_TIMESTAMP`).bind(
+        candidate.ticker,
+        candidate.name,
+        candidate.sector,
+        candidate.exchange,
+        candidate.market_cap,
+        candidate.memberships_json,
+        candidate.index_weights_json,
+      ).run();
+}
 
 function batchId() {
   return `sec-r3000-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;
@@ -146,6 +184,7 @@ export async function recoverStaleDossierSourceBackfills(staleMinutes = STALE_LE
 async function processCandidate(batch: string, candidate: Candidate) {
   // Register an unpublished starting point before doing network work. A route
   // becomes public only after the minimum source foundation exists.
+  await ensureLegacyResearchCompany(candidate);
   await env.DB.prepare(`INSERT INTO company_dossiers(ticker,status,quality_tier,updated_at)
     VALUES(?,'queued','starting_point',CURRENT_TIMESTAMP)
     ON CONFLICT(ticker) DO UPDATE SET updated_at=CURRENT_TIMESTAMP`).bind(candidate.ticker).run();
@@ -270,7 +309,8 @@ async function finalizeDossierSourceBackfillBatch(id: string) {
 export async function processDossierSourceBackfillMessage(message: DossierSourceBackfillMessage) {
   await Promise.all([ensureDossierSourceBackfillSchema(), ensureDossierFreshnessSchema()]);
   if (message.kind !== "source_backfill") throw new Error("Unsupported dossier ingestion message.");
-  const candidate = await env.DB.prepare(`SELECT c.ticker,c.name,c.cik,c.memberships_json,i.priority_rank,
+  const candidate = await env.DB.prepare(`SELECT c.ticker,c.name,c.sector,c.exchange,c.market_cap,c.cik,
+      c.memberships_json,c.index_weights_json,i.priority_rank,
       i.source_count_before AS source_count,i.status
     FROM dossier_source_backfill_items i JOIN companies c ON c.ticker=i.ticker
     WHERE i.batch_id=? AND i.ticker=?`).bind(message.batchId, message.ticker).first<Candidate & { status: string }>();
@@ -313,7 +353,8 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
   }
 
   try {
-    const candidateResult = await env.DB.prepare(`SELECT c.ticker,c.name,c.cik,c.memberships_json,
+    const candidateResult = await env.DB.prepare(`SELECT c.ticker,c.name,c.sector,c.exchange,c.market_cap,c.cik,
+        c.memberships_json,c.index_weights_json,
         ROW_NUMBER() OVER (ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC) AS priority_rank,
         COALESCE((SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker),0) AS source_count
       FROM companies c
@@ -323,7 +364,10 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
           SELECT 1 FROM dossier_source_backfill_items prior
           WHERE prior.ticker=c.ticker AND (
             prior.status IN ('queued','running')
-            OR (prior.status='error' AND prior.error_message NOT LIKE 'Lease expired%' AND prior.completed_at>=datetime('now','-6 hours'))
+            OR (prior.status='error'
+              AND prior.error_message NOT LIKE 'Lease expired%'
+              AND prior.error_message NOT LIKE '%FOREIGN KEY constraint failed%'
+              AND prior.completed_at>=datetime('now','-6 hours'))
             OR (prior.status IN ('no_sec_match','no_supported_filings','partial_evidence') AND prior.completed_at>=datetime('now','-30 days'))
           )
         )

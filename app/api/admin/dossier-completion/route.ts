@@ -25,14 +25,18 @@ async function dashboardData() {
       FROM company_dossiers`).first(),
     env.DB.prepare(`SELECT id,universe_name,selection_rule,requested_count,selected_count,
       approved_count,needs_revision_count,status,created_by,created_at,completed_at
-      FROM dossier_completion_batches ORDER BY created_at DESC LIMIT 12`).all(),
+      FROM dossier_completion_batches
+      ORDER BY CASE WHEN status<>'completed' THEN 0 ELSE 1 END,
+        CASE WHEN status<>'completed' THEN created_at END ASC,created_at DESC LIMIT 12`).all(),
     env.DB.prepare(`SELECT cc.batch_id,cc.ticker,cc.priority_rank,cc.status,cc.source_count,
       cc.claim_preview_json,cc.validation_json,cc.review_note,cc.reviewed_by,cc.reviewed_at,cc.approved_at,
       c.name,c.market_cap,d.quality_tier,d.evidence_date
       FROM dossier_completion_candidates cc
       JOIN companies c ON c.ticker=cc.ticker
       JOIN company_dossiers d ON d.ticker=cc.ticker
-      WHERE cc.batch_id IN (SELECT id FROM dossier_completion_batches ORDER BY created_at DESC LIMIT 4)
+      WHERE cc.batch_id IN (SELECT id FROM dossier_completion_batches
+        ORDER BY CASE WHEN status<>'completed' THEN 0 ELSE 1 END,
+          CASE WHEN status<>'completed' THEN created_at END ASC,created_at DESC LIMIT 4)
       ORDER BY cc.batch_id DESC,cc.priority_rank LIMIT 120`).all(),
   ]);
   return { summary, batches: batches.results, candidates: candidates.results };

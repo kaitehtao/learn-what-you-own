@@ -1805,9 +1805,13 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfill, /recoverStaleDossierSourceBackfills/);
   assert.match(sourceBackfill, /Lease expired before a complete source pack/);
   assert.match(sourceBackfill, /error_message NOT LIKE 'Lease expired%'/);
+  assert.match(sourceBackfill, /ensureLegacyResearchCompany/);
+  assert.match(sourceBackfill, /FOREIGN KEY constraint failed/);
   assert.match(sourceBackfillRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(sourceBackfillAdmin, /Each ticker is an independent Cloudflare Queue job/);
   assert.match(sourceBackfillAdmin, /Queued ticker jobs/);
+  assert.match(sourceBackfillAdmin, /Unresolved ingestion errors/);
+  assert.match(sourceBackfillAdmin, /Official source limitations/);
   assert.match(worker, /processDossierSourceBackfillMessage/);
   assert.match(worker, /message\.retry\(\{ delaySeconds \}\)/);
   assert.match(sourceBackfillAdmin, /Superseded diagnostic run · inactive/);
@@ -1827,6 +1831,8 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(completionAdmin, /Automatic benchmark publication/);
   assert.match(completionAdmin, /Validate next 30 automatically/);
   assert.match(completionAdmin, /no duplicate batch was created/);
+  assert.match(completionAdmin, /CURRENT PROCESSING BATCH/);
+  assert.match(completionAdminApi, /CASE WHEN status<>'completed' THEN 0 ELSE 1 END/);
   assert.doesNotMatch(completionAdmin, /Approve benchmark normalization/);
   assert.doesNotMatch(completionAdmin, /Return for revision/);
   assert.match(completionMigration, /automatic_validation/);

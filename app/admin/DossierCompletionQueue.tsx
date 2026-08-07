@@ -31,8 +31,8 @@ export function DossierCompletionQueue(){
     if(!response.ok)setError(body.error??"Unable to load benchmark completion.");else{setData(body);setError("");}
   },[]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
-  const latestBatch=useMemo(()=>data?.batches[0]?.id??"",[data?.batches]);
-  const visible=(data?.candidates??[]).filter((item)=>item.batch_id===latestBatch);
+  const currentBatch=useMemo(()=>data?.batches.find((batch)=>batch.status!=="completed")??data?.batches[0]??null,[data?.batches]);
+  const visible=(data?.candidates??[]).filter((item)=>item.batch_id===currentBatch?.id);
 
   async function createBatch(count:number){
     setBusy("batch");setError("");setNotice("");
@@ -51,7 +51,7 @@ export function DossierCompletionQueue(){
     {error&&<p className="form-error">{error}</p>}{notice&&<p className="admin-notice">{notice}</p>}
     <div className="dossier-completion-stats"><div><strong>{Number(data?.summary?.benchmark_complete??0).toLocaleString()}</strong><span>Benchmark complete</span></div><div><strong>{Number(data?.summary?.narrative_ready??0).toLocaleString()}</strong><span>Narrative ready</span></div><div><strong>{Number(data?.summary?.machine_enriched??0).toLocaleString()}</strong><span>Machine enriched</span></div><div><strong>{Number(data?.summary?.starting_point??0).toLocaleString()}</strong><span>Source foundation pending</span></div></div>
     <p className="completion-policy-note"><strong>Automatic benchmark publication.</strong> No per-ticker approval is required. The system publishes only when every active evidence and completeness threshold passes, records the validating rule and system identity, and leaves exceptions unpublished at benchmark status. <Link href="/learn/how-to-research-a-stock">Review the owner-research standard →</Link></p>
-    {data?.batches[0]&&<div className="completion-batch-heading"><div><small>LATEST AUTOMATIC BATCH</small><strong>{data.batches[0].id}</strong><span>{label(data.batches[0].status)}</span></div><p>{data.batches[0].approved_count}/{data.batches[0].selected_count} automatically complete · {data.batches[0].needs_revision_count} exceptions</p></div>}
+    {currentBatch&&<div className="completion-batch-heading"><div><small>{currentBatch.status==="completed"?"MOST RECENT AUTOMATIC BATCH":"CURRENT PROCESSING BATCH"}</small><strong>{currentBatch.id}</strong><span>{label(currentBatch.status)}</span></div><p>{currentBatch.approved_count}/{currentBatch.selected_count} automatically complete · {currentBatch.needs_revision_count} exceptions</p></div>}
     <div className="completion-candidate-list">{visible.map(candidate=>{
       const preview=claims(candidate.claim_preview_json);
       return <details key={`${candidate.batch_id}:${candidate.ticker}`} className={candidate.status}>

@@ -6,7 +6,7 @@ import { authenticatedFetch, loginPath } from "../supabase-browser";
 type Batch = { id:string;selected_count:number;success_count:number;skipped_count:number;error_count:number;source_count_added:number;status:string;started_at:string;completed_at:string|null;is_superseded_diagnostic:number };
 type Item = { batch_id:string;ticker:string;status:string;source_count_after:number;facts_import_status:string;error_message:string };
 type Coverage = { russell_3000_total:number;russell_3000_zero_sources:number;russell_2000_total:number;russell_2000_zero_sources:number };
-type Operations = {queued:number;running:number;errors_24h:number;completed_1h:number;oldest_pending:string|null};
+type Operations = {queued:number;running:number;unresolved_errors:number;source_limitations:number;completed_1h:number;oldest_pending:string|null};
 type Payload = { batches:Batch[];items:Item[];coverage:Coverage|null;operations:Operations|null;error?:string };
 
 function label(value: string) {
@@ -41,7 +41,7 @@ export function SourceBackfillQueue() {
   return <section className="source-backfill-admin" id="source-backfill">
     <header><div><span className="kicker">RUSSELL 3000 · DURABLE EVIDENCE INGESTION</span><h2>SEC source backfill</h2><p>Each ticker is an independent Cloudflare Queue job with bounded concurrency, retry backoff, and a D1 audit ledger. A dossier stays private until at least five exact SEC sources are available.</p></div><div><button disabled={busy} onClick={()=>void run(12)}>{busy?"Queueing…":"Queue 12"}</button><button disabled={busy} onClick={()=>void run(25)}>Queue 25</button></div></header>
     {error&&<p className="form-error">{error}</p>}{notice&&<p className="admin-notice">{notice}</p>}
-    <div className="source-backfill-stats"><div><strong>{Number(data?.operations?.queued??0).toLocaleString()}</strong><span>Queued ticker jobs</span></div><div><strong>{Number(data?.operations?.running??0).toLocaleString()}</strong><span>Running ticker jobs</span></div><div><strong>{Number(data?.operations?.completed_1h??0).toLocaleString()}</strong><span>Completed in one hour</span></div><div><strong>{Number(data?.operations?.errors_24h??0).toLocaleString()}</strong><span>Terminal errors in 24h</span></div></div>
+    <div className="source-backfill-stats"><div><strong>{Number(data?.operations?.queued??0).toLocaleString()}</strong><span>Queued ticker jobs</span></div><div><strong>{Number(data?.operations?.running??0).toLocaleString()}</strong><span>Running ticker jobs</span></div><div><strong>{Number(data?.operations?.completed_1h??0).toLocaleString()}</strong><span>Completed in one hour</span></div><div><strong>{Number(data?.operations?.unresolved_errors??0).toLocaleString()}</strong><span>Unresolved ingestion errors</span></div><div><strong>{Number(data?.operations?.source_limitations??0).toLocaleString()}</strong><span>Official source limitations</span></div></div>
     <p className="source-backfill-coverage-note">Coverage remaining: {Number(data?.coverage?.russell_3000_zero_sources??0).toLocaleString()} Russell 3000 and {Number(data?.coverage?.russell_2000_zero_sources??0).toLocaleString()} Russell 2000 companies have zero sources. Oldest pending job: {data?.operations?.oldest_pending??"none"}.</p>
     <div className="source-backfill-admin-batches">{data?.batches.map(batch=>{
       const superseded=Boolean(batch.is_superseded_diagnostic);
