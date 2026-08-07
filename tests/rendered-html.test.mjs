@@ -1815,6 +1815,8 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfillMigration, /dossier_source_backfill_batches/);
   assert.match(dossierCompletion, /system:evidence-benchmark/);
   assert.match(dossierCompletion, /processAutomaticBenchmarkBatch/);
+  assert.match(dossierCompletion, /acquireCompletionLease/);
+  assert.match(dossierCompletion, /automatic_validation_already_running/);
   assert.match(dossierCompletion, /missing\.length/);
   assert.match(dossierCompletion, /reconcileDossierQuality/);
   assert.match(dossierCompletion, /status='needs_revision'/);
@@ -1824,6 +1826,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(completionInternalApi, /processAutomaticBenchmarkBatch/);
   assert.match(completionAdmin, /Automatic benchmark publication/);
   assert.match(completionAdmin, /Validate next 30 automatically/);
+  assert.match(completionAdmin, /no duplicate batch was created/);
   assert.doesNotMatch(completionAdmin, /Approve benchmark normalization/);
   assert.doesNotMatch(completionAdmin, /Return for revision/);
   assert.match(completionMigration, /automatic_validation/);

@@ -48,6 +48,13 @@ export function ensureDossierCompletionSchema() {
       )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_completion_candidate_status_idx ON dossier_completion_candidates(status,priority_rank)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_completion_candidate_ticker_idx ON dossier_completion_candidates(ticker,created_at)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_ingestion_locks (
+        lock_name TEXT PRIMARY KEY NOT NULL,
+        owner_id TEXT NOT NULL,
+        lease_until TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_ingestion_lock_lease_idx ON dossier_ingestion_locks(lease_until)"),
     ]).catch((error) => {
       dossierCompletionSchemaPromise = null;
       throw error;

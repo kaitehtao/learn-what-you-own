@@ -15,8 +15,9 @@ The benchmark-completion workflow generated source-backed claim packets but requ
 3. Passing claims are published with the auditable system identity `system:evidence-benchmark`; there is no per-ticker approval step.
 4. Failures remain `needs_revision` in an administrator exception ledger and do not receive benchmark-complete status.
 5. The validator does not repeatedly requeue the same exception automatically.
-6. Community submissions, corrections, rights-sensitive content, and later investment-interpretation changes remain moderated.
-7. New SEC evidence continues to publish automatically under ADR-0004, but it does not silently rewrite an existing bull, bear, valuation, or owner-summary conclusion.
+6. A short D1 lease permits only one automatic benchmark runner to select or publish candidates at a time.
+7. Community submissions, corrections, rights-sensitive content, and later investment-interpretation changes remain moderated.
+8. New SEC evidence continues to publish automatically under ADR-0004, but it does not silently rewrite an existing bull, bear, valuation, or owner-summary conclusion.
 
 ## Consequences
 

@@ -10,6 +10,8 @@ import {
 } from "./dossierCompletionClaims";
 
 const SYSTEM_REVIEWER = "system:evidence-benchmark";
+const COMPLETION_LOCK = "automatic-benchmark-completion";
+const COMPLETION_LEASE_SECONDS = 240;
 
 type EligibleDossier = {
   ticker: string;
@@ -82,6 +84,23 @@ function passesMetrics(claims: CompletionClaim[], rule: DossierQualityRule) {
       && metrics.sections >= rule.min_distinct_section_count
       && metrics.claimTypes >= rule.min_distinct_claim_type_count,
   };
+}
+
+async function acquireCompletionLease(ownerId: string) {
+  const result = await env.DB.prepare(`INSERT INTO dossier_ingestion_locks(lock_name,owner_id,lease_until,updated_at)
+    VALUES (?,?,datetime('now',?),CURRENT_TIMESTAMP)
+    ON CONFLICT(lock_name) DO UPDATE SET owner_id=excluded.owner_id,lease_until=excluded.lease_until,updated_at=CURRENT_TIMESTAMP
+    WHERE dossier_ingestion_locks.lease_until<=CURRENT_TIMESTAMP`).bind(
+      COMPLETION_LOCK,
+      ownerId,
+      `+${COMPLETION_LEASE_SECONDS} seconds`,
+    ).run();
+  return Number(result.meta.changes ?? 0) > 0;
+}
+
+async function releaseCompletionLease(ownerId: string) {
+  await env.DB.prepare("DELETE FROM dossier_ingestion_locks WHERE lock_name=? AND owner_id=?")
+    .bind(COMPLETION_LOCK, ownerId).run();
 }
 
 async function updateBatchCounts(batchId: string) {
@@ -226,13 +245,21 @@ async function automaticallyPublish(candidates: Candidate[]) {
 export async function processAutomaticBenchmarkBatch(count = 10, actor = SYSTEM_REVIEWER) {
   await ensureDossierCompletionSchema();
   const limit = Math.max(1, Math.min(50, Math.floor(count)));
-  let candidates = await pendingCandidates(limit);
-  let created = false;
-  if (!candidates.length) {
-    candidates = await prepareNewBatch(limit, actor) ?? [];
-    created = candidates.length > 0;
+  const ownerId = crypto.randomUUID();
+  if (!await acquireCompletionLease(ownerId)) {
+    return { created: false, reason: "automatic_validation_already_running", selected: 0, approved: 0, needsRevision: 0, tickers: [] as string[] };
   }
-  if (!candidates.length) return { created: false, reason: "no_eligible_narrative_ready_dossiers", selected: 0, approved: 0, needsRevision: 0, tickers: [] as string[] };
-  const result = await automaticallyPublish(candidates);
-  return { created, batchId: candidates[0].batchId, selected: candidates.length, ...result };
+  try {
+    let candidates = await pendingCandidates(limit);
+    let created = false;
+    if (!candidates.length) {
+      candidates = await prepareNewBatch(limit, actor) ?? [];
+      created = candidates.length > 0;
+    }
+    if (!candidates.length) return { created: false, reason: "no_eligible_narrative_ready_dossiers", selected: 0, approved: 0, needsRevision: 0, tickers: [] as string[] };
+    const result = await automaticallyPublish(candidates);
+    return { created, batchId: candidates[0].batchId, selected: candidates.length, ...result };
+  } finally {
+    await releaseCompletionLease(ownerId);
+  }
 }

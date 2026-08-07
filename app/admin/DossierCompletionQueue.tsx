@@ -40,7 +40,9 @@ export function DossierCompletionQueue(){
     const body=await response.json() as {batchId?:string;selected?:number;approved?:number;needsRevision?:number;tickers?:string[];reason?:string;error?:string};
     if(!response.ok)setError(body.error??"Unable to create the completion batch.");
     else if(body.batchId)setNotice(`${body.batchId}: automatically validated ${body.selected} dossiers — ${body.approved??0} benchmark complete, ${body.needsRevision??0} exceptions.`);
-    else setNotice(body.reason==="no_eligible_narrative_ready_dossiers"?"No additional validated narrative-ready dossiers are waiting.":"No candidates were selected.");
+    else if(body.reason==="no_eligible_narrative_ready_dossiers")setNotice("No additional validated narrative-ready dossiers are waiting.");
+    else if(body.reason==="automatic_validation_already_running")setNotice("Automatic validation is already running; no duplicate batch was created.");
+    else setNotice("No candidates were selected.");
     await load();setBusy("");
   }
 
