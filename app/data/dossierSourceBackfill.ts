@@ -220,7 +220,12 @@ async function processCandidate(batch: string, candidate: Candidate) {
     const submissions = await fetchSecJson<SecSubmissionFeed>(submissionsUrl, SEC_AGENT);
     pack = selectSecSourcePack(candidate.cik, submissions);
   }
-  const registered = pack.length ? [] : await registeredIssuerSources(candidate.ticker);
+  // Registry sources complement a thin SEC pack as well as replace a missing
+  // one. Newly listed issuers can have only a handful of recent qualifying
+  // filings, so ignoring verified SEC-company and investor-relations sources
+  // whenever `pack` was non-empty left otherwise publishable dossiers stuck
+  // below the evidence threshold.
+  const registered = await registeredIssuerSources(candidate.ticker);
   if (!pack.length && !registered.length) {
     const status = candidate.cik ? "no_supported_filings" : "no_sec_match";
     const error = candidate.cik
