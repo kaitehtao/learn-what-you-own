@@ -16,6 +16,9 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // The production account uses Workers Paid. Keep enough headroom for
+  // server-rendered dossiers while bounding runaway CPU on any invocation.
+  limits: { cpu_ms: 100 },
   // Preserve a direct fallback URL for smoke tests and incident recovery.
   workers_dev: true,
   // Supabase's public runtime values are managed in the Cloudflare dashboard.

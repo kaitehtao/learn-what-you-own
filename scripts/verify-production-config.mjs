@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 const config = JSON.parse(await readFile("dist/server/wrangler.json", "utf8"));
 const expectedRoutes = new Set(["learnwhatyouown.com/*", "www.learnwhatyouown.com/*"]);
 if (config.name !== "learn-what-you-own") throw new Error(`Worker name must be learn-what-you-own, received ${config.name}.`);
+if (config.limits?.cpu_ms !== 100) throw new Error("Production Worker CPU limit must be 100 ms.");
 const database = config.d1_databases?.find((binding) => binding.binding === "DB");
 if (database?.database_id !== "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557") throw new Error("D1 binding does not match the production database.");
 if (!config.routes?.every((route) => expectedRoutes.has(route.pattern)) || config.routes.length !== expectedRoutes.size) throw new Error("Production routes are incomplete or unexpected.");
