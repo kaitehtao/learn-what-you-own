@@ -223,12 +223,14 @@ npm run deploy:production
 The deployment command records the Git commit in `RELEASE_COMMIT_SHA`, which is visible to administrators in the production dashboard. It refuses to deploy tracked, uncommitted work.
 After Wrangler publishes, the same command runs `npm run verify:authority`. The release fails unless apex, `www`, and the direct Workers.dev URL return identical public-research statistics and the exact deployed Git SHA.
 
-After authority parity passes, run `npm run seo:audit`. The audit follows the
-public sitemap index, requires every submitted page to return `200` without a
-redirect, checks self-canonical URLs, titles, descriptions, indexability, and
-structured data, and verifies that the insecure HTTP origin permanently
-redirects to HTTPS. Resubmit the sitemap in Google Search Console after any
-canonical, route, or sitemap release.
+After authority parity passes, run `npm run seo:audit`. The production-safe
+audit follows the public sitemap index, checks every non-company page plus an
+evenly distributed sample of 10 company dossiers, and verifies `200` responses,
+self-canonical URLs, titles, descriptions, indexability, structured data, and
+the permanent HTTP-to-HTTPS redirect. It runs sequentially with retry backoff
+so the audit itself does not overload the Worker. Use `npm run seo:audit --
+--all` only for a deliberately scheduled exhaustive crawl. Resubmit the sitemap
+in Google Search Console after any canonical, route, or sitemap release.
 
 Before saving a Sites version, create the archive with `npm run sites:package -- <archive.tgz>`. The packager stages the existing production build, copies only Git-tracked migrations, and runs `sites:verify-archive` automatically. The verifier rejects nested `dist/dist` trees and any SQL migration that is not tracked by the release commit. Do not upload an archive produced by copying the working tree's `drizzle` directory directly because local dossier drafts are intentionally excluded from releases.
 

@@ -2,6 +2,14 @@ const originArgument = process.argv.find((argument) => argument.startsWith("--or
 const origin = new URL(originArgument?.slice("--origin=".length) || "https://learnwhatyouown.com");
 const canonicalOrigin = `${origin.protocol}//${origin.host}`;
 const failures = [];
+const exhaustive = process.argv.includes("--all");
+const companySampleArgument = process.argv.find((argument) => argument.startsWith("--company-sample="));
+const companySampleSize = Math.max(1, Number.parseInt(companySampleArgument?.slice("--company-sample=".length) || "10", 10));
+const requestDelayMs = 1_000;
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 function locations(xml) {
   return [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => match[1]
@@ -10,7 +18,20 @@ function locations(xml) {
 }
 
 async function getWithoutRedirect(url) {
-  return fetch(url, { redirect: "manual", headers: { "user-agent": "LearnWhatYouOwn-SEO-Audit/1.0" } });
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(20_000),
+        headers: { "user-agent": "LearnWhatYouOwn-SEO-Audit/1.1" },
+      });
+      if (![429, 502, 503, 504].includes(response.status) || attempt === 4) return response;
+    } catch (error) {
+      if (attempt === 4) throw error;
+    }
+    await delay(1_000 * attempt);
+  }
+  throw new Error(`Unable to fetch ${url}`);
 }
 
 async function readXml(url) {
@@ -35,11 +56,15 @@ for (const sitemap of childSitemaps) {
 const uniquePageUrls = [...new Set(pageUrls)];
 if (uniquePageUrls.length !== pageUrls.length) failures.push("The sitemap contains duplicate page URLs");
 
+const nonCompanyUrls = uniquePageUrls.filter((url) => !new URL(url).pathname.startsWith("/company/"));
+const companyUrls = uniquePageUrls.filter((url) => new URL(url).pathname.startsWith("/company/"));
+const sampledCompanyUrls = exhaustive || companyUrls.length <= companySampleSize
+  ? companyUrls
+  : Array.from({ length: companySampleSize }, (_, index) => companyUrls[Math.floor(index * companyUrls.length / companySampleSize)]);
+const auditedPageUrls = [...nonCompanyUrls, ...sampledCompanyUrls];
+
 const titleOwners = new Map();
-let cursor = 0;
-const workers = Array.from({ length: Math.min(8, uniquePageUrls.length) }, async () => {
-  while (cursor < uniquePageUrls.length) {
-    const pageUrl = uniquePageUrls[cursor++];
+for (const [pageIndex, pageUrl] of auditedPageUrls.entries()) {
     const parsed = new URL(pageUrl);
     if (parsed.origin !== canonicalOrigin) failures.push(`${pageUrl} is not on the canonical origin`);
     const response = await getWithoutRedirect(pageUrl);
@@ -67,9 +92,11 @@ const workers = Array.from({ length: Math.min(8, uniquePageUrls.length) }, async
     if (parsed.pathname === "/" || parsed.pathname.startsWith("/company/")) {
       if (!html.includes("application/ld+json")) failures.push(`${pageUrl} has no structured data`);
     }
-  }
-});
-await Promise.all(workers);
+    if ((pageIndex + 1) % 10 === 0 || pageIndex + 1 === auditedPageUrls.length) {
+      console.log(`Audited ${pageIndex + 1}/${auditedPageUrls.length} public pages.`);
+    }
+    await delay(requestDelayMs);
+}
 
 const insecureOrigin = `http://${origin.host}/`;
 const insecureResponse = await getWithoutRedirect(insecureOrigin);
@@ -81,5 +108,6 @@ if (failures.length) {
   if (failures.length > 50) console.error(`- ${failures.length - 50} additional issues omitted`);
   process.exitCode = 1;
 } else {
-  console.log(`SEO audit passed for ${uniquePageUrls.length} canonical pages across ${childSitemaps.length} sitemaps.`);
+  const scope = exhaustive ? "all" : `${auditedPageUrls.length} sampled from ${uniquePageUrls.length}`;
+  console.log(`SEO audit passed for ${scope} canonical pages across ${childSitemaps.length} sitemaps.`);
 }
