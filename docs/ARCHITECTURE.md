@@ -45,6 +45,7 @@ Supabase owns member identity and private/community state:
 - contribution proposals awaiting editorial review;
 - private/public messages and following relationships;
 - private research notebooks and notes;
+- private-company profiles, ARR and operating-metric history, financing rounds, pre/post-money valuations, investors, and cap-table entries;
 - private collaborative earnings-model cells, assumptions, evidence links, and append-only revisions; public model pages receive only server-aggregated anonymous statistics;
 - in-app notification preferences and email outbox records.
 - privacy-conscious visitor sessions and administrator account-action audits.

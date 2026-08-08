@@ -1080,7 +1080,7 @@ test("keeps investment notebooks private while supporting sourced public handoff
 
   assert.match(migration, /create table if not exists public\.research_notebooks/);
   assert.match(migration, /create table if not exists public\.research_notes/);
-  assert.match(migration, /auth\.uid\(\) = user_id/);
+  assert.match(migration, /auth\.uid\(\)/);
   assert.match(migration, /revoke all on public\.research_notebooks from anon/);
   assert.match(migration, /revoke all on public\.research_notes from anon/);
   assert.match(attachmentMigration, /create table if not exists public\.research_attachments/);
@@ -1107,6 +1107,36 @@ test("keeps investment notebooks private while supporting sourced public handoff
   assert.match(captureButton, /action: "capture"/);
   assert.match(contributionPage, /initialDraft/);
   assert.match(header, /href="\/notebook"/);
+});
+
+test("supports ticker-free private-company profiles with venture operating and ownership history", async () => {
+  const [migration, notebookRoute, privateRoute, privateClient, notebookClient] = await Promise.all([
+    source("supabase/migrations/20260808051624_private_company_research_profiles.sql"),
+    source("app/api/notebook/route.ts"),
+    source("app/api/notebook/private-company/route.ts"),
+    source("app/notebook/private-company/[id]/PrivateCompanyNotebookClient.tsx"),
+    source("app/notebook/NotebookClient.tsx"),
+  ]);
+
+  assert.match(migration, /alter column ticker drop not null/);
+  assert.match(migration, /company_kind = 'private' and ticker is null/);
+  assert.match(migration, /create table if not exists public\.private_company_metrics/);
+  assert.match(migration, /create table if not exists public\.private_company_funding_rounds/);
+  assert.match(migration, /create table if not exists public\.private_company_cap_table_entries/);
+  assert.match(migration, /\(select auth\.uid\(\)\) = user_id/);
+  assert.match(migration, /n\.company_kind = ''private''/);
+  assert.match(notebookRoute, /create_private_notebook/);
+  assert.match(notebookRoute, /ticker: null, company_kind: "private"/);
+  assert.match(privateRoute, /requireSupabaseUser/);
+  assert.match(privateRoute, /private_company_metrics/);
+  assert.match(privateRoute, /private_company_funding_rounds/);
+  assert.match(privateRoute, /private_company_cap_table_entries/);
+  assert.match(privateRoute, /\.eq\("user_id", profile\.user_id\)/);
+  assert.match(privateClient, /ARR, KPIs, and forecasts/);
+  assert.match(privateClient, /Pre-money valuation/);
+  assert.match(privateClient, /Cap table and fully diluted ownership/);
+  assert.match(privateClient, /No ticker or exchange required/);
+  assert.match(notebookClient, /Build private profile/);
 });
 
 test("publishes FCEL as a fully sourced benchmark dossier", async () => {

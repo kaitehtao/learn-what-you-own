@@ -12,6 +12,7 @@ Learn What You Own is an evidence-led ownership intelligence platform. A user sh
 ## Member product
 
 - Private-by-default watchlists, portfolios, notebooks, attachments, messages, valuation work, earnings models, and thesis notes.
+- Private-company notebooks use company identity rather than a fabricated ticker and support Crunchbase-style operating metrics, ARR actuals and forecasts, financing rounds, pre/post-money valuations, investors, and cap-table research.
 - Explicit publishing and moderation for community research.
 - Alerts, contribution reputation, rewards, public profiles, and corrections without exposing private account data.
 

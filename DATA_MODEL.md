@@ -4,6 +4,8 @@
 
 - Cloudflare D1 owns public companies, dossiers, sources, claims, filing facts, freshness events, relationships, public earnings intelligence, quality rules, and ingestion ledgers.
 - Supabase owns identity, roles, private member research, watchlists, portfolios, messages, contribution drafts, private earnings-model cells, notifications, and row-level security.
+- `research_notebooks` supports public-security notebooks keyed by ticker and private-company notebooks keyed by a private company identity. Private companies never require a placeholder ticker or exchange.
+- `private_company_metrics`, `private_company_funding_rounds`, and `private_company_cap_table_entries` store dated operating history and forecasts, stage-by-stage financing and valuation, investors, and fully diluted ownership. Every row is member-owned and protected by RLS.
 
 ## Core public entities
 

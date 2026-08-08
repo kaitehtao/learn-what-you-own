@@ -3,7 +3,10 @@ import { apiError, requireSupabaseUser } from "../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
-const noteTypes = new Set(["general", "source", "thesis", "bull_case", "bear_case", "risk", "catalyst", "question", "task"]);
+const noteTypes = new Set([
+  "general", "source", "thesis", "bull_case", "bear_case", "risk", "catalyst", "question", "task",
+  "observation", "operating_metric", "customer", "team", "market", "competition", "funding", "cap_table",
+]);
 const noteStatuses = new Set(["active", "done", "archived"]);
 const convictions = new Set(["unranked", "watching", "low", "medium", "high"]);
 
@@ -33,13 +36,27 @@ function cleanSourceUrl(value: unknown) {
   }
 }
 
+function privateCompanyKey(value: unknown) {
+  const key = cleanText(value, 160).toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+  return key || null;
+}
+
 function publicNotebook(row: Record<string, unknown>) {
   return {
     id: row.id,
     ticker: row.ticker,
+    companyKind: row.company_kind ?? "public",
+    companyKey: row.company_key ?? String(row.ticker ?? "").toLowerCase(),
     companyName: row.company_name,
     thesis: row.thesis,
     conviction: row.conviction,
+    stage: row.stage ?? "unknown",
+    websiteUrl: row.website_url ?? "",
+    currentValuation: row.current_valuation,
+    valuationAsOf: row.valuation_as_of,
+    totalRaised: row.total_raised,
+    currency: row.currency ?? "USD",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -85,7 +102,25 @@ async function getOrCreateNotebook(
   if (!company) throw new Response(JSON.stringify({ error: "Choose a ticker from the research universe." }), { status: 400, headers: { "content-type": "application/json" } });
   const companyName = cleanText(companyNameValue, 160) || company.name;
   const { data, error } = await supabase.from("research_notebooks")
-    .upsert({ user_id: userId, ticker: company.ticker, company_name: companyName }, { onConflict: "user_id,ticker" })
+    .upsert({ user_id: userId, ticker: company.ticker, company_kind: "public", company_key: company.ticker.toLowerCase(), company_name: companyName }, { onConflict: "user_id,ticker" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Record<string, unknown>;
+}
+
+async function getOrCreatePrivateNotebook(
+  supabase: Awaited<ReturnType<typeof requireSupabaseUser>>["supabase"],
+  userId: string,
+  companyNameValue: unknown,
+) {
+  const companyName = cleanText(companyNameValue, 160);
+  const companyKey = privateCompanyKey(companyName);
+  if (!companyName || !companyKey) {
+    throw new Response(JSON.stringify({ error: "Enter the private company's name." }), { status: 400, headers: { "content-type": "application/json" } });
+  }
+  const { data, error } = await supabase.from("research_notebooks")
+    .upsert({ user_id: userId, ticker: null, company_kind: "private", company_key: companyKey, company_name: companyName }, { onConflict: "user_id,company_kind,company_key" })
     .select("*")
     .single();
   if (error) throw error;
@@ -96,7 +131,7 @@ export async function GET(request: Request) {
   try {
     const { profile, supabase } = await requireSupabaseUser(request);
     const [notebooksResult, notesResult, attachmentsResult] = await Promise.all([
-      supabase.from("research_notebooks").select("*").eq("user_id", profile.user_id).order("ticker"),
+      supabase.from("research_notebooks").select("*").eq("user_id", profile.user_id).order("company_name"),
       supabase.from("research_notes").select("*").eq("user_id", profile.user_id)
         .order("pinned", { ascending: false }).order("updated_at", { ascending: false }).limit(1000),
       supabase.from("research_attachments").select("*").eq("user_id", profile.user_id)
@@ -124,6 +159,11 @@ export async function POST(request: Request) {
 
     if (action === "create_notebook") {
       const notebook = await getOrCreateNotebook(supabase, profile.user_id, payload.ticker, payload.companyName);
+      return Response.json({ notebook: publicNotebook(notebook) }, { status: 201 });
+    }
+
+    if (action === "create_private_notebook") {
+      const notebook = await getOrCreatePrivateNotebook(supabase, profile.user_id, payload.companyName);
       return Response.json({ notebook: publicNotebook(notebook) }, { status: 201 });
     }
 
