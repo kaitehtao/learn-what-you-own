@@ -1,6 +1,4 @@
-const robots = `User-agent: *
-Allow: /
-Disallow: /account
+const privateRouteRules = `Disallow: /account
 Disallow: /admin
 Disallow: /api/
 Disallow: /login
@@ -10,7 +8,15 @@ Disallow: /notifications
 Disallow: /onboarding
 Disallow: /portfolio
 Disallow: /watchlist
-Disallow: /workspace
+Disallow: /workspace`;
+
+const robots = `User-agent: OAI-SearchBot
+Allow: /
+${privateRouteRules}
+
+User-agent: *
+Allow: /
+${privateRouteRules}
 
 Sitemap: https://learnwhatyouown.com/sitemap.xml
 `;

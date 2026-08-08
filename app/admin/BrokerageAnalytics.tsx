@@ -51,7 +51,7 @@ export function BrokerageAnalytics() {
       </div>
       <div className="brokerage-analytics-table">
         <div className="brokerage-analytics-labels"><span>BROKERAGE</span><span>LOGIN CLICKS</span><span>ACCOUNT CLICKS</span><span>PARTNER STATUS</span></div>
-        {data.brokers.map((broker) => <div className="brokerage-analytics-row" key={broker.key}><strong>{broker.name}</strong><span>{actionClicks(broker.activity,"login")} <small>30d</small></span><span>{actionClicks(broker.activity,"open")} <small>30d</small></span><b className={broker.referralActive ? "active" : "pending"}>{broker.referralActive ? "Paid link active" : "Approval / URL needed"}</b></div>)}
+        {data.brokers.map((broker) => <div className="brokerage-analytics-row" key={broker.key}><strong data-label="Brokerage">{broker.name}</strong><span data-label="Login clicks">{actionClicks(broker.activity,"login")} <small>30d</small></span><span data-label="Account clicks">{actionClicks(broker.activity,"open")} <small>30d</small></span><b data-label="Partner status" className={broker.referralActive ? "active" : "pending"}>{broker.referralActive ? "Paid link active" : "Approval / URL needed"}</b></div>)}
       </div>
       <p className="brokerage-analytics-notice">{data.notice} Actual conversions and compensation must be reconciled from each brokerage or affiliate network&apos;s reporting portal.</p>
     </>}

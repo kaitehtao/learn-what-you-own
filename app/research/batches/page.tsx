@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { env } from "cloudflare:workers";
 import { Header } from "../../ui";
@@ -6,6 +7,12 @@ import { formatMarketCap } from "../../market-snapshot";
 import { CompanyLogo } from "../../CompanyLogo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Company Dossier Research Batches | Learn What You Own",
+  description: "Track evidence ingestion and benchmark-complete company dossier batches across the Learn What You Own research universe.",
+  alternates: { canonical: "https://learnwhatyouown.com/research/batches" },
+};
 
 type RolloutCompany = { priority_rank:number;ticker:string;name:string;market_cap:number|null;workflow_status:string;quality_tier:string;source_count:number };
 type RolloutSummary = { total:number;benchmark_complete:number;evidence_ready:number;evidence_ingestion:number;research_backlog:number };

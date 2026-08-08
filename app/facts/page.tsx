@@ -6,6 +6,7 @@ import { FactsScreener } from "./FactsScreener";
 export const metadata: Metadata = {
   title: "FACTS Investment Research | Learn What You Own",
   description: "Apply the Financial, Accounting, Credibility, Timing, and Sector framework to source-linked company research.",
+  alternates: { canonical: "https://learnwhatyouown.com/facts" },
 };
 
 const factsPdf = "/research/fundamental-investing-facts-methodology-kai-tao.pdf";

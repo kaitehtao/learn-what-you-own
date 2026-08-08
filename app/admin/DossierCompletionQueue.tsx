@@ -40,7 +40,7 @@ export function DossierCompletionQueue(){
     const body=await response.json() as {batchId?:string;selected?:number;approved?:number;needsRevision?:number;tickers?:string[];reason?:string;error?:string};
     if(!response.ok)setError(body.error??"Unable to create the completion batch.");
     else if(body.batchId)setNotice(`${body.batchId}: automatically validated ${body.selected} dossiers — ${body.approved??0} benchmark complete, ${body.needsRevision??0} exceptions.`);
-    else if(body.reason==="no_eligible_narrative_ready_dossiers")setNotice("No additional validated narrative-ready dossiers are waiting.");
+    else if(body.reason==="no_eligible_narrative_ready_dossiers")setNotice("Source ingestion is current, but no additional dossiers have a completed structured owner narrative ready for benchmark validation.");
     else if(body.reason==="automatic_validation_already_running")setNotice("Automatic validation is already running; no duplicate batch was created.");
     else setNotice("No candidates were selected.");
     await load();setBusy("");
@@ -51,6 +51,7 @@ export function DossierCompletionQueue(){
     {error&&<p className="form-error">{error}</p>}{notice&&<p className="admin-notice">{notice}</p>}
     <div className="dossier-completion-stats"><div><strong>{Number(data?.summary?.benchmark_complete??0).toLocaleString()}</strong><span>Benchmark complete</span></div><div><strong>{Number(data?.summary?.narrative_ready??0).toLocaleString()}</strong><span>Narrative ready</span></div><div><strong>{Number(data?.summary?.machine_enriched??0).toLocaleString()}</strong><span>Machine enriched</span></div><div><strong>{Number(data?.summary?.starting_point??0).toLocaleString()}</strong><span>Source foundation pending</span></div></div>
     <p className="completion-policy-note"><strong>Automatic benchmark publication.</strong> No per-ticker approval is required. The system publishes only when every active evidence and completeness threshold passes, records the validating rule and system identity, and leaves exceptions unpublished at benchmark status. <Link href="/learn/how-to-research-a-stock">Review the owner-research standard →</Link></p>
+    {data?.summary&&data.summary.narrative_ready===0&&data.summary.machine_enriched>0&&<p className="completion-bottleneck-note"><strong>Current bottleneck: structured owner narratives.</strong> {data.summary.machine_enriched.toLocaleString()} dossiers have source foundations but still need evidence-grounded business-model, bull, bear, risk, catalyst, and monitoring sections before benchmark validation. The validator does not promote source-only shells.</p>}
     {currentBatch&&<div className="completion-batch-heading"><div><small>{currentBatch.status==="completed"?"MOST RECENT AUTOMATIC BATCH":"CURRENT PROCESSING BATCH"}</small><strong>{currentBatch.id}</strong><span>{label(currentBatch.status)}</span></div><p>{currentBatch.approved_count}/{currentBatch.selected_count} automatically complete · {currentBatch.needs_revision_count} exceptions</p></div>}
     <div className="completion-candidate-list">{visible.map(candidate=>{
       const preview=claims(candidate.claim_preview_json);

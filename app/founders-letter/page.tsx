@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "../ui";
+
+export const metadata: Metadata = {
+  title: "Founder’s Letter | Learn What You Own",
+  description: "Why Learn What You Own is building an evidence-led ownership intelligence platform for investors.",
+  alternates: { canonical: "https://learnwhatyouown.com/founders-letter" },
+};
 
 export default function FoundersLetterPage() {
   return (

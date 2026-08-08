@@ -5,6 +5,7 @@ import { InsiderActivityScreen } from "./InsiderActivityScreen";
 export const metadata: Metadata = {
   title: "Insider Buys & Sells | Learn What You Own",
   description: "Ranked open-market insider purchases and sales from SEC Forms 3, 4, and 5 across the Learn What You Own research universe.",
+  alternates: { canonical: "https://learnwhatyouown.com/insider-activity" },
 };
 
 export default function InsiderActivityPage() {

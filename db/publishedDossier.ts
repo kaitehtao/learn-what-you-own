@@ -7,6 +7,7 @@ type StoredDossier = {
   financial_drivers_json:string;risks_json:string;monitor_json:string;questions_json:string;competitors:string;evidence_date:string|null;
 };
 type StoredSource = { title:string;source_type:string;url:string;evidence_date:string|null;excerpt:string|null };
+export type PublishedDossierSitemapEntry = { ticker: string; lastModified: string | null };
 
 function parseArray<T>(value:string):T[]{
   const parsed=JSON.parse(value) as unknown;
@@ -63,5 +64,19 @@ export async function findPublishedDossier(ticker:string):Promise<FeaturedDossie
   }catch(error){
     console.error(`Unable to load the canonical D1 dossier for ${ticker}.`,error);
     return null;
+  }
+}
+
+export async function listPublishedDossierSitemapEntries(): Promise<PublishedDossierSitemapEntry[]> {
+  try {
+    const rows = await env.DB.prepare(`SELECT ticker,
+      substr(COALESCE(updated_at,validated_at,evidence_date),1,10) AS last_modified
+      FROM company_dossiers
+      WHERE status='published' AND quality_tier='benchmark_complete' AND validated_at IS NOT NULL
+      ORDER BY ticker`).all<{ ticker: string; last_modified: string | null }>();
+    return rows.results.map((row) => ({ ticker: row.ticker, lastModified: row.last_modified }));
+  } catch (error) {
+    console.error("Unable to build the benchmark-complete company sitemap.", error);
+    return [];
   }
 }

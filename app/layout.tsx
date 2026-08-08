@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://learnwhatyouown.com"),
   title: "Learn What You Own — Research for Owners",
   description: "Living, evidence-linked owner’s manuals for the businesses you own.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },

@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "../ui";
 import { ContributorsClient } from "./ContributorsClient";
+
+export const metadata: Metadata = {
+  title: "Investment Research Contributors | Learn What You Own",
+  description: "Discover contributors recognized for source-linked investment research, corrections, company relationships, and useful product improvements.",
+  alternates: { canonical: "https://learnwhatyouown.com/contributors" },
+};
 
 export default function ContributorsPage() {
   return <main className="contributors-page"><Header />

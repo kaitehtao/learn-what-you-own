@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { cache } from "react";
 import { Header } from "../../ui";
 import { SecFilingsPanel } from "../../SecFilingsPanel";
 import { MarketDataPanel } from "../../MarketDataPanel";
@@ -27,6 +29,10 @@ import { findPublishedDossier } from "../../../db/publishedDossier";
 // after editorial content for the same ticker has been promoted to flagship depth.
 export const dynamic = "force-dynamic";
 
+const publicOrigin = "https://learnwhatyouown.com";
+const loadCatalogCompany = cache(findCatalogCompany);
+const loadPublishedDossier = cache(findPublishedDossier);
+
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "SPCX") return "SpaceX (Space Exploration Technologies Corp.)";
   if (ticker.toUpperCase() === "TSLA") return "Tesla, Inc.";
@@ -36,6 +42,80 @@ function displayName(name: string, ticker: string) {
   const firstWord = formatted.split(/\s/, 1)[0];
   const normalized = (value: string) => value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   return normalized(firstWord) === normalized(ticker) ? `${ticker}${formatted.slice(firstWord.length)}` : formatted;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
+  const { ticker: slug } = await params;
+  const ticker = tickerFromSlug(slug);
+  const universeCompany = researchUniverse.find((item) => item.ticker === ticker);
+  const catalogCompany = await loadCatalogCompany(ticker);
+  const name = displayName(catalogCompany?.name || universeCompany?.name || `${ticker} company`, ticker);
+  const storedDossier = await loadPublishedDossier(ticker);
+  const fallbackDossier = featuredDossiers[ticker];
+  const description = storedDossier?.description || fallbackDossier?.description || `Research ${name} (${ticker}), including SEC filings, ownership, valuation, earnings, risks, catalysts, and source-linked evidence.`;
+  const canonical = `${publicOrigin}/company/${companySlug(ticker)}`;
+  const title = `${name} (${ticker}) Stock Research, SEC Filings & Valuation | Learn What You Own`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: storedDossier ? { index: true, follow: true } : { index: false, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
+function CompanyStructuredData({ company, description, benchmarkComplete, updatedAt }: {
+  company: ResearchCompany;
+  description: string;
+  benchmarkComplete: boolean;
+  updatedAt?: string | null;
+}) {
+  const name = displayName(company.name, company.ticker);
+  const canonical = `${publicOrigin}/company/${companySlug(company.ticker)}`;
+  const pageNode = {
+    "@type": benchmarkComplete ? "Article" : "WebPage",
+    "@id": `${canonical}#dossier`,
+    url: canonical,
+    name: `${name} (${company.ticker}) ownership dossier`,
+    headline: benchmarkComplete ? `${name} (${company.ticker}) ownership dossier` : undefined,
+    description,
+    dateModified: updatedAt || undefined,
+    inLanguage: "en-US",
+    author: benchmarkComplete ? { "@type": "Organization", name: "Learn What You Own", url: publicOrigin } : undefined,
+    publisher: benchmarkComplete ? { "@type": "Organization", name: "Learn What You Own", url: publicOrigin } : undefined,
+    about: {
+      "@type": "Corporation",
+      name,
+      tickerSymbol: company.ticker,
+    },
+    isPartOf: { "@type": "WebSite", name: "Learn What You Own", url: `${publicOrigin}/` },
+  };
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      pageNode,
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${publicOrigin}/` },
+          { "@type": "ListItem", position: 2, name: "Companies", item: `${publicOrigin}/companies` },
+          { "@type": "ListItem", position: 3, name: `${name} (${company.ticker})`, item: canonical },
+        ],
+      },
+    ],
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll("<", "\\u003c") }} />;
 }
 
 export function generateStaticParams() {
@@ -54,7 +134,7 @@ export default async function CompanyStarterPage({
   const suppliedName = (await searchParams).name;
   const earningsName = Array.isArray(suppliedName) ? suppliedName[0] : suppliedName;
   const universeCompany = researchUniverse.find((item) => item.ticker === ticker);
-  const catalogCompany = await findCatalogCompany(ticker);
+  const catalogCompany = await loadCatalogCompany(ticker);
   const company: ResearchCompany = universeCompany ? {
     ...universeCompany,
     name: catalogCompany?.name || universeCompany.name,
@@ -84,9 +164,12 @@ export default async function CompanyStarterPage({
     memberships: ["Extended Coverage"],
     indexWeights: {},
   });
-  const storedDossier = await findPublishedDossier(company.ticker);
+  const storedDossier = await loadPublishedDossier(company.ticker);
   const featuredDossier = storedDossier ?? featuredDossiers[company.ticker];
-  if (featuredDossier) return <FeaturedCompanyDossier company={company} dossier={featuredDossier} />;
+  if (featuredDossier) return <>
+    <CompanyStructuredData company={company} description={featuredDossier.description} benchmarkComplete={Boolean(storedDossier)} updatedAt={catalogCompany?.dossier_updated_at} />
+    <FeaturedCompanyDossier company={company} dossier={featuredDossier} />
+  </>;
   const qualityTier = catalogCompany?.dossier_quality_tier ?? "starting_point";
   const hasResearchFoundation = catalogCompany?.dossier_status === "published" && qualityTier !== "starting_point";
   const qualityLabel = qualityTier === "benchmark_complete" ? "Benchmark-complete dossier"
@@ -97,7 +180,7 @@ export default async function CompanyStarterPage({
     ? `#${catalogCompany.rollout_priority_rank} by descending market capitalization in the ${catalogCompany.rollout_batch_name} research batch`
     : null;
 
-  return <main><Header />
+  return <><CompanyStructuredData company={company} description={`Research ${displayName(company.name, company.ticker)} (${company.ticker}), including SEC filings, ownership, valuation, earnings, risks, catalysts, and source-linked evidence.`} benchmarkComplete={false} updatedAt={catalogCompany?.dossier_updated_at} /><main><Header />
     <div className="container breadcrumbs"><Link href="/">Home</Link><span>/</span><Link href={company.exchange === "OTC" ? "/otc" : "/companies"}>{company.exchange === "OTC" ? "OTC directory" : "Companies"}</Link><span>/</span><strong>{company.ticker}</strong></div>
     <section className="starter-company-hero"><div className="container"><div className="starter-company-title"><CompanyLogo ticker={company.ticker} companyName={displayName(company.name, company.ticker)} size="hero" eager /><div><small>{company.exchange} · {company.ticker}</small><h1>{displayName(company.name, company.ticker)}</h1><p>{company.sector}</p><div className="starter-memberships">{company.memberships.map((index) => <em className={`membership-badge ${index === "S&P 500" ? "sp-badge" : index === "Russell 2000" ? "russell-badge" : index === "Russell 3000" ? "r3000-badge" : index === "Extended Coverage" ? "coverage-badge" : "qqq-badge"}`} key={index}>{index === "Extended Coverage" ? index : `${index} member`}</em>)}</div></div></div><div className="starter-company-actions"><WatchlistButton ticker={company.ticker}/><ResearchDemandButton ticker={company.ticker}/><SaveToNotebookButton ticker={company.ticker} companyName={displayName(company.name, company.ticker)} title={`${company.ticker} research starting point`} body={`Private research workspace for ${displayName(company.name, company.ticker)}.`}/><Link href={`/workspace?ticker=${encodeURIComponent(company.ticker)}`}>Private analyst workspace</Link><Link href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Contribute expertise →</Link></div></div></section>
     {company.exchange !== "OTC" && <CompanyMarketSnapshot ticker={company.ticker} />}
@@ -121,5 +204,5 @@ export default async function CompanyStarterPage({
       <div className="coverage-actions"><div><span className="kicker">HELP BUILD THIS DOSSIER</span><h2>Know this business deeply?</h2><p>Submit a fact, source, correction, or question for management. Every contribution is reviewed before publication.</p></div><Link className="button dark-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Start a contribution →</Link></div>
     </section>
     <AccessComparison />
-  </main>;
+  </main></>;
 }

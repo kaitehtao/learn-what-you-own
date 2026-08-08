@@ -5,7 +5,9 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 
 async function source(path) {
-  return readFile(new URL(path, root), "utf8");
+  const contents = await readFile(new URL(path, root), "utf8");
+  if (path !== "app/page.tsx") return contents;
+  return `${contents}\n${await readFile(new URL("app/HomePageClient.tsx", root), "utf8")}`;
 }
 
 test("describes homepage search honestly and offers supported examples", async () => {
@@ -197,17 +199,47 @@ test("loads homepage market data with one cached Nasdaq bulk request", async () 
 });
 
 test("publishes a crawler sitemap for every completed dossier and protects private account routes", async () => {
-  const [sitemap, robots] = await Promise.all([
+  const [sitemap, companySitemap, repository, robots] = await Promise.all([
     source("app/sitemap.xml/route.ts"),
+    source("app/sitemaps/companies.xml/route.ts"),
+    source("db/publishedDossier.ts"),
     source("app/robots.txt/route.ts"),
   ]);
-  assert.match(sitemap, /Object\.keys\(featuredDossiers\)/);
-  assert.match(sitemap, /companySlug\(ticker\)/);
+  assert.match(sitemap, /sitemaps\/companies\.xml/);
+  assert.match(companySitemap, /listPublishedDossierSitemapEntries/);
+  assert.match(companySitemap, /companySlug\(ticker\)/);
+  assert.match(repository, /quality_tier='benchmark_complete'/);
+  assert.match(repository, /validated_at IS NOT NULL/);
   assert.match(sitemap, /https:\/\/learnwhatyouown\.com/);
+  assert.match(robots, /User-agent: OAI-SearchBot/);
   assert.match(robots, /Sitemap: https:\/\/learnwhatyouown\.com\/sitemap\.xml/);
   for (const path of ["account", "admin", "api/", "login", "messages", "notebook", "portfolio", "watchlist", "workspace"]) {
     assert.match(robots, new RegExp(`Disallow: \/${path.replace("/", "\\/")}`));
   }
+});
+
+test("canonicalizes public pages and gives company dossiers unique indexable metadata", async () => {
+  const [worker, home, company, coreSitemap, auditScript] = await Promise.all([
+    source("worker/index.ts"),
+    source("app/page.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/sitemaps/core.xml/route.ts"),
+    source("scripts/audit-public-seo.mjs"),
+  ]);
+  assert.match(worker, /isInsecureCanonicalOrigin/);
+  assert.match(worker, /Response\.redirect\(canonicalUrl, 308\)/);
+  assert.match(worker, /rel=\\"canonical\\"/);
+  assert.match(worker, /x-robots-tag/);
+  assert.match(home, /alternates: \{ canonical: canonicalUrl \}/);
+  assert.match(home, /"@type": "Organization"/);
+  assert.match(home, /"@type": "WebSite"/);
+  assert.match(company, /export async function generateMetadata/);
+  assert.match(company, /Stock Research, SEC Filings & Valuation/);
+  assert.match(company, /robots: storedDossier \? \{ index: true/);
+  assert.match(company, /"@type": "BreadcrumbList"/);
+  assert.doesNotMatch(coreSitemap, /"\/russell-2000"/);
+  assert.match(auditScript, /sitemap URLs must not redirect or fail/);
+  assert.match(auditScript, /has no matching self-canonical/);
 });
 
 test("separates public valuation evidence from private analyst judgment", async () => {
@@ -243,7 +275,7 @@ test("implements the FACTS methodology with private row-level security and publi
     source("app/api/analyst-workspace/route.ts"),
     source("supabase/migrations/20260805030000_facts_investment_workflow.sql"),
     source("app/ui.tsx"),
-    source("app/sitemap.xml/route.ts"),
+    source("app/sitemaps/core.xml/route.ts"),
     source("app/globals.css"),
   ]);
   assert.match(factsPage, /Financial, Accounting, Credibility, Timing, and Sector/);
@@ -288,7 +320,7 @@ test("publishes an internally linked, evidence-first investor education cluster"
     source("app/learn/guides.ts"),
     source("app/ui.tsx"),
     source("app/layout.tsx"),
-    source("app/sitemap.xml/route.ts"),
+    source("app/sitemaps/learn.xml/route.ts"),
     source("app/globals.css"),
   ]);
 
@@ -1238,7 +1270,7 @@ test("lists the official Summer 2026 Y Combinator class with ranking placeholder
     source("app/emerging-companies/y-combinator/page.tsx"),
     source("app/emerging-companies/y-combinator/YcBatchExplorer.tsx"),
     source("app/data/ycSummer2026.json"),
-    source("app/sitemap.xml/route.ts"),
+    source("app/sitemaps/core.xml/route.ts"),
   ]);
   const roster = JSON.parse(data);
   assert.equal(roster.batch, "Summer 2026");
@@ -1684,7 +1716,7 @@ test("separates publication from dossier quality and ranks index research from t
     source("app/research/russell-3000/page.tsx"),
     source("app/research/nasdaq-100/page.tsx"),
     source("app/ui.tsx"),
-    source("app/sitemap.xml/route.ts"),
+    source("app/sitemaps/core.xml/route.ts"),
     source("app/globals.css"),
     source("app/company/[ticker]/page.tsx"),
     source("app/research/batches/page.tsx"),

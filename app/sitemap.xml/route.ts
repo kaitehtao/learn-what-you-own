@@ -1,38 +1,13 @@
-import { featuredDossiers } from "../data/featuredDossiers";
-import { companySlug } from "../data/universe";
-import { learningGuides } from "../learn/guides";
+import { sitemapIndexDocument } from "../sitemaps/sitemap-utils";
 
 const origin = "https://learnwhatyouown.com";
-const staticPaths = [
-  "",
-  "/companies",
-  "/comps",
-  "/contributors",
-  "/earnings",
-  "/emerging-companies",
-  "/emerging-companies/y-combinator",
-  "/founders-letter",
-  "/facts",
-  "/insider-activity",
-  "/interviews",
-  "/learn",
-  "/research/batches",
-  "/russell-2000",
-  "/research/sp-500",
-  "/research/nasdaq-100",
-  "/research/russell-3000",
-  "/research/russell-2000",
-];
-
-function xmlEscape(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
-}
 
 export async function GET() {
-  const companyPaths = Object.keys(featuredDossiers).map((ticker) => `/company/${companySlug(ticker)}`);
-  const learningPaths = learningGuides.map((guide) => `/learn/${guide.slug}`);
-  const urls = [...staticPaths, ...learningPaths, ...companyPaths].map((path) => `<url><loc>${xmlEscape(`${origin}${path || "/"}`)}</loc></url>`).join("");
-  return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`, {
+  return new Response(sitemapIndexDocument([
+    `${origin}/sitemaps/core.xml`,
+    `${origin}/sitemaps/learn.xml`,
+    `${origin}/sitemaps/companies.xml`,
+  ]), {
     headers: {
       "content-type": "application/xml; charset=utf-8",
       "cache-control": "public, max-age=3600, s-maxage=86400",

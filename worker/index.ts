@@ -34,12 +34,32 @@ const PUBLIC_ALIAS_HOSTS = new Set([
   "www.learnwhatyouown.com",
   "learn-what-you-own.julianspencer.chatgpt.site",
 ]);
+const PRIVATE_SEARCH_PATH_PREFIXES = [
+  "/account", "/admin", "/api", "/login", "/messages", "/notebook",
+  "/notifications", "/onboarding", "/portfolio", "/watchlist", "/workspace",
+];
 
 export function canonicalPublicUrl(requestUrl: string) {
   const url = new URL(requestUrl);
-  if (!PUBLIC_ALIAS_HOSTS.has(url.hostname.toLowerCase())) return null;
+  const hostname = url.hostname.toLowerCase();
+  const isPublicAlias = PUBLIC_ALIAS_HOSTS.has(hostname);
+  const isInsecureCanonicalOrigin = hostname === "learnwhatyouown.com" && url.protocol !== "https:";
+  if (!isPublicAlias && !isInsecureCanonicalOrigin) return null;
   const canonical = new URL(`${url.pathname}${url.search}`, CANONICAL_ORIGIN);
   return canonical.toString();
+}
+
+function withSearchHeaders(requestUrl: string, response: Response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || !contentType.toLowerCase().includes("text/html")) return response;
+  const url = new URL(requestUrl);
+  const headers = new Headers(response.headers);
+  const canonical = new URL(url.pathname, CANONICAL_ORIGIN).toString();
+  headers.append("link", `<${canonical}>; rel=\"canonical\"`);
+  if (PRIVATE_SEARCH_PATH_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`))) {
+    headers.set("x-robots-tag", "noindex, nofollow");
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 export function isPacificDigestHour(scheduledTime: number) {
@@ -169,7 +189,8 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    return withSearchHeaders(request.url, response);
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { getDb } from "../../db";
@@ -5,6 +6,12 @@ import { emergingCompanyDossiers } from "../../db/schema";
 import { Header } from "../ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "IPO and Private Company Research | Learn What You Own",
+  description: "Research upcoming IPOs and approved private-company dossiers using issuer materials, SEC filings, roadshows, and attributed evidence.",
+  alternates: { canonical: "https://learnwhatyouown.com/emerging-companies" },
+};
 
 export default async function EmergingCompaniesPage() {
   let dossiers: (typeof emergingCompanyDossiers.$inferSelect)[] = [];

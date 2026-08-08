@@ -5,6 +5,7 @@ import { CompTableBuilder } from "./CompTableBuilder";
 export const metadata: Metadata = {
   title: "Build a Stock Comp Table — Learn What You Own",
   description: "Compare up to ten public companies using current market values and SEC-reported fundamentals.",
+  alternates: { canonical: "https://learnwhatyouown.com/comps" },
 };
 
 export const dynamic = "force-dynamic";

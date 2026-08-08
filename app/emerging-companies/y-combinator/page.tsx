@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import ycSummer2026 from "../../data/ycSummer2026.json";
 import { Header } from "../../ui";
 import { YcBatchExplorer, type YcCompany } from "./YcBatchExplorer";
+
+export const metadata: Metadata = {
+  title: "Y Combinator Company Research by Class | Learn What You Own",
+  description: "Explore verified Y Combinator class rosters, founder profiles, company descriptions, and evidence-linked private-company research.",
+  alternates: { canonical: "https://learnwhatyouown.com/emerging-companies/y-combinator" },
+};
 
 export default function YCombinatorClassesPage() {
   return <main><Header />
