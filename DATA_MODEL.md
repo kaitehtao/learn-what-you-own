@@ -12,6 +12,7 @@
 - `companies`: one searchable security record with issuer identity, CIK, listing state, index metadata, and sourced market-cap snapshot.
 - `company_dossiers`: publication state, quality tier, versioned content, verification, and timestamps.
 - `dossier_sources`: deduplicated exact source URLs and evidence metadata.
+- `issuer_filing_source_registry`: editor-verified issuer or regulator source packs for listed companies whose periodic reports are not available through the normal EDGAR submissions feed.
 - `dossier_claims`: typed claims with section, status, and source linkage.
 - `filing_facts` and `filing_fact_imports`: normalized SEC facts plus import provenance.
 - `dossier_freshness_events`: immutable filing detections published automatically as primary evidence, with optional separately moderated interpretation metadata.
@@ -21,4 +22,4 @@
 
 ## Invariants
 
-Ticker-to-CIK mappings must be verified. Exact source URLs are unique per ticker. Queue delivery is idempotent. Public dossier evidence never contains private member data. Community drafts cannot modify D1 publication state without editor approval. Live market values and derived multiples always carry an as-of time and source. Benchmark completion is derived from published dossier structure, exact stored sources, and verified claims. A candidate advances only when every threshold in the active `dossier_quality_rules` record passes; failures remain exceptions and cannot be promoted by a client-side control.
+Ticker-to-CIK mappings must be verified. Each ticker has one canonical security record with all index memberships attached; a distinct share-class ticker remains a distinct security. Exact source URLs are unique per ticker. Queue delivery is idempotent. Official-regulator fallback sources require an active registry row, HTTPS URL, authority, and verification date. Public dossier evidence never contains private member data. Community drafts cannot modify D1 publication state without editor approval. Live market values and derived multiples always carry an as-of time and source. Benchmark completion is derived from published dossier structure, exact stored sources, and verified claims. A candidate advances only when every threshold in the active `dossier_quality_rules` record passes; failures remain exceptions and cannot be promoted by a client-side control.

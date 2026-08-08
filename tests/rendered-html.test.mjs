@@ -1736,7 +1736,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
 });
 
 test("separates publication from dossier quality and ranks index research from the live market feed", async () => {
-  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration, automaticFreshnessMigration, dossierCompletion, completionAdminApi, completionInternalApi, completionAdmin, completionMigration] = await Promise.all([
+  const [schema, migration, activation, universeRoute, directory, russellPage, russell3000Page, nasdaq100Page, navigation, sitemap, styles, starter, batches, rankingRoute, marketQuotes, researchRoute, secFacts, dossierFreshness, freshnessApi, freshnessAdmin, worker, sourceBackfill, sourceBackfillRoute, sourceBackfillAdmin, sourceBackfillMigration, automaticFreshnessMigration, dossierCompletion, completionAdminApi, completionInternalApi, completionAdmin, completionMigration, coverageMigration] = await Promise.all([
     source("db/schema.ts"),
     source("drizzle/0030_dossier_quality_and_russell_rollout.sql"),
     source("drizzle/0032_activate_ranked_research_foundations.sql"),
@@ -1768,6 +1768,7 @@ test("separates publication from dossier quality and ranks index research from t
     source("app/api/internal/dossier-completion/route.ts"),
     source("app/admin/DossierCompletionQueue.tsx"),
     source("drizzle/0041_automatic_benchmark_completion.sql"),
+    source("drizzle/0042_expand_source_backfill_coverage.sql"),
   ]);
   assert.match(schema, /qualityTier: text\("quality_tier"/);
   assert.match(migration, /benchmark_complete/);
@@ -1843,6 +1844,9 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(worker, /rollout-market-cap-refresh/);
   assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
   assert.match(sourceBackfill, /memberships_json LIKE '%Russell 3000%'/);
+  assert.match(sourceBackfill, /memberships_json LIKE '%Nasdaq-100%'/);
+  assert.match(sourceBackfill, /registeredIssuerSources/);
+  assert.match(sourceBackfill, /issuer_filing_source_registry/);
   assert.match(sourceBackfill, /COUNT\(\*\)[\s\S]*<\?/);
   assert.match(sourceBackfill, /ORDER BY c\.market_cap IS NULL,c\.market_cap DESC/);
   assert.match(sourceBackfill, /INSERT INTO company_dossiers\(ticker,status,quality_tier,updated_at\)/);
@@ -1882,6 +1886,10 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfillAdmin, /Superseded diagnostic run · inactive/);
   assert.match(sourceBackfillAdmin, /is_superseded_diagnostic/);
   assert.match(sourceBackfillMigration, /dossier_source_backfill_batches/);
+  assert.match(schema, /issuerFilingSourceRegistry/);
+  assert.match(coverageMigration, /Bank OZK 2025 Form 10-K/);
+  assert.match(coverageMigration, /Preferred Bank official company filings/);
+  assert.match(coverageMigration, /official-regulator-foundation-20260808/);
   assert.match(dossierCompletion, /system:evidence-benchmark/);
   assert.match(dossierCompletion, /processAutomaticBenchmarkBatch/);
   assert.match(dossierCompletion, /acquireCompletionLease/);

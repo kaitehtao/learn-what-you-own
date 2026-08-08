@@ -99,6 +99,21 @@ export function ensureDossierSourceBackfillSchema() {
       )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_source_backfill_item_ticker_idx ON dossier_source_backfill_items(ticker,completed_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS dossier_source_backfill_item_status_idx ON dossier_source_backfill_items(status,completed_at)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS issuer_filing_source_registry (
+        ticker TEXT NOT NULL REFERENCES companies(ticker) ON DELETE CASCADE,
+        source_type TEXT NOT NULL CHECK(source_type IN ('sec_filing','sec_company_page','investor_relations')),
+        title TEXT NOT NULL,
+        url TEXT NOT NULL,
+        evidence_date TEXT,
+        excerpt TEXT NOT NULL DEFAULT '',
+        source_authority TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+        verified_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(ticker,url)
+      )`),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS issuer_filing_source_registry_active_idx ON issuer_filing_source_registry(ticker,active,evidence_date)"),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS dossier_ingestion_locks (
         lock_name TEXT PRIMARY KEY NOT NULL,
         owner_id TEXT NOT NULL,

@@ -12,8 +12,8 @@ const MAX_BATCH_LIMIT = 25;
 const STALE_LEASE_MINUTES = 20;
 const SELECTION_LEASE_SECONDS = 90;
 const SOURCE_FOUNDATION_MINIMUM = 5;
-const SELECTION_LOCK = "russell-3000-source-backfill-selection";
-const SELECTION_RULE = "Active Russell 3000 constituents with fewer than five dossier sources, ordered by current market capitalization descending; Russell 2000 membership is retained on each deduplicated batch item.";
+const SELECTION_LOCK = "covered-universe-source-backfill-selection";
+const SELECTION_RULE = "Active Russell 3000 or Nasdaq-100 constituents with fewer than five dossier sources, deduplicated and ordered by current market capitalization descending; every stored index membership is retained on the batch item.";
 
 export type DossierSourceBackfillMessage = {
   kind: "source_backfill";
@@ -37,6 +37,14 @@ type Candidate = {
   index_weights_json: string;
   priority_rank: number;
   source_count: number;
+};
+
+type RegisteredIssuerSource = {
+  source_type: string;
+  title: string;
+  url: string;
+  evidence_date: string | null;
+  excerpt: string;
 };
 
 let legacyResearchCompaniesTablePromise: Promise<boolean> | null = null;
@@ -74,7 +82,7 @@ async function ensureLegacyResearchCompany(candidate: Candidate) {
 }
 
 function batchId() {
-  return `sec-r3000-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;
+  return `covered-source-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
 function ingestionQueue() {
@@ -98,6 +106,15 @@ async function releaseSelectionLease(ownerId: string) {
 async function sourceCount(ticker: string) {
   const result = await env.DB.prepare("SELECT COUNT(*) AS count FROM dossier_sources WHERE ticker=?").bind(ticker).first<{ count: number }>();
   return Number(result?.count ?? 0);
+}
+
+async function registeredIssuerSources(ticker: string) {
+  const result = await env.DB.prepare(`SELECT source_type,title,url,evidence_date,excerpt
+    FROM issuer_filing_source_registry
+    WHERE ticker=? AND active=1 AND url LIKE 'https://%'
+      AND source_type IN ('sec_filing','sec_company_page','investor_relations')
+    ORDER BY evidence_date DESC,url LIMIT 8`).bind(ticker).all<RegisteredIssuerSource>();
+  return result.results;
 }
 
 async function updateBatchItem(batch: string, ticker: string, values: {
@@ -196,18 +213,21 @@ async function processCandidate(batch: string, candidate: Candidate) {
         SOURCE_FOUNDATION_MINIMUM,
       ).run();
 
-  if (!candidate.cik) {
-    await updateBatchItem(batch, candidate.ticker, { status: "no_sec_match", sourceCountAfter: candidate.source_count, error: "No verified CIK is stored for this security." });
-    return { ticker: candidate.ticker, status: "no_sec_match", sourcesAdded: 0 };
+  let pack: ReturnType<typeof selectSecSourcePack> = [];
+  if (candidate.cik) {
+    const paddedCik = candidate.cik.padStart(10, "0");
+    const submissionsUrl = `https://data.sec.gov/submissions/CIK${paddedCik}.json`;
+    const submissions = await fetchSecJson<SecSubmissionFeed>(submissionsUrl, SEC_AGENT);
+    pack = selectSecSourcePack(candidate.cik, submissions);
   }
-
-  const paddedCik = candidate.cik.padStart(10, "0");
-  const submissionsUrl = `https://data.sec.gov/submissions/CIK${paddedCik}.json`;
-  const submissions = await fetchSecJson<SecSubmissionFeed>(submissionsUrl, SEC_AGENT);
-  const pack = selectSecSourcePack(candidate.cik, submissions);
-  if (!pack.length) {
-    await updateBatchItem(batch, candidate.ticker, { status: "no_supported_filings", sourceCountAfter: candidate.source_count, error: "No supported filings were present in the recent SEC submissions feed." });
-    return { ticker: candidate.ticker, status: "no_supported_filings", sourcesAdded: 0 };
+  const registered = pack.length ? [] : await registeredIssuerSources(candidate.ticker);
+  if (!pack.length && !registered.length) {
+    const status = candidate.cik ? "no_supported_filings" : "no_sec_match";
+    const error = candidate.cik
+      ? "No supported filings were present in the recent SEC submissions feed, and no verified official-regulator source pack is registered."
+      : "No verified CIK or official-regulator source pack is stored for this security.";
+    await updateBatchItem(batch, candidate.ticker, { status, sourceCountAfter: candidate.source_count, error });
+    return { ticker: candidate.ticker, status, sourcesAdded: 0 };
   }
 
   for (const source of pack) {
@@ -222,7 +242,20 @@ async function processCandidate(batch: string, candidate: Candidate) {
       ).run();
   }
 
-  const latestFilingDate = pack[0]?.filingDate ?? null;
+  for (const source of registered) {
+    await env.DB.prepare(`INSERT OR IGNORE INTO dossier_sources
+      (ticker,source_type,title,url,evidence_date,excerpt,verified_at,created_at)
+      VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`).bind(
+        candidate.ticker,
+        source.source_type,
+        source.title,
+        source.url,
+        source.evidence_date,
+        source.excerpt,
+      ).run();
+  }
+
+  const latestFilingDate = pack[0]?.filingDate ?? registered[0]?.evidence_date ?? null;
   await env.DB.prepare(`INSERT OR IGNORE INTO dossier_freshness_checks
     (ticker,last_attempted_at,last_success_at,latest_filing_date,detected_count,error_message)
     VALUES (?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,0,NULL)`).bind(candidate.ticker, latestFilingDate).run();
@@ -358,7 +391,8 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
         ROW_NUMBER() OVER (ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC) AS priority_rank,
         COALESCE((SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker),0) AS source_count
       FROM companies c
-      WHERE c.is_active=1 AND c.listing_scope='listed' AND c.memberships_json LIKE '%Russell 3000%'
+      WHERE c.is_active=1 AND c.listing_scope='listed'
+        AND (c.memberships_json LIKE '%Russell 3000%' OR c.memberships_json LIKE '%Nasdaq-100%')
         AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker)<?
         AND NOT EXISTS (
           SELECT 1 FROM dossier_source_backfill_items prior
@@ -368,7 +402,12 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
               AND prior.error_message NOT LIKE 'Lease expired%'
               AND prior.error_message NOT LIKE '%FOREIGN KEY constraint failed%'
               AND prior.completed_at>=datetime('now','-6 hours'))
-            OR (prior.status IN ('no_sec_match','no_supported_filings','partial_evidence') AND prior.completed_at>=datetime('now','-30 days'))
+            OR (prior.status IN ('no_sec_match','no_supported_filings','partial_evidence')
+              AND prior.completed_at>=datetime('now','-30 days')
+              AND NOT EXISTS (
+                SELECT 1 FROM issuer_filing_source_registry registry
+                WHERE registry.ticker=c.ticker AND registry.active=1
+              ))
           )
         )
       ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC LIMIT ?`).bind(SOURCE_FOUNDATION_MINIMUM, limit).all<Candidate>();
@@ -377,7 +416,7 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
     const id = batchId();
     await env.DB.prepare(`INSERT INTO dossier_source_backfill_batches
       (id,universe_name,selection_rule,requested_limit,selected_count,status)
-      VALUES (?,'Russell 3000',?,?,?,'queued')`).bind(id, SELECTION_RULE, limit, candidateResult.results.length).run();
+      VALUES (?,'Russell 3000 + Nasdaq-100',?,?,?,'queued')`).bind(id, SELECTION_RULE, limit, candidateResult.results.length).run();
     for (const candidate of candidateResult.results) {
       await env.DB.prepare(`INSERT INTO dossier_source_backfill_items
         (batch_id,ticker,priority_rank,memberships_json,status,source_count_before,source_count_after)

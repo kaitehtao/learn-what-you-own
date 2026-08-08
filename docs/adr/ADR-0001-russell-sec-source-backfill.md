@@ -5,6 +5,8 @@
 **Date:** 2026-08-06
 **Decider:** LearnWhatYouOwn founder/editor
 
+**Updated by:** ADR-0006 expands selection to the deduplicated Russell 3000 and Nasdaq-100 union and adds verified regulator-source fallbacks.
+
 ## Context
 
 Russell 2000 and Russell 3000 discovery records substantially outnumber dossiers with primary-source evidence. The existing scheduled filing monitor keeps published dossiers fresh, but it does not create the initial SEC evidence foundation for zero-source companies. A one-time ticker list or generated SQL snapshot would drift and would not provide retry, audit, or batch history.

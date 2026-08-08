@@ -115,7 +115,7 @@ export const dossierSourceBackfillBatches = sqliteTable("dossier_source_backfill
   skippedCount: integer("skipped_count").notNull().default(0),
   errorCount: integer("error_count").notNull().default(0),
   sourceCountAdded: integer("source_count_added").notNull().default(0),
-  status: text("status", { enum: ["running", "completed", "partial", "failed"] }).notNull().default("running"),
+  status: text("status", { enum: ["queued", "running", "completed", "partial", "failed"] }).notNull().default("queued"),
   startedAt: text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   completedAt: text("completed_at"),
 }, (table) => [
@@ -127,7 +127,7 @@ export const dossierSourceBackfillItems = sqliteTable("dossier_source_backfill_i
   ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
   priorityRank: integer("priority_rank").notNull(),
   membershipsJson: text("memberships_json").notNull().default("[]"),
-  status: text("status", { enum: ["running", "source_foundation_complete", "no_sec_match", "no_supported_filings", "error"] }).notNull().default("running"),
+  status: text("status", { enum: ["queued", "running", "source_foundation_complete", "no_sec_match", "no_supported_filings", "partial_evidence", "error"] }).notNull().default("queued"),
   sourceCountBefore: integer("source_count_before").notNull().default(0),
   sourceCountAfter: integer("source_count_after").notNull().default(0),
   factsImportStatus: text("facts_import_status").notNull().default("not_attempted"),
@@ -139,6 +139,27 @@ export const dossierSourceBackfillItems = sqliteTable("dossier_source_backfill_i
   uniqueIndex("dossier_source_backfill_item_batch_ticker_idx").on(table.batchId, table.ticker),
   index("dossier_source_backfill_item_ticker_idx").on(table.ticker, table.completedAt),
   index("dossier_source_backfill_item_status_idx").on(table.status, table.completedAt),
+]);
+
+// Some exchange-listed banks file Exchange Act reports with a banking
+// regulator rather than EDGAR. This registry keeps their verified official
+// archives data-driven so the ingestion worker can use the same evidence gate
+// without adding ticker-specific branches to application code.
+export const issuerFilingSourceRegistry = sqliteTable("issuer_filing_source_registry", {
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  evidenceDate: text("evidence_date"),
+  excerpt: text("excerpt").notNull().default(""),
+  sourceAuthority: text("source_authority").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  verifiedAt: text("verified_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("issuer_filing_source_registry_ticker_url_idx").on(table.ticker, table.url),
+  index("issuer_filing_source_registry_active_idx").on(table.ticker, table.active, table.evidenceDate),
 ]);
 
 export const dossierSources = sqliteTable("dossier_sources", {
