@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-06
+Last verified: 2026-08-08 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,15 +35,91 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
-The 2026-08-06 audit verified:
+The 2026-08-08 audit verified the application and backup baseline at Git commit
+`1013d30db1b901668d35bb97b14f12dadb00794b`. GitHub `main`, the Cloudflare
+apex, `www`, and the direct Workers.dev endpoint all reported that release after
+production propagation completed. This documentation refresh necessarily
+follows that application commit; use `npm run verify:authority` for the exact
+currently deployed SHA rather than treating a self-referential Markdown value
+as live proof.
 
-- GitHub `main` at `9caccda26c556052e6fce8e122aa8b65794b91ea`;
-- Cloudflare apex, `www`, and the direct Workers.dev endpoint reporting that same release;
-- 25,651 searchable symbols, 1,266 published dossiers, and 4,213 published claims from the shared D1 authority;
-- all 23 repository Supabase migrations present remotely, through `20260806042619_admin_action_notifications.sql`; and
-- public ChatGPT Sites version 149 built from the same Git commit.
+The shared production D1 authority reported:
 
-These numbers are a dated snapshot and will drift as research coverage expands. Re-run the repository verification scripts before making a current claim.
+- 25,651 searchable symbols;
+- 2,984 published dossiers;
+- 62,722 distinct primary-source documents;
+- 6,703 published claims, all 6,703 linked to sources;
+- 769 `benchmark_complete`, 2,215 `machine_enriched`, and 15
+  `starting_point` dossier records; and
+- 2,983 freshness-check records, with zero current errors and zero records that
+  have never succeeded.
+
+Index membership is stored once per company and exposed through labeled views.
+Current production coverage is:
+
+| Research view | Component ticker rows | Published | Five-source foundation | Benchmark complete | Machine enriched |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| S&P 500 | 502 | 502 | 502 | 502 | 0 |
+| Nasdaq-100 | 102 | 102 | 102 | 94 | 8 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 206 | 1,744 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 757 | 2,208 |
+
+Component counts are ticker rows, not marketing names: multiple share classes
+can make an index view contain more ticker rows than the index name implies.
+Every current row in the four views is published and has at least five distinct
+primary sources, but `machine_enriched` is not the same quality claim as
+`benchmark_complete`.
+
+All 27 repository Supabase migrations were present remotely through
+`20260808052411_optimize_research_notebook_rls.sql`.
+
+These numbers are a dated snapshot and will drift as research coverage expands.
+Re-run the repository verification scripts and live D1 queries before making a
+current claim.
+
+## Optional ChatGPT Sites mirror verification
+
+The Sites mirror was audited independently on 2026-08-08:
+
+- project `appgprj_6a6992149bac81918aea31053a6f8eb2` is active and public at
+  `https://learn-what-you-own.julianspencer.chatgpt.site`;
+- its public homepage, representative dossier and research routes, and
+  `/api/site-stats` all return HTTP 308 redirects to the corresponding
+  `learnwhatyouown.com` production routes, so following those redirects verifies
+  production rather than the mirror build itself;
+- the newest saved Sites artifact is version 163 from commit
+  `528a9f4772adf5c1aab452ebe7e60465e3596208`, which does not match the verified
+  application baseline; and
+- recent mirror Worker logs contain repeated HTTP 500 responses from the
+  mirror-only `POST /api/internal/dossier-freshness` job.
+
+The mirror is therefore **active but degraded and out of source parity**. It is
+not production proof, must not take ownership of `learnwhatyouown.com`, and must
+not be used as a second research-data authority. Repair requires packaging,
+saving, deploying, and then verifying a new Sites version from the exact tested
+Git commit; merely changing a mirror environment value is insufficient.
+
+## Backup and restore verification
+
+GitHub Actions run
+[`31287239536`](https://github.com/kaitehtao/learn-what-you-own/actions/runs/31287239536)
+completed successfully on 2026-08-08 (America/Los_Angeles) from commit
+`1013d30db1b901668d35bb97b14f12dadb00794b`. The workflow:
+
+- exported and checksum-verified five production backup files;
+- restored Cloudflare D1 into a disposable SQLite database and verified 25,667
+  company records, 2,999 dossier records, and 750,543 filing facts;
+- restored Supabase into a disposable non-production database and matched
+  expected counts for `auth.users`, `public.profiles`, `storage.buckets`, and
+  `storage.objects`;
+- encrypted the archive with AES-256-CBC and PBKDF2; and
+- uploaded the 34,014,378-byte encrypted artifact
+  `lwyo-encrypted-production-backup-31287239536`, retained through
+  2026-09-08.
+
+The D1 count above includes database records outside the active public symbol
+and published-dossier views, so it should not be substituted for the public
+coverage figures in the release snapshot.
 
 ## Consolidated product decisions
 
