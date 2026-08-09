@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { run } from "./command.mjs";
+import { retryTransientSupabaseOperation } from "./supabase-backup-retry.mjs";
 
 const output = path.resolve(process.argv[2] ?? "");
 if (!process.argv[2]) throw new Error("A Supabase dump destination is required.");
@@ -53,20 +54,6 @@ function dockerPostgresClient(command, args, connection, { capture = false } = {
   ], { env: { ...process.env, ...connection, PGSSLMODE: "require", PGOPTIONS: "-c role=postgres" }, capture });
 }
 
-async function dockerPostgresClientWithRetry(command, args, connection, options = {}) {
-  let lastError;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      return dockerPostgresClient(command, args, connection, options);
-    } catch (error) {
-      lastError = error;
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5_000));
-    }
-  }
-  throw lastError;
-}
-
-const connection = temporaryConnection();
 await mkdir(path.dirname(output), { recursive: true });
 const dumpArgs = [
   "--format=plain",
@@ -78,21 +65,24 @@ const dumpArgs = [
   "--schema=auth",
   "--schema=storage",
 ];
-if (process.env.USE_DOCKER_POSTGRES_CLIENT === "1") {
-  const containerOutput = `/backup/${path.basename(output)}`;
-  run("docker", [
-    "run", "--rm",
-    "-e", "PGHOST", "-e", "PGPORT", "-e", "PGUSER", "-e", "PGPASSWORD", "-e", "PGDATABASE", "-e", "PGSSLMODE",
-    "-v", `${path.dirname(output)}:/backup`,
-    "postgres:17",
-    "pg_dump",
-    ...dumpArgs,
-    `--file=${containerOutput}`,
-  ], { env: { ...process.env, ...connection, PGSSLMODE: "require" } });
-} else {
+await retryTransientSupabaseOperation("Supabase pg_dump", async () => {
+  const connection = temporaryConnection();
+  if (process.env.USE_DOCKER_POSTGRES_CLIENT === "1") {
+    const containerOutput = `/backup/${path.basename(output)}`;
+    run("docker", [
+      "run", "--rm",
+      "-e", "PGHOST", "-e", "PGPORT", "-e", "PGUSER", "-e", "PGPASSWORD", "-e", "PGDATABASE", "-e", "PGSSLMODE",
+      "-v", `${path.dirname(output)}:/backup`,
+      "postgres:17",
+      "pg_dump",
+      ...dumpArgs,
+      `--file=${containerOutput}`,
+    ], { env: { ...process.env, ...connection, PGSSLMODE: "require" }, capture: true });
+    return;
+  }
   const pgDump = await pgDumpBinary();
-  run(pgDump, [...dumpArgs, `--file=${output}`], { env: { ...process.env, ...connection, PGSSLMODE: "require" } });
-}
+  run(pgDump, [...dumpArgs, `--file=${output}`], { env: { ...process.env, ...connection, PGSSLMODE: "require" }, capture: true });
+});
 
 const countsQuery = `set role postgres;
 select json_build_object(
@@ -102,9 +92,12 @@ select json_build_object(
   'storage.objects', (select count(*) from storage.objects)
 )::text;`;
 const psqlArgs = ["--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1", "--command", countsQuery];
-const countsText = process.env.USE_DOCKER_POSTGRES_CLIENT === "1"
-  ? await dockerPostgresClientWithRetry("psql", psqlArgs, connection, { capture: true })
-  : run(await psqlBinary(), psqlArgs, { env: { ...process.env, ...connection, PGSSLMODE: "require", PGOPTIONS: "-c role=postgres" }, capture: true });
+const countsText = await retryTransientSupabaseOperation("Supabase count query", async () => {
+  const connection = temporaryConnection();
+  return process.env.USE_DOCKER_POSTGRES_CLIENT === "1"
+    ? dockerPostgresClient("psql", psqlArgs, connection, { capture: true })
+    : run(await psqlBinary(), psqlArgs, { env: { ...process.env, ...connection, PGSSLMODE: "require", PGOPTIONS: "-c role=postgres" }, capture: true });
+});
 const countsLine = countsText.split("\n").findLast((line) => line.trim().startsWith("{"));
 if (!countsLine) throw new Error("Supabase source counts were not returned as JSON.");
 const counts = JSON.parse(countsLine);

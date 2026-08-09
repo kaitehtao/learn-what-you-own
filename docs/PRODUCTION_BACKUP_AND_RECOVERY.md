@@ -24,6 +24,12 @@ The Learn What You Own administrator is responsible for the production backup wo
 8. Encrypt the verified archive before upload.
 9. Stop and discard the disposable restore target.
 
+The Supabase logical dump and verification query obtain short-lived credentials
+from the linked production project. Transient pooler failures, including
+`EAUTHQUERY` authentication-query timeouts, are retried with freshly generated
+credentials and bounded backoff. Permanent authentication or authorization
+failures stop immediately.
+
 The restore drill must never point at a production database. A run is successful only after both restore targets pass verification and the encrypted artifact upload completes.
 
 ## Recovery procedure
