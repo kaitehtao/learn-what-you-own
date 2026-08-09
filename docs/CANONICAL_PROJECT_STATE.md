@@ -36,12 +36,12 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 ## Verified release snapshot
 
 The 2026-08-08 audit verified the application and backup baseline at Git commit
-`1013d30db1b901668d35bb97b14f12dadb00794b`. GitHub `main`, the Cloudflare
-apex, `www`, and the direct Workers.dev endpoint all reported that release after
-production propagation completed. This documentation refresh necessarily
-follows that application commit; use `npm run verify:authority` for the exact
-currently deployed SHA rather than treating a self-referential Markdown value
-as live proof.
+`1013d30db1b901668d35bb97b14f12dadb00794b`. The documentation-only release
+that records the audit necessarily follows that application commit. Its release
+procedure verified GitHub `main`, the Cloudflare apex, `www`, and the direct
+Workers.dev endpoint at one exact commit after production propagation completed.
+Use `npm run verify:authority` for that currently deployed SHA rather than
+treating a self-referential Markdown value as live proof.
 
 The shared production D1 authority reported:
 
