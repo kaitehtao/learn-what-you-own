@@ -242,6 +242,20 @@ test("canonicalizes public pages and gives company dossiers unique indexable met
   assert.match(auditScript, /has no matching self-canonical/);
 });
 
+test("keeps the redirect-only Sites mirror detached from D1", async () => {
+  const [hosting, packager, verifier, worker] = await Promise.all([
+    source(".openai/hosting.json"),
+    source("scripts/package-sites-release.mjs"),
+    source("scripts/verify-sites-archive.mjs"),
+    source("worker/index.ts"),
+  ]);
+  assert.match(hosting, /"d1": null/);
+  assert.match(packager, /if \(sitesUsesD1\)/);
+  assert.match(verifier, /Redirect-only Sites archive must not contain D1 migrations/);
+  assert.match(worker, /if \(canonicalUrl\) return Response\.redirect\(canonicalUrl, 308\)/);
+  assert.doesNotMatch(worker, /x-lwyo-sites-mirror/);
+});
+
 test("separates public valuation evidence from private analyst judgment", async () => {
   const [panel, workspace, api, migration, robots, accountExport] = await Promise.all([
     source("app/HistoricalValuationPanel.tsx"),

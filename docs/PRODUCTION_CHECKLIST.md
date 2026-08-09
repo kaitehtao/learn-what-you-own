@@ -25,6 +25,7 @@ Complete this checklist before and after every production release. A coding agen
 - [ ] Confirm custom domain `learnwhatyouown.com` routes to the released Worker.
 - [ ] Confirm the Sites project has no apex or `www` custom-domain attachment.
 - [ ] Confirm all Sites routes, including `/api/internal/*`, return HTTP 308 to the matching canonical URL and no production cron posts to Sites.
+- [ ] Confirm `.openai/hosting.json` has no Sites D1 binding and the packaged mirror contains zero SQL migrations.
 - [ ] Confirm `DB` still points to the authoritative D1 after deployment.
 - [ ] Confirm the two digest cron expressions are present.
 - [ ] Record the Cloudflare version/deployment ID and previous version.

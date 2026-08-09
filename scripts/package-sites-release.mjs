@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
 } from "node:fs";
 import os from "node:os";
@@ -14,6 +15,7 @@ const projectRoot = process.cwd();
 const archive = path.resolve(process.argv[2] || "dist/learn-what-you-own-sites.tgz");
 const distRoot = path.join(projectRoot, "dist");
 const hostingConfig = path.join(projectRoot, ".openai", "hosting.json");
+const sitesUsesD1 = Boolean(JSON.parse(readFileSync(hostingConfig, "utf8")).d1);
 
 for (const required of [path.join(distRoot, "server", "index.js"), hostingConfig]) {
   if (!existsSync(required)) throw new Error(`Missing required Sites artifact: ${required}`);
@@ -38,17 +40,19 @@ try {
   const stagedDrizzle = path.join(stagedOpenAi, "drizzle");
   rmSync(stagedDrizzle, { recursive: true, force: true });
 
-  const trackedDrizzleFiles = execFileSync("git", ["ls-files", "--", "drizzle"], {
-    cwd: projectRoot,
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter(Boolean);
+  if (sitesUsesD1) {
+    const trackedDrizzleFiles = execFileSync("git", ["ls-files", "--", "drizzle"], {
+      cwd: projectRoot,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter(Boolean);
 
-  for (const relativeFile of trackedDrizzleFiles) {
-    const destination = path.join(stagedOpenAi, relativeFile);
-    mkdirSync(path.dirname(destination), { recursive: true });
-    cpSync(path.join(projectRoot, relativeFile), destination);
+    for (const relativeFile of trackedDrizzleFiles) {
+      const destination = path.join(stagedOpenAi, relativeFile);
+      mkdirSync(path.dirname(destination), { recursive: true });
+      cpSync(path.join(projectRoot, relativeFile), destination);
+    }
   }
 
   mkdirSync(path.dirname(archive), { recursive: true });

@@ -25,7 +25,9 @@ The optional Sites project is redirect-only. Every request, including internal
 API paths, receives an HTTP 308 redirect to the matching canonical production
 URL. Canonical scheduled work runs only inside the Cloudflare Worker and writes
 only to the authoritative Cloudflare D1 database; it never calls a Sites route
-or writes to a Sites database.
+or writes to a Sites database. The Sites hosting configuration deliberately has
+no D1 binding, so a mirror release cannot create or migrate a second research
+database.
 
 ## System boundaries
 
@@ -87,7 +89,7 @@ Resend sends opt-in notification email. It does not store private-message bodies
 - `supabase/migrations/` — ordered Postgres/RLS migrations
 - `worker/index.ts` — Worker fetch, SEC initial-source backfill, dossier-freshness monitor, and scheduled-digest entry point
 - `vite.config.ts` — Cloudflare binding, cron, and build configuration
-- `.openai/hosting.json` — Sites binding names and project identifier
+- `.openai/hosting.json` — Sites project identifier and explicit redirect-only, no-D1 configuration
 - `tests/rendered-html.test.mjs` — build-level feature and security assertions
 - `docs/NATURAL_LANGUAGE_SEARCH.md` — phased, evidence-aware search architecture and acceptance tests
 
