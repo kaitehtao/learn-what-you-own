@@ -15,11 +15,17 @@ This document is the operating map for Learn What You Own. It records identifier
 | D1 database | `site-creator-d1` | The single authoritative public-research database. |
 | D1 database ID | `8c2f7a1b-aa6e-45be-8e89-8c64bb0be557` | Must match the production Worker binding. |
 | Sites project | `appgprj_6a6992149bac81918aea31053a6f8eb2` | Preview/control-plane identifier in `.openai/hosting.json`. |
-| Sites preview/control plane | `https://learn-what-you-own.julianspencer.chatgpt.site` | Non-authoritative release history and preview tooling. It owns no `learnwhatyouown.com` custom hostname and is not a production data authority. |
+| Sites redirect mirror | `https://learn-what-you-own.julianspencer.chatgpt.site` | Non-authoritative release history whose requests redirect permanently to the canonical origin. It owns no custom hostname, scheduled jobs, or research-data authority. |
 | Supabase project ref | `fxmdunpolhqponfchwsz` | Production URL: `https://fxmdunpolhqponfchwsz.supabase.co`. Verify against the live `/api/auth/config` response before mutations. |
 | Resend domain | `learnwhatyouown.com` | Sender: `notifications@learnwhatyouown.com`. DNS is hosted in the authoritative Cloudflare account. |
 
 The package name and generated Worker configuration are both canonicalized to `learn-what-you-own`. Production preflight fails when the Worker name, D1 binding, public routes, or cron triggers drift. The Sites project must never attach `learnwhatyouown.com` or `www.learnwhatyouown.com`; those hostnames belong exclusively to the canonical Cloudflare Worker.
+
+The optional Sites project is redirect-only. Every request, including internal
+API paths, receives an HTTP 308 redirect to the matching canonical production
+URL. Canonical scheduled work runs only inside the Cloudflare Worker and writes
+only to the authoritative Cloudflare D1 database; it never calls a Sites route
+or writes to a Sites database.
 
 ## System boundaries
 
@@ -70,6 +76,7 @@ Resend sends opt-in notification email. It does not store private-message bodies
 6. Private member data never moves into D1 merely to make a dossier public.
 7. Secrets live in platform secret stores or ignored local environment files, never in Git.
 8. Administrator/editor roles are assigned directly by a trusted operator in Supabase, not by a public client action.
+9. The Sites mirror receives no scheduled writes and cannot bypass the canonical redirect for any route or request header.
 
 ## Code map
 

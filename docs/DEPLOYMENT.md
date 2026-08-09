@@ -40,6 +40,11 @@ Populate `.env.local` with the correct project values. The file is ignored by Gi
 
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `NOTIFICATION_CRON_SECRET` must be stored as Cloudflare secrets. The public Supabase values may be dashboard variables. `keep_vars: true` prevents a normal deploy from erasing dashboard-managed values, but the production checklist still verifies them after every release.
 
+The production Worker must not send scheduled dossier, market-cap, SEC, or
+notification jobs to the optional ChatGPT Sites project. Sites is a
+redirect-only release mirror; Cloudflare and `site-creator-d1` are the sole
+public application and research-data authority.
+
 ## Supabase migrations
 
 Apply each file once, in this order, using the production project's SQL editor or `supabase db push` from a correctly linked Supabase CLI:

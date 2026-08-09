@@ -1192,11 +1192,11 @@ test("creates private member notifications and opt-in email delivery", async () 
   assert.match(digestRoute, /NOTIFICATION_CRON_SECRET/);
   assert.match(worker, /America\/Los_Angeles/);
   assert.match(worker, /isPacificDigestHour\(controller\.scheduledTime\)/);
-  assert.match(worker, /SITES_MIRROR_CRON_SECRET/);
-  assert.match(worker, /x-lwyo-sites-mirror/);
   assert.match(worker, /dossier-freshness\?limit=10/);
-  assert.match(worker, /Promise\.all\(\[localRequest, mirrorRequest\]\)/);
-  assert.match(worker, /Sites dossier freshness mirror returned/);
+  assert.doesNotMatch(worker, /SITES_MIRROR_CRON_SECRET/);
+  assert.doesNotMatch(worker, /x-lwyo-sites-mirror/);
+  assert.doesNotMatch(worker, /julianspencer\.chatgpt\.site\}\$\{pathname\}/);
+  assert.match(worker, /if \(canonicalUrl\) return Response\.redirect\(canonicalUrl, 308\)/);
   assert.match(worker, /handler\.fetch\(new Request/);
   assert.doesNotMatch(worker, /await fetch\(`\$\{siteUrl\}\/api\/internal\/sec-facts-refresh/);
   assert.match(worker, /\/api\/notifications\/email-digest/);
@@ -1843,7 +1843,8 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(worker, /dossier-completion\?limit=10/);
   assert.match(worker, /controller\.cron === "2-59\/5 \* \* \* \*"/);
   assert.match(worker, /rollout-market-cap-refresh/);
-  assert.match(worker, /console\.warn\(`Sites dossier freshness mirror returned/);
+  assert.doesNotMatch(worker, /Sites dossier freshness mirror returned/);
+  assert.doesNotMatch(worker, /Sites market-cap ranking mirror returned/);
   assert.match(sourceBackfill, /memberships_json LIKE '%Russell 3000%'/);
   assert.match(sourceBackfill, /memberships_json LIKE '%Nasdaq-100%'/);
   assert.match(sourceBackfill, /registeredIssuerSources/);
