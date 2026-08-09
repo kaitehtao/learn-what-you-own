@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { run } from "./command.mjs";
+import { normalizedD1RestoreSql } from "./d1-backup-sql.mjs";
 
 const CLOUDFLARE_ACCOUNT_ID = "e5c3672efaf52cf5b417da2b09e687af";
 const D1_DATABASE_ID = "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557";
@@ -36,12 +37,6 @@ async function manifestFiles(root, current = root) {
     }
   }
   return files.sort((a, b) => a.path.localeCompare(b.path));
-}
-
-function normalizedD1RestoreSql(sql) {
-  const companyTable = sql.match(/^CREATE TABLE companies .*?;$/m)?.[0];
-  if (!companyTable) throw new Error("D1 export is missing the legacy companies table required by foreign keys.");
-  return `${companyTable}\n${sql.replace(`${companyTable}\n`, "")}`;
 }
 
 async function listStorageObjects(client, bucket, prefix = "") {

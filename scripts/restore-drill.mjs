@@ -3,15 +3,15 @@ import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { run } from "./command.mjs";
+import { restoreD1WithSqlite } from "./d1-backup-sql.mjs";
 
 const backupDir = path.resolve(process.argv[2] ?? "");
 if (!process.argv[2]) throw new Error("Usage: npm run restore:drill -- <backup-directory>");
 const d1Only = process.argv.includes("--d1-only");
 run("node", ["scripts/verify-backup.mjs", backupDir]);
 const localDir = await mkdtemp(path.join(os.tmpdir(), "lwyo-d1-restore-"));
-run("npx", ["wrangler", "d1", "execute", "DB", "--config", "dist/server/wrangler.json", "--local", "--persist-to", localDir, "--file", path.join(backupDir, "d1-restore.sql"), "--yes"], { capture: true });
-const counts = run("npx", ["wrangler", "d1", "execute", "DB", "--config", "dist/server/wrangler.json", "--local", "--persist-to", localDir, "--command", "SELECT COUNT(*) AS companies FROM companies; SELECT COUNT(*) AS dossiers FROM company_dossiers; SELECT COUNT(*) AS filing_facts FROM filing_facts;", "--json"], { capture: true });
-console.log(counts);
+const counts = restoreD1WithSqlite(path.join(backupDir, "d1-restore.sql"), path.join(localDir, "restore.sqlite"));
+console.log(`Verified D1 restore counts: ${JSON.stringify(counts[0] ?? {})}`);
 
 async function psqlBinary() {
   for (const candidate of [process.env.PSQL_PATH, "/opt/homebrew/opt/libpq/bin/psql", "psql"].filter(Boolean)) {
