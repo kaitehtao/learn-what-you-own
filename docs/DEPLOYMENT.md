@@ -241,13 +241,13 @@ so the audit itself does not overload the Worker. Use `npm run seo:audit --
 --all` only for a deliberately scheduled exhaustive crawl. Resubmit the sitemap
 in Google Search Console after any canonical, route, or sitemap release.
 
-Before saving a Sites version, create the archive with `npm run sites:package -- <archive.tgz>`. The packager stages the existing production build and runs `sites:verify-archive` automatically. The redirect-only mirror has no D1 binding, so its archive must contain no database migrations. If a future Sites project intentionally enables D1, the packager includes only Git-tracked migrations and the verifier rejects untracked SQL. Do not upload an archive produced by copying the working tree's `drizzle` directory directly.
+Before saving a Sites version, create the archive with `npm run sites:package -- <archive.tgz>`. The packager stages the existing production build, rewrites the derived Sites artifact to remove its D1 binding, omits all SQL migrations, and runs `sites:verify-archive` automatically. The repository configuration retains `d1: "DB"` because the canonical Cloudflare production build requires it. Do not upload an archive produced by copying `dist` or the working tree's `drizzle` directory directly.
 
 Alternatively, use the existing Cloudflare Git integration only after confirming it targets account `e5c3672efaf52cf5b417da2b09e687af`, Worker `learn-what-you-own`, and branch `main`.
 
 The apex and `www` hostnames use zone routes in `vite.config.ts`. Keep the existing proxied DNS records in place. Do not change the apex to a Wrangler `custom_domain` attachment: that conflicts with the externally managed records and can upload a new Worker while leaving the public domain on an older Sites origin.
 
-The Sites project is redirect-only infrastructure. Its custom-domain list must remain empty and `.openai/hosting.json` must keep `d1` set to `null`. Never attach `learnwhatyouown.com` or `www.learnwhatyouown.com` to the Sites Worker because that creates a second authority and takes precedence over the canonical Worker route.
+The Sites project is redirect-only infrastructure. Its custom-domain list must remain empty and its packaged `.openai/hosting.json` must have `d1` set to `null`; the repository copy remains `DB` for canonical Cloudflare builds. Never attach `learnwhatyouown.com` or `www.learnwhatyouown.com` to the Sites Worker because that creates a second authority and takes precedence over the canonical Worker route.
 
 Do not deploy the generated name as a new service. Do not create a new D1 database to resolve a binding error.
 

@@ -249,8 +249,8 @@ test("keeps the redirect-only Sites mirror detached from D1", async () => {
     source("scripts/verify-sites-archive.mjs"),
     source("worker/index.ts"),
   ]);
-  assert.match(hosting, /"d1": null/);
-  assert.match(packager, /if \(sitesUsesD1\)/);
+  assert.match(hosting, /"d1": "DB"/);
+  assert.match(packager, /sitesHostingConfig\.d1 = null/);
   assert.match(verifier, /Redirect-only Sites archive must not contain D1 migrations/);
   assert.match(worker, /if \(canonicalUrl\) return Response\.redirect\(canonicalUrl, 308\)/);
   assert.doesNotMatch(worker, /x-lwyo-sites-mirror/);

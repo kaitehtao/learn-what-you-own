@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,7 +16,10 @@ const projectRoot = process.cwd();
 const archive = path.resolve(process.argv[2] || "dist/learn-what-you-own-sites.tgz");
 const distRoot = path.join(projectRoot, "dist");
 const hostingConfig = path.join(projectRoot, ".openai", "hosting.json");
-const sitesUsesD1 = Boolean(JSON.parse(readFileSync(hostingConfig, "utf8")).d1);
+const sitesHostingConfig = JSON.parse(readFileSync(hostingConfig, "utf8"));
+// Cloudflare production needs DB, but the Sites artifact is a redirect-only
+// mirror and must not provision or migrate an independent research database.
+sitesHostingConfig.d1 = null;
 
 for (const required of [path.join(distRoot, "server", "index.js"), hostingConfig]) {
   if (!existsSync(required)) throw new Error(`Missing required Sites artifact: ${required}`);
@@ -35,25 +39,14 @@ try {
 
   const stagedOpenAi = path.join(stagedDist, ".openai");
   mkdirSync(stagedOpenAi, { recursive: true });
-  cpSync(hostingConfig, path.join(stagedOpenAi, "hosting.json"));
+  writeFileSync(
+    path.join(stagedOpenAi, "hosting.json"),
+    `${JSON.stringify(sitesHostingConfig, null, 2)}\n`,
+  );
 
   const stagedDrizzle = path.join(stagedOpenAi, "drizzle");
   rmSync(stagedDrizzle, { recursive: true, force: true });
 
-  if (sitesUsesD1) {
-    const trackedDrizzleFiles = execFileSync("git", ["ls-files", "--", "drizzle"], {
-      cwd: projectRoot,
-      encoding: "utf8",
-    })
-      .split("\n")
-      .filter(Boolean);
-
-    for (const relativeFile of trackedDrizzleFiles) {
-      const destination = path.join(stagedOpenAi, relativeFile);
-      mkdirSync(path.dirname(destination), { recursive: true });
-      cpSync(path.join(projectRoot, relativeFile), destination);
-    }
-  }
 
   mkdirSync(path.dirname(archive), { recursive: true });
   execFileSync("tar", ["-C", stage, "-czf", archive, "dist"]);
