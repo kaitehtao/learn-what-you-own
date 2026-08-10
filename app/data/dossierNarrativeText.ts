@@ -31,3 +31,34 @@ export function strategicFilingExcerpt(text: string) {
   }
   return slices.join("\n\n").slice(0, MAX_SOURCE_CHARACTERS);
 }
+
+function parseJsonText(value: string) {
+  const cleaned = value.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  if (!cleaned) throw new Error("Workers AI returned no narrative JSON.");
+  return JSON.parse(cleaned) as Record<string, unknown>;
+}
+
+export function parseNarrativeModelResponse(response: unknown): Record<string, unknown> {
+  if (typeof response === "string") return parseJsonText(response);
+  if (!response || typeof response !== "object") throw new Error("Workers AI returned no narrative JSON.");
+  const record = response as Record<string, unknown>;
+  if (record.response && typeof record.response === "object" && !Array.isArray(record.response)) {
+    return record.response as Record<string, unknown>;
+  }
+  if (typeof record.response === "string") return parseJsonText(record.response);
+  if (typeof record.result === "string") return parseJsonText(record.result);
+  const choice = Array.isArray(record.choices) ? record.choices[0] as Record<string, unknown> | undefined : undefined;
+  const message = choice?.message && typeof choice.message === "object" ? choice.message as Record<string, unknown> : undefined;
+  if (typeof message?.content === "string") return parseJsonText(message.content);
+  const output = Array.isArray(record.output) ? record.output : [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = Array.isArray((item as Record<string, unknown>).content) ? (item as Record<string, unknown>).content as unknown[] : [];
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const text = (part as Record<string, unknown>).text;
+      if (typeof text === "string") return parseJsonText(text);
+    }
+  }
+  throw new Error(`Workers AI returned an unsupported narrative response (${Object.keys(record).sort().join(",") || "no keys"}).`);
+}

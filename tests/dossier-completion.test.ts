@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
-import { filingHtmlToText } from "../app/data/dossierNarrativeText";
+import { filingHtmlToText, parseNarrativeModelResponse } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -41,4 +41,9 @@ test("filing HTML extraction removes executable and presentation markup", () => 
   const result = filingHtmlToText(`<style>.x{display:none}</style><script>alert(1)</script><h1>Business &amp; operations</h1><p>Recurring revenue</p>`);
   assert.equal(result, "Business & operations\nRecurring revenue");
   assert.doesNotMatch(result, /display|alert|<p>/);
+});
+
+test("accepts Workers AI JSON-mode and chat-compatible narrative responses", () => {
+  assert.deepEqual(parseNarrativeModelResponse({ response: { ticker: "SHOP" } }), { ticker: "SHOP" });
+  assert.deepEqual(parseNarrativeModelResponse({ choices: [{ message: { content: "```json\n{\"ticker\":\"SCCO\"}\n```" } }] }), { ticker: "SCCO" });
 });

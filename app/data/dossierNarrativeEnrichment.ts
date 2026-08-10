@@ -1,9 +1,10 @@
 import { env } from "cloudflare:workers";
 import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
-import { filingHtmlToText, strategicFilingExcerpt } from "./dossierNarrativeText";
+import { filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
 
 const MODEL = "@cf/openai/gpt-oss-20b";
+const PIPELINE_MODEL = `${MODEL}#json-v2`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -29,14 +30,6 @@ function exactText(value: unknown, field: string): CitedText {
   if (typeof record.sourceUrl !== "string") throw new Error(`${field} has no source URL.`);
   if (typeof record.sourceExcerpt !== "string" || record.sourceExcerpt.trim().length < 20) throw new Error(`${field} has no filing excerpt.`);
   return { text: record.text.trim(), sourceUrl: record.sourceUrl, sourceExcerpt: record.sourceExcerpt.trim() };
-}
-
-function parseModelResponse(response: unknown) {
-  const record = response && typeof response === "object" ? response as Record<string, unknown> : {};
-  const raw = typeof record.response === "string" ? record.response : typeof record.result === "string" ? record.result : typeof response === "string" ? response : "";
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  if (!cleaned) throw new Error("Workers AI returned no narrative JSON.");
-  return JSON.parse(cleaned) as Record<string, unknown>;
 }
 
 function validateNarrative(value: Record<string, unknown>, sourceText: Map<string, string>): EnrichedNarrative {
@@ -114,8 +107,8 @@ async function selectTarget() {
       AND NOT EXISTS (SELECT 1 FROM dossier_narrative_enrichment_jobs job WHERE job.ticker=d.ticker
         AND (job.status='completed' OR (job.status='running' AND job.started_at>datetime('now','-30 minutes'))))
       AND (SELECT COUNT(*) FROM dossier_narrative_enrichment_jobs failed
-        WHERE failed.ticker=d.ticker AND failed.status='error')<3
-    ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).first<TargetRow>();
+        WHERE failed.ticker=d.ticker AND failed.status='error' AND failed.model=?)<3
+    ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).bind(PIPELINE_MODEL).first<TargetRow>();
 }
 
 async function sourcePack(ticker: string) {
@@ -170,15 +163,15 @@ export async function enrichNextDossierNarrative() {
   await env.DB.prepare(`INSERT INTO dossier_narrative_enrichment_jobs
     (id,ticker,priority_market_cap,status,model,source_urls_json,attempt_count)
     VALUES (?,?,?,'running',?,?,(SELECT 1+COUNT(*) FROM dossier_narrative_enrichment_jobs WHERE ticker=?))`).bind(
-      jobId, target.ticker, target.market_cap, MODEL, JSON.stringify(sources.map((source) => source.url)), target.ticker).run();
+      jobId, target.ticker, target.market_cap, PIPELINE_MODEL, JSON.stringify(sources.map((source) => source.url)), target.ticker).run();
   try {
     const documents: Array<SourceRow & { text: string }> = [];
     for (const source of sources) documents.push({ ...source, text: await fetchSource(source) });
     const response = await bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
-    ], max_tokens: 5_500, temperature: 0.1 });
-    const narrative = validateNarrative(parseModelResponse(response), new Map(documents.map((source) => [source.url, source.text])));
+    ], response_format: { type: "json_object" }, max_tokens: 5_500, temperature: 0.1 });
+    const narrative = validateNarrative(parseNarrativeModelResponse(response), new Map(documents.map((source) => [source.url, source.text])));
     const claims = await saveNarrative(target, narrative, sources, jobId);
     return { enriched: true as const, ticker: target.ticker, marketCap: target.market_cap, jobId, claims };
   } catch (error) {
