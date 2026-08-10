@@ -9,6 +9,21 @@ type StoredDossier = {
 type StoredSource = { title:string;source_type:string;url:string;evidence_date:string|null;excerpt:string|null };
 export type PublishedDossierSitemapEntry = { ticker: string; lastModified: string | null };
 
+export async function isIndexablePublishedDossier(ticker: string): Promise<boolean> {
+  try {
+    const row = await env.DB.prepare(`SELECT 1 AS indexable
+      FROM company_dossiers d
+      WHERE d.ticker=? AND d.status='published' AND d.quality_tier<>'starting_point'
+      AND (SELECT COUNT(*) FROM dossier_sources s
+        WHERE s.ticker=d.ticker AND s.url LIKE 'https://%')>=5
+      LIMIT 1`).bind(ticker).first<{ indexable: number }>();
+    return Boolean(row?.indexable);
+  } catch (error) {
+    console.error(`Unable to determine index eligibility for ${ticker}.`, error);
+    return false;
+  }
+}
+
 function parseArray<T>(value:string):T[]{
   const parsed=JSON.parse(value) as unknown;
   if(!Array.isArray(parsed))throw new Error("Stored dossier section is invalid.");
@@ -71,12 +86,14 @@ export async function listPublishedDossierSitemapEntries(): Promise<PublishedDos
   try {
     const rows = await env.DB.prepare(`SELECT ticker,
       substr(COALESCE(updated_at,validated_at,evidence_date),1,10) AS last_modified
-      FROM company_dossiers
-      WHERE status='published' AND quality_tier='benchmark_complete' AND validated_at IS NOT NULL
+      FROM company_dossiers d
+      WHERE status='published' AND quality_tier<>'starting_point'
+      AND (SELECT COUNT(*) FROM dossier_sources s
+        WHERE s.ticker=d.ticker AND s.url LIKE 'https://%')>=5
       ORDER BY ticker`).all<{ ticker: string; last_modified: string | null }>();
     return rows.results.map((row) => ({ ticker: row.ticker, lastModified: row.last_modified }));
   } catch (error) {
-    console.error("Unable to build the benchmark-complete company sitemap.", error);
+    console.error("Unable to build the evidence-backed company sitemap.", error);
     return [];
   }
 }

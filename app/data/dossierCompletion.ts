@@ -8,6 +8,7 @@ import {
   type CompletionNarrative,
   type CompletionSource,
 } from "./dossierCompletionClaims";
+import { enrichNextDossierNarrative, latestEnrichmentClaims } from "./dossierNarrativeEnrichment";
 
 const SYSTEM_REVIEWER = "system:evidence-benchmark";
 const COMPLETION_LOCK = "automatic-benchmark-completion";
@@ -144,7 +145,8 @@ async function prepareNewBatch(count: number, actor: string) {
       ORDER BY CASE WHEN source_type LIKE '%sec%' THEN 0 ELSE 1 END,evidence_date DESC,url LIMIT 12`)
       .bind(row.ticker).all<StoredSource>();
     try {
-      prepared.push({ batchId: "", ticker: row.ticker, sourceCount: row.source_count, claims: buildCompletionClaims(narrativeFromRow(row), sources.results.map(sourceFromRow)) });
+      const enrichedClaims = await latestEnrichmentClaims(row.ticker);
+      prepared.push({ batchId: "", ticker: row.ticker, sourceCount: row.source_count, claims: enrichedClaims ?? buildCompletionClaims(narrativeFromRow(row), sources.results.map(sourceFromRow)) });
     } catch (error) {
       console.error(`Unable to prepare automatic completion packet for ${row.ticker}.`, error);
     }
@@ -256,9 +258,17 @@ export async function processAutomaticBenchmarkBatch(count = 10, actor = SYSTEM_
       candidates = await prepareNewBatch(limit, actor) ?? [];
       created = candidates.length > 0;
     }
-    if (!candidates.length) return { created: false, reason: "no_eligible_narrative_ready_dossiers", selected: 0, approved: 0, needsRevision: 0, tickers: [] as string[] };
+    let enrichment: Awaited<ReturnType<typeof enrichNextDossierNarrative>> | null = null;
+    if (!candidates.length) {
+      enrichment = await enrichNextDossierNarrative();
+      if (enrichment.enriched) {
+        candidates = await prepareNewBatch(1, actor) ?? [];
+        created = candidates.length > 0;
+      }
+    }
+    if (!candidates.length) return { created: false, reason: enrichment?.reason ?? "no_eligible_narrative_ready_dossiers", enrichment, selected: 0, approved: 0, needsRevision: 0, tickers: [] as string[] };
     const result = await automaticallyPublish(candidates);
-    return { created, batchId: candidates[0].batchId, selected: candidates.length, ...result };
+    return { created, enrichment, batchId: candidates[0].batchId, selected: candidates.length, ...result };
   } finally {
     await releaseCompletionLease(ownerId);
   }

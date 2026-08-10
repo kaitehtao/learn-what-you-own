@@ -208,8 +208,9 @@ test("publishes a crawler sitemap for every completed dossier and protects priva
   assert.match(sitemap, /sitemaps\/companies\.xml/);
   assert.match(companySitemap, /listPublishedDossierSitemapEntries/);
   assert.match(companySitemap, /companySlug\(ticker\)/);
-  assert.match(repository, /quality_tier='benchmark_complete'/);
-  assert.match(repository, /validated_at IS NOT NULL/);
+  assert.match(repository, /isIndexablePublishedDossier/);
+  assert.match(repository, /quality_tier<>'starting_point'/);
+  assert.match(repository, /COUNT\(\*\).*dossier_sources/s);
   assert.match(sitemap, /https:\/\/learnwhatyouown\.com/);
   assert.match(robots, /User-agent: OAI-SearchBot/);
   assert.match(robots, /Sitemap: https:\/\/learnwhatyouown\.com\/sitemap\.xml/);
@@ -235,7 +236,7 @@ test("canonicalizes public pages and gives company dossiers unique indexable met
   assert.match(home, /"@type": "WebSite"/);
   assert.match(company, /export async function generateMetadata/);
   assert.match(company, /Stock Research, SEC Filings & Valuation/);
-  assert.match(company, /robots: storedDossier \? \{ index: true/);
+  assert.match(company, /robots: indexable \? \{ index: true/);
   assert.match(company, /"@type": "BreadcrumbList"/);
   assert.doesNotMatch(coreSitemap, /"\/russell-2000"/);
   assert.match(auditScript, /sitemap URLs must not redirect or fail/);

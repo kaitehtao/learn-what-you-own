@@ -54,6 +54,9 @@ const localBindingConfig = {
       },
     ],
   },
+  // Source-grounded owner narratives are produced in bounded, auditable jobs.
+  // Deterministic citation and completeness checks still control promotion.
+  ai: { binding: "AI" },
   d1_databases: d1
     ? [
         {

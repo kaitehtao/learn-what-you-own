@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
+import { filingHtmlToText } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -34,4 +35,10 @@ test("completion packets reject structurally incomplete narrative", () => {
     { title: "10-K", url: "https://www.sec.gov/a", evidenceDate: "2026-01-01", excerpt: "A", sourceType: "sec_filing" },
     { title: "IR", url: "https://example.com/ir", evidenceDate: "2026-01-01", excerpt: "B", sourceType: "investor_relations" },
   ]), /Bull, bear/);
+});
+
+test("filing HTML extraction removes executable and presentation markup", () => {
+  const result = filingHtmlToText(`<style>.x{display:none}</style><script>alert(1)</script><h1>Business &amp; operations</h1><p>Recurring revenue</p>`);
+  assert.equal(result, "Business & operations\nRecurring revenue");
+  assert.doesNotMatch(result, /display|alert|<p>/);
 });

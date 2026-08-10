@@ -23,7 +23,7 @@ import { HistoricalValuationPanel } from "../../HistoricalValuationPanel";
 import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 import { PublicFactsPanel } from "../../PublicFactsPanel";
 import { CompanyLogo } from "../../CompanyLogo";
-import { findPublishedDossier } from "../../../db/publishedDossier";
+import { findPublishedDossier, isIndexablePublishedDossier } from "../../../db/publishedDossier";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
 // after editorial content for the same ticker has been promoted to flagship depth.
@@ -32,6 +32,7 @@ export const dynamic = "force-dynamic";
 const publicOrigin = "https://learnwhatyouown.com";
 const loadCatalogCompany = cache(findCatalogCompany);
 const loadPublishedDossier = cache(findPublishedDossier);
+const loadIndexEligibility = cache(isIndexablePublishedDossier);
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "SPCX") return "SpaceX (Space Exploration Technologies Corp.)";
@@ -51,6 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
   const catalogCompany = await loadCatalogCompany(ticker);
   const name = displayName(catalogCompany?.name || universeCompany?.name || `${ticker} company`, ticker);
   const storedDossier = await loadPublishedDossier(ticker);
+  const indexable = Boolean(storedDossier) || await loadIndexEligibility(ticker);
   const fallbackDossier = featuredDossiers[ticker];
   const description = storedDossier?.description || fallbackDossier?.description || `Research ${name} (${ticker}), including SEC filings, ownership, valuation, earnings, risks, catalysts, and source-linked evidence.`;
   const canonical = `${publicOrigin}/company/${companySlug(ticker)}`;
@@ -60,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
     title,
     description,
     alternates: { canonical },
-    robots: storedDossier ? { index: true, follow: true } : { index: false, follow: true },
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
       title,
       description,

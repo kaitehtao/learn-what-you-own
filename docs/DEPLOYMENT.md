@@ -38,6 +38,10 @@ Populate `.env.local` with the correct project values. The file is ignored by Gi
 | `NOTIFICATION_CRON_SECRET` | Secret, server-only | Authorizes the scheduled digest endpoint. |
 | `CLOUDFLARE_API_TOKEN` | Operator secret, not a Worker variable | CLI deploy/D1 access; restrict it to the named account and resources. |
 
+The production Worker also has a non-secret Cloudflare Workers AI binding named
+`AI`. It is used only for bounded, source-grounded owner-narrative enrichment;
+monitor usage and cost in the Workers AI dashboard.
+
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `NOTIFICATION_CRON_SECRET` must be stored as Cloudflare secrets. The public Supabase values may be dashboard variables. `keep_vars: true` prevents a normal deploy from erasing dashboard-managed values, but the production checklist still verifies them after every release.
 
 The production Worker must not send scheduled dossier, market-cap, SEC, or
@@ -213,6 +217,12 @@ database. After deployment, verify all four cron triggers, the producer binding,
 the queue consumer, and the dead-letter queue on the `learn-what-you-own` Worker.
 Inspect at least one completed ticker job, one freshness invocation, and one daily
 scheduled invocation. Never point the digest to a preview origin.
+
+Apply `drizzle/0044_dossier_narrative_enrichment.sql` before enabling narrative
+enrichment. Each five-minute completion cycle may enrich at most one dossier,
+selected by current market capitalization descending, and then passes it to the
+existing benchmark validator. A failed AI or source request remains an audited
+error and cannot promote the dossier.
 
 ## Build and deploy
 
