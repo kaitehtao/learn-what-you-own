@@ -3,8 +3,8 @@ import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
 import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
 
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const PIPELINE_MODEL = `${MODEL}#json-v4`;
+const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const PIPELINE_MODEL = `${MODEL}#json-v5`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -186,7 +186,7 @@ export async function enrichNextDossierNarrative() {
     const response = await bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
-    ], response_format: { type: "json_object" }, max_tokens: 3_200, temperature: 0.1 });
+    ], response_format: { type: "json_object" }, max_tokens: 2_600, temperature: 0.1 });
     const narrative = validateNarrative(parseNarrativeModelResponse(response), new Map(documents.map((source) => [source.url, source.text])));
     const claims = await saveNarrative(target, narrative, sources, jobId);
     return { enriched: true as const, ticker: target.ticker, marketCap: target.market_cap, jobId, claims };
