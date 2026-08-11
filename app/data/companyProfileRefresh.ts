@@ -34,15 +34,24 @@ function irEmailFromHtml(html: string) {
 
 function managementText(text: string) {
   const normalized = text.toLowerCase();
-  const slices: string[] = [];
+  const candidates: Array<{ score: number; slice: string }> = [];
   for (const heading of ["executive officers", "information about our executive officers", "directors and executive officers", "management team"]) {
     let start = normalized.indexOf(heading);
-    while (start >= 0 && slices.length < 5) {
-      slices.push(text.slice(Math.max(0, start - 500), start + 6_500));
+    let occurrences = 0;
+    while (start >= 0 && occurrences < 80) {
+      const slice = text.slice(Math.max(0,start - 500),start + 6_500);
+      const context = slice.toLowerCase();
+      const score = ["named executive officers", "chief executive officer", "chief financial officer", "chief operating officer",
+        "senior vice president", "general counsel", "joined the executive team", "current executive"]
+        .reduce((total,term) => total + (context.includes(term) ? 3 : 0),0)
+        - (/table of contents/.test(context.slice(0,800)) ? 5 : 0);
+      candidates.push({ score,slice });
+      occurrences += 1;
       start = normalized.indexOf(heading, start + heading.length);
     }
   }
-  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0, 28_000)).slice(0, 30_000);
+  const slices = candidates.sort((left,right) => right.score - left.score).slice(0,5).map((candidate) => candidate.slice);
+  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0,28_000)).slice(0,30_000);
 }
 
 function parseAiResponse(response: unknown): Record<string, unknown> {
@@ -140,8 +149,8 @@ async function saveContact(target: Target, submissions: SubmissionProfile, submi
 }
 
 async function extractManagement(target: Target, submissions: SubmissionProfile) {
-  const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report")
-    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement");
+  const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement")
+    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report");
   if (!filing) return { sourceUrl: "", people: [] as ManagementPerson[] };
   const response = await fetch(filing.sourceUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`Management filing returned HTTP ${response.status}.`);
