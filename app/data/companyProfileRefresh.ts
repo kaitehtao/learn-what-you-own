@@ -56,6 +56,16 @@ function parseAiResponse(response: unknown): Record<string, unknown> {
   throw new Error("Workers AI returned an unsupported management response.");
 }
 
+function filedExcerptForName(sourceText: string, name: string) {
+  const index = sourceText.toLowerCase().indexOf(name.toLowerCase());
+  if (index < 0) return "";
+  const priorBreak = sourceText.lastIndexOf("\n", Math.max(0,index - 1));
+  const nextBreak = sourceText.indexOf("\n\n", index);
+  const start = Math.max(0, priorBreak >= 0 ? priorBreak + 1 : index - 120);
+  const end = Math.min(sourceText.length, nextBreak > index ? nextBreak : index + 900);
+  return sourceText.slice(start,end).replace(/\s+/g," ").trim().slice(0,1_000);
+}
+
 function validatePeople(response: unknown, sourceText: string) {
   const people = parseAiResponse(response).people;
   if (!Array.isArray(people)) throw new Error("Management response has no people array.");
@@ -65,7 +75,8 @@ function validatePeople(response: unknown, sourceText: string) {
     const name = typeof row.name === "string" ? row.name.trim() : "";
     const title = typeof row.title === "string" ? row.title.trim() : "";
     const biography = typeof row.biography === "string" ? row.biography.trim() : "";
-    const sourceExcerpt = typeof row.sourceExcerpt === "string" ? row.sourceExcerpt.trim() : "";
+    const proposedExcerpt = typeof row.sourceExcerpt === "string" ? row.sourceExcerpt.trim() : "";
+    const sourceExcerpt = citationExcerptResolves(sourceText,proposedExcerpt) ? proposedExcerpt : filedExcerptForName(sourceText,name);
     if (name.length < 3 || title.length < 2 || biography.length < 30 || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
     valid.push({ name, title, biography, sourceExcerpt });
   }

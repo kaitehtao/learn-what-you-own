@@ -2194,6 +2194,7 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(refresh, /investorWebsite/);
   assert.match(refresh, /mailto:/);
   assert.match(refresh, /citationExcerptResolves/);
+  assert.match(refresh, /filedExcerptForName/);
   assert.match(refresh, /proxy_statement/);
   assert.match(refresh, /annual_report/);
   assert.match(worker, /refreshScheduledCompanyProfiles/);
