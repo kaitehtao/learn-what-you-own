@@ -8,7 +8,8 @@ type Summary = { benchmark_complete:number;machine_enriched:number;narrative_rea
 type Batch = { id:string;selected_count:number;approved_count:number;needs_revision_count:number;status:string;created_at:string };
 type Claim = { section:string;claimType:string;claim:string;whyItMatters:string;sourceTitle:string;sourceUrl:string };
 type Candidate = { batch_id:string;ticker:string;priority_rank:number;status:string;source_count:number;claim_preview_json:string;validation_json:string;review_note:string;name:string;market_cap:number|null;quality_tier:string;evidence_date:string|null };
-type Payload = { summary:Summary|null;batches:Batch[];candidates:Candidate[];error?:string };
+type NarrativeJob = { status:string;total:number;latest_started_at:string|null };
+type Payload = { summary:Summary|null;batches:Batch[];candidates:Candidate[];narrativeJobs:NarrativeJob[];error?:string };
 
 function label(value:string){return value.replaceAll("_"," ");}
 function marketCap(value:number|null){
@@ -33,6 +34,7 @@ export function DossierCompletionQueue(){
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
   const currentBatch=useMemo(()=>data?.batches.find((batch)=>batch.status!=="completed")??data?.batches[0]??null,[data?.batches]);
   const visible=(data?.candidates??[]).filter((item)=>item.batch_id===currentBatch?.id);
+  const narrativeCounts=Object.fromEntries((data?.narrativeJobs??[]).map((item)=>[item.status,Number(item.total)]));
 
   async function createBatch(count:number){
     setBusy("batch");setError("");setNotice("");
@@ -50,6 +52,7 @@ export function DossierCompletionQueue(){
     <header><div><span className="kicker">EVIDENCE-GATED AUTOMATIC COMPLETION</span><h2>Benchmark dossier completion</h2><p>The active database rule automatically validates required sections, claim diversity, exact citations, and source depth. Passing dossiers publish immediately; failures remain visible as exceptions.</p></div><div><button disabled={Boolean(busy)} onClick={()=>void createBatch(30)}>{busy==="batch"?"Validating…":"Validate next 30 automatically"}</button></div></header>
     {error&&<p className="form-error">{error}</p>}{notice&&<p className="admin-notice">{notice}</p>}
     <div className="dossier-completion-stats"><div><strong>{Number(data?.summary?.benchmark_complete??0).toLocaleString()}</strong><span>Benchmark complete</span></div><div><strong>{Number(data?.summary?.narrative_ready??0).toLocaleString()}</strong><span>Narrative ready</span></div><div><strong>{Number(data?.summary?.machine_enriched??0).toLocaleString()}</strong><span>Machine enriched</span></div><div><strong>{Number(data?.summary?.starting_point??0).toLocaleString()}</strong><span>Source foundation pending</span></div></div>
+    <p className="completion-policy-note"><strong>Narrative worker ledger.</strong> {(narrativeCounts.completed??0).toLocaleString()} completed · {(narrativeCounts.running??0).toLocaleString()} running · {(narrativeCounts.error??0).toLocaleString()} failed validation · {(narrativeCounts.timed_out??0).toLocaleString()} timed out. Failed and timed-out attempts remain auditable and never promote a dossier.</p>
     <p className="completion-policy-note"><strong>Automatic benchmark publication.</strong> No per-ticker approval is required. The system publishes only when every active evidence and completeness threshold passes, records the validating rule and system identity, and leaves exceptions unpublished at benchmark status. <Link href="/learn/how-to-research-a-stock">Review the owner-research standard →</Link></p>
     {data?.summary&&data.summary.narrative_ready===0&&data.summary.machine_enriched>0&&<p className="completion-bottleneck-note"><strong>Current bottleneck: structured owner narratives.</strong> {data.summary.machine_enriched.toLocaleString()} dossiers have source foundations but still need evidence-grounded business-model, bull, bear, risk, catalyst, and monitoring sections before benchmark validation. The validator does not promote source-only shells.</p>}
     {currentBatch&&<div className="completion-batch-heading"><div><small>{currentBatch.status==="completed"?"MOST RECENT AUTOMATIC BATCH":"CURRENT PROCESSING BATCH"}</small><strong>{currentBatch.id}</strong><span>{label(currentBatch.status)}</span></div><p>{currentBatch.approved_count}/{currentBatch.selected_count} automatically complete · {currentBatch.needs_revision_count} exceptions</p></div>}

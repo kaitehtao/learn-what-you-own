@@ -1,13 +1,15 @@
 import { env } from "cloudflare:workers";
-import { ensureDossierCompletionSchema } from "../../../../db/runtimeSchema";
+import { ensureDossierCompletionSchema, ensureDossierNarrativeEnrichmentSchema } from "../../../../db/runtimeSchema";
 import { processAutomaticBenchmarkBatch } from "../../../data/dossierCompletion";
+import { reconcileStaleNarrativeJobs } from "../../../data/dossierNarrativeEnrichment";
 import { apiError, requireEditor } from "../../../supabase-server";
 
 export const dynamic = "force-dynamic";
 
 async function dashboardData() {
-  await ensureDossierCompletionSchema();
-  const [summary, batches, candidates] = await Promise.all([
+  await Promise.all([ensureDossierCompletionSchema(), ensureDossierNarrativeEnrichmentSchema()]);
+  await reconcileStaleNarrativeJobs();
+  const [summary, batches, candidates, narrativeJobs] = await Promise.all([
     env.DB.prepare(`SELECT
       SUM(CASE WHEN quality_tier='benchmark_complete' THEN 1 ELSE 0 END) AS benchmark_complete,
       SUM(CASE WHEN quality_tier='machine_enriched' THEN 1 ELSE 0 END) AS machine_enriched,
@@ -38,8 +40,10 @@ async function dashboardData() {
         ORDER BY CASE WHEN status<>'completed' THEN 0 ELSE 1 END,
           CASE WHEN status<>'completed' THEN created_at END ASC,created_at DESC LIMIT 4)
       ORDER BY cc.batch_id DESC,cc.priority_rank LIMIT 120`).all(),
+    env.DB.prepare(`SELECT status,COUNT(*) AS total,MAX(started_at) AS latest_started_at
+      FROM dossier_narrative_enrichment_jobs GROUP BY status ORDER BY status`).all(),
   ]);
-  return { summary, batches: batches.results, candidates: candidates.results };
+  return { summary, batches: batches.results, candidates: candidates.results, narrativeJobs: narrativeJobs.results };
 }
 
 export async function GET(request: Request) {

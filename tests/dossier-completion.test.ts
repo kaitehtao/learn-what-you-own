@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
-import { filingHtmlToText, parseNarrativeModelResponse } from "../app/data/dossierNarrativeText";
+import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -46,4 +46,10 @@ test("filing HTML extraction removes executable and presentation markup", () => 
 test("accepts Workers AI JSON-mode and chat-compatible narrative responses", () => {
   assert.deepEqual(parseNarrativeModelResponse({ response: { ticker: "SHOP" } }), { ticker: "SHOP" });
   assert.deepEqual(parseNarrativeModelResponse({ choices: [{ message: { content: "```json\n{\"ticker\":\"SCCO\"}\n```" } }] }), { ticker: "SCCO" });
+  assert.deepEqual(parseNarrativeModelResponse({ choices: [{ message: { content: [{ type: "output_text", text: "{\"description\":{},\"lede\":{},\"sells\":{}}" }] } }] }), { description: {}, lede: {}, sells: {} });
+});
+
+test("resolves filing excerpts across harmless punctuation and whitespace changes", () => {
+  assert.equal(citationExcerptResolves("The company’s revenue depends on customer demand — and disciplined execution over time.", "company's revenue depends on customer demand - and disciplined execution"), true);
+  assert.equal(citationExcerptResolves("The company has material risks.", "This unsupported claim does not occur in the filing at all"), false);
 });

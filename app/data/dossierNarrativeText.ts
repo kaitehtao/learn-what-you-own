@@ -1,4 +1,4 @@
-const MAX_SOURCE_CHARACTERS = 42_000;
+const MAX_SOURCE_CHARACTERS = 14_000;
 
 function decodeHtml(value: string) {
   const entities: Record<string, string> = { amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"', ndash: "–", mdash: "—" };
@@ -24,10 +24,10 @@ export function filingHtmlToText(html: string) {
 
 export function strategicFilingExcerpt(text: string) {
   if (text.length <= MAX_SOURCE_CHARACTERS) return text;
-  const slices = [text.slice(0, 8_000)];
+  const slices = [text.slice(0, 3_000)];
   for (const heading of ["business", "risk factors", "management's discussion", "management’s discussion", "competition"]) {
     const index = text.toLowerCase().indexOf(heading);
-    if (index >= 0) slices.push(text.slice(index, index + 7_000));
+    if (index >= 0) slices.push(text.slice(index, index + 3_000));
   }
   return slices.join("\n\n").slice(0, MAX_SOURCE_CHARACTERS);
 }
@@ -47,18 +47,39 @@ export function parseNarrativeModelResponse(response: unknown): Record<string, u
   }
   if (typeof record.response === "string") return parseJsonText(record.response);
   if (typeof record.result === "string") return parseJsonText(record.result);
-  const choice = Array.isArray(record.choices) ? record.choices[0] as Record<string, unknown> | undefined : undefined;
-  const message = choice?.message && typeof choice.message === "object" ? choice.message as Record<string, unknown> : undefined;
-  if (typeof message?.content === "string") return parseJsonText(message.content);
-  const output = Array.isArray(record.output) ? record.output : [];
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const content = Array.isArray((item as Record<string, unknown>).content) ? (item as Record<string, unknown>).content as unknown[] : [];
-    for (const part of content) {
-      if (!part || typeof part !== "object") continue;
-      const text = (part as Record<string, unknown>).text;
-      if (typeof text === "string") return parseJsonText(text);
+  const visited = new Set<unknown>();
+  const search = (value: unknown): Record<string, unknown> | null => {
+    if (typeof value === "string" && /^(?:```(?:json)?\s*)?\s*\{/i.test(value)) {
+      try { return parseJsonText(value); } catch { return null; }
     }
-  }
+    if (!value || typeof value !== "object" || visited.has(value)) return null;
+    visited.add(value);
+    const candidate = value as Record<string, unknown>;
+    if (candidate.description && candidate.lede && candidate.sells) return candidate;
+    for (const key of ["content", "text", "output_text", "message", "response", "result", "choices", "output"]) {
+      const found = search(candidate[key]);
+      if (found) return found;
+    }
+    if (Array.isArray(value)) for (const item of value) { const found = search(item); if (found) return found; }
+    return null;
+  };
+  const nested = search(record);
+  if (nested) return nested;
   throw new Error(`Workers AI returned an unsupported narrative response (${Object.keys(record).sort().join(",") || "no keys"}).`);
+}
+
+function evidenceWords(value: string) {
+  return value.toLowerCase().replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-")
+    .replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+}
+
+export function citationExcerptResolves(document: string, excerpt: string) {
+  const documentWords = evidenceWords(document);
+  const excerptWords = evidenceWords(excerpt);
+  if (excerptWords.length < 8) return false;
+  const documentText = ` ${documentWords.join(" ")} `;
+  for (let index = 0; index <= excerptWords.length - 8; index += 1) {
+    if (documentText.includes(` ${excerptWords.slice(index, index + 8).join(" ")} `)) return true;
+  }
+  return false;
 }

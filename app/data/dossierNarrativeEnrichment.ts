@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
-import { filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
+import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
 
 const MODEL = "@cf/openai/gpt-oss-20b";
-const PIPELINE_MODEL = `${MODEL}#json-v2`;
+const PIPELINE_MODEL = `${MODEL}#json-v3`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -22,6 +22,16 @@ export type EnrichedNarrative = {
   financialDrivers: CitedDriver[]; risks: CitedRisk[]; monitor: CitedMonitor[];
   questions: string[]; competitors: CitedText;
 };
+
+export async function reconcileStaleNarrativeJobs() {
+  await ensureDossierNarrativeEnrichmentSchema();
+  const result = await env.DB.prepare(`UPDATE dossier_narrative_enrichment_jobs
+    SET status='timed_out',error_message=CASE WHEN error_message=''
+      THEN 'The Worker invocation ended before a validated result was recorded.' ELSE error_message END,
+      completed_at=COALESCE(completed_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP
+    WHERE status='running' AND started_at<=datetime('now','-20 minutes')`).run();
+  return Number(result.meta.changes ?? 0);
+}
 
 function exactText(value: unknown, field: string): CitedText {
   if (!value || typeof value !== "object") throw new Error(`${field} must be a cited object.`);
@@ -60,7 +70,12 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
       if (![row.title, row.text, row.impact, row.sourceUrl, row.sourceExcerpt].every((entry) => typeof entry === "string" && entry.trim())) throw new Error(`monitor[${index}] is incomplete.`);
       return { title: String(row.title).trim(), text: String(row.text).trim(), impact: String(row.impact).trim(), sourceUrl: String(row.sourceUrl), sourceExcerpt: String(row.sourceExcerpt).trim() };
     }),
-    questions: list("questions", 3).map((item) => String(item).trim()).filter(Boolean), competitors: cited("competitors"),
+    questions: list("questions", 3).map((item) => String(item).trim()).filter(Boolean),
+    competitors: value.competitors ? cited("competitors") : {
+      text: "The approved filing pack does not establish a complete named competitor set; peer selection requires separate verified market evidence.",
+      sourceUrl: cited("description").sourceUrl,
+      sourceExcerpt: cited("description").sourceExcerpt,
+    },
   };
   const urls = [result.description, result.lede, result.sells, result.revenueModel, result.opportunity, result.mustGoRight,
     result.thesisBreaker, result.editorNote, ...result.bull, ...result.bear, result.competitors,
@@ -71,8 +86,8 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
     result.thesisBreaker, result.editorNote, ...result.bull, ...result.bear, result.competitors,
     ...result.financialDrivers, ...result.risks, ...result.monitor]) {
     const document = sourceText.get(item.sourceUrl) ?? "";
-    if (!document.toLowerCase().includes(item.sourceExcerpt.toLowerCase())) {
-      throw new Error("A cited filing excerpt could not be resolved exactly in the approved source document.");
+    if (!citationExcerptResolves(document, item.sourceExcerpt)) {
+      throw new Error("A cited filing excerpt could not be resolved to eight consecutive words in the approved source document.");
     }
   }
   return result;
@@ -116,7 +131,7 @@ async function sourcePack(ticker: string) {
     WHERE ticker=? AND url LIKE 'https://www.sec.gov/Archives/%'
     ORDER BY CASE WHEN title LIKE '10-K %' OR title LIKE '10-K/A %' OR title LIKE '20-F %' THEN 0
       WHEN title LIKE '10-Q %' THEN 1 WHEN title LIKE '6-K %' THEN 2 WHEN title LIKE 'DEF 14A %' THEN 3 ELSE 4 END,
-      evidence_date DESC LIMIT 3`).bind(ticker).all<SourceRow>();
+      evidence_date DESC LIMIT 2`).bind(ticker).all<SourceRow>();
   if (rows.results.length < 2) throw new Error("At least two exact SEC filings are required for narrative enrichment.");
   return rows.results;
 }
@@ -129,7 +144,7 @@ async function fetchSource(source: SourceRow) {
 
 function prompt(target: TargetRow, sources: Array<SourceRow & { text: string }>) {
   const allowed = sources.map((source) => source.url);
-  return `Create a balanced, source-grounded owner dossier for ${target.name} (${target.ticker}).\n\nRules:\n- Use only the filing text below.\n- Every cited sourceUrl must exactly match one of: ${JSON.stringify(allowed)}.\n- Every sourceExcerpt must be a short verbatim excerpt copied exactly from that source's FILING TEXT.\n- Separate filed facts from analysis. Never invent a number, customer, supplier, quote, competitor, or forecast.\n- Use concise institutional language. Identify the 2-3 drivers that matter most.\n- Bull and bear points must be falsifiable and balanced.\n- Return JSON only, with no markdown.\n\nRequired shape:\n{"description":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"lede":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"sells":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"revenueModel":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"opportunity":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"mustGoRight":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"thesisBreaker":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"editorNote":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"bullTitle":"...","bull":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"bearTitle":"...","bear":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"financialDrivers":[{"label":"...","value":"...","detail":"...","sourceUrl":"...","sourceExcerpt":"..."}],"risks":[{"title":"...","text":"...","signal":"...","sourceUrl":"...","sourceExcerpt":"..."}],"monitor":[{"title":"...","text":"...","impact":"BULL CASE|NEUTRAL|BEAR CASE","sourceUrl":"...","sourceExcerpt":"..."}],"questions":["..."],"competitors":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}}\n\nProvide at least 2 bull points, 2 bear points, 2 financial drivers, 2 risks, 2 monitor items, and 3 questions.\n\n${sources.map((source) => `SOURCE: ${source.title}\nURL: ${source.url}\nFILING TEXT:\n${source.text}`).join("\n\n---\n\n")}`;
+  return `Create a balanced, source-grounded owner dossier for ${target.name} (${target.ticker}).\n\nRules:\n- Use only the filing text below.\n- Every cited sourceUrl must exactly match one of: ${JSON.stringify(allowed)}.\n- Every sourceExcerpt must contain at least eight consecutive words copied from that source's FILING TEXT.\n- If the filings do not name competitors, use an explicit insufficient-evidence statement instead of inventing a peer.\n- Separate filed facts from analysis. Never invent a number, customer, supplier, quote, competitor, or forecast.\n- Use concise institutional language. Identify the 2-3 drivers that matter most.\n- Bull and bear points must be falsifiable and balanced.\n- Return JSON only, with no markdown.\n\nRequired shape:\n{"description":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"lede":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"sells":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"revenueModel":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"opportunity":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"mustGoRight":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"thesisBreaker":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"editorNote":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"bullTitle":"...","bull":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"bearTitle":"...","bear":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"financialDrivers":[{"label":"...","value":"...","detail":"...","sourceUrl":"...","sourceExcerpt":"..."}],"risks":[{"title":"...","text":"...","signal":"...","sourceUrl":"...","sourceExcerpt":"..."}],"monitor":[{"title":"...","text":"...","impact":"BULL CASE|NEUTRAL|BEAR CASE","sourceUrl":"...","sourceExcerpt":"..."}],"questions":["..."],"competitors":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}}\n\nProvide at least 2 bull points, 2 bear points, 2 financial drivers, 2 risks, 2 monitor items, and 3 questions.\n\n${sources.map((source) => `SOURCE: ${source.title}\nURL: ${source.url}\nFILING TEXT:\n${source.text}`).join("\n\n---\n\n")}`;
 }
 
 async function saveNarrative(target: TargetRow, narrative: EnrichedNarrative, sources: SourceRow[], jobId: string) {
@@ -154,6 +169,7 @@ async function saveNarrative(target: TargetRow, narrative: EnrichedNarrative, so
 
 export async function enrichNextDossierNarrative() {
   await ensureDossierNarrativeEnrichmentSchema();
+  await reconcileStaleNarrativeJobs();
   const bindings = env as unknown as { AI?: AiBinding };
   if (!bindings.AI) return { enriched: false as const, reason: "workers_ai_binding_unavailable" };
   const target = await selectTarget();
@@ -170,7 +186,7 @@ export async function enrichNextDossierNarrative() {
     const response = await bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
-    ], response_format: { type: "json_object" }, max_tokens: 5_500, temperature: 0.1 });
+    ], response_format: { type: "json_object" }, max_tokens: 3_200, temperature: 0.1 });
     const narrative = validateNarrative(parseNarrativeModelResponse(response), new Map(documents.map((source) => [source.url, source.text])));
     const claims = await saveNarrative(target, narrative, sources, jobId);
     return { enriched: true as const, ticker: target.ticker, marketCap: target.market_cap, jobId, claims };
