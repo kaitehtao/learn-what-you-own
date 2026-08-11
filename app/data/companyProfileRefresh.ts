@@ -57,13 +57,20 @@ function parseAiResponse(response: unknown): Record<string, unknown> {
 }
 
 function filedExcerptForName(sourceText: string, name: string) {
-  const index = sourceText.toLowerCase().indexOf(name.toLowerCase());
-  if (index < 0) return "";
-  const priorBreak = sourceText.lastIndexOf("\n", Math.max(0,index - 1));
-  const nextBreak = sourceText.indexOf("\n\n", index);
-  const start = Math.max(0, priorBreak >= 0 ? priorBreak + 1 : index - 120);
-  const end = Math.min(sourceText.length, nextBreak > index ? nextBreak : index + 900);
-  return sourceText.slice(start,end).replace(/\s+/g," ").trim().slice(0,1_000);
+  const lowerText = sourceText.toLowerCase();
+  const lowerName = name.toLowerCase();
+  const candidates: Array<{ score: number; excerpt: string }> = [];
+  let index = lowerText.indexOf(lowerName);
+  while (index >= 0 && candidates.length < 30) {
+    const start = Math.max(0,index - 160);
+    const excerpt = sourceText.slice(start,Math.min(sourceText.length,index + 1_200)).replace(/\s+/g," ").trim().slice(0,1_000);
+    const context = excerpt.toLowerCase();
+    const score = ["joined", "served", "experience", "previously", "since", "executive officer", "senior vice president"]
+      .reduce((total,term) => total + (context.includes(term) ? 2 : 0),0) + Math.min(5,Math.floor(excerpt.split(/\s+/).length / 40));
+    candidates.push({ score,excerpt });
+    index = lowerText.indexOf(lowerName,index + lowerName.length);
+  }
+  return candidates.sort((left,right) => right.score - left.score)[0]?.excerpt ?? "";
 }
 
 function validatePeople(response: unknown, sourceText: string) {
