@@ -3,8 +3,8 @@ import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
 import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
 
-const MODEL = "@cf/openai/gpt-oss-20b";
-const PIPELINE_MODEL = `${MODEL}#json-v3`;
+const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const PIPELINE_MODEL = `${MODEL}#json-v4`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
