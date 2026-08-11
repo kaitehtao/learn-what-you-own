@@ -81,9 +81,13 @@ function validatePeople(response: unknown, sourceText: string) {
     const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
     const name = typeof row.name === "string" ? row.name.trim() : "";
     const title = typeof row.title === "string" ? row.title.trim() : "";
-    const biography = typeof row.biography === "string" ? row.biography.trim() : "";
+    const proposedBiography = typeof row.biography === "string" ? row.biography.trim() : "";
     const proposedExcerpt = typeof row.sourceExcerpt === "string" ? row.sourceExcerpt.trim() : "";
-    const sourceExcerpt = citationExcerptResolves(sourceText,proposedExcerpt) ? proposedExcerpt : filedExcerptForName(sourceText,name);
+    const lastName = name.replace(/\b(jr\.?|sr\.?|ii|iii|iv)\b/gi, "").trim().split(/\s+/).at(-1) ?? "";
+    const sourceExcerpt = citationExcerptResolves(sourceText,proposedExcerpt)
+      ? proposedExcerpt
+      : filedExcerptForName(sourceText,name) || (lastName.length >= 4 ? filedExcerptForName(sourceText,lastName) : "");
+    const biography = proposedBiography.length >= 30 ? proposedBiography : sourceExcerpt;
     if (name.length < 3 || title.length < 2 || biography.length < 30 || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
     valid.push({ name, title, biography, sourceExcerpt });
   }
