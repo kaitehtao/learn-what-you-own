@@ -68,7 +68,7 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>DOSSIER LAST UPDATED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#external-research">Research links</a><a href="#company-management">Company &amp; management</a><a href="#facts-methodology">FACTS</a><a href="#valuation-history">Valuation history</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#conversations">Conversations</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#external-research">Research links</a><a href="#company-management">Company &amp; management</a><a href="#facts-methodology">FACTS</a><a href="#valuation-history">Valuation history</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#conversations">Conversations</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a><a href="#external-intelligence">External data</a></div></div>
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
     </div>
@@ -87,9 +87,6 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     </div>
     <div className="container research-foundation-wide">
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} editorialUpdatedAt={dossier.reviewed ?? "July 2026"} />
-    </div>
-    <div className="container external-intelligence-wide">
-      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
     </div>
     <div className="container earnings-calls-wide">
       <EarningsCallsPanel ticker={company.ticker} investorRelationsUrl={dossier.evidenceReview?.officialMaterialsUrl ?? dossier.sources.find(sourceItem => sourceItem.meta.toLowerCase().includes("company"))?.href} earningsUpdatesUrl={dossier.evidenceReview?.earningsUpdatesUrl} transcriptPolicy={dossier.evidenceReview?.transcriptPolicy} />
@@ -170,6 +167,9 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
     </div>
     {source && <div className="source-overlay" onClick={() => setSourceIndex(null)}><aside className="source-drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setSourceIndex(null)}>×</button><span className="kicker">PRIMARY SOURCE {String((sourceIndex ?? 0) + 1).padStart(2,"0")}</span><h2>{source.title}</h2><p className="source-meta">{source.meta}</p><blockquote>{source.excerpt}</blockquote><div className="verification-box"><span>✓</span><div><strong>Official source</strong><p>Use the original filing or company publication to verify current details.</p></div></div><a className="button dark-button" href={source.href} target="_blank" rel="noreferrer">Open original source ↗</a></aside></div>}
     <div className="container"><CompanyConversations ticker={company.ticker}/></div>
+    <div className="container external-intelligence-wide">
+      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
+    </div>
     <AccessComparison />
   </main>;
 }

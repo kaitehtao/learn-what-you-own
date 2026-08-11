@@ -686,6 +686,9 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(panel, /VERIFY BEFORE PUBLISHING/);
   assert.match(featured, /<ExternalIntelligencePanel/);
   assert.match(starter, /<ExternalIntelligencePanel/);
+  assert.ok(featured.lastIndexOf("<ExternalIntelligencePanel") > featured.lastIndexOf("<CompanyConversations"));
+  assert.ok(featured.lastIndexOf("<ExternalIntelligencePanel") < featured.lastIndexOf("<AccessComparison"));
+  assert.ok(starter.lastIndexOf("<ExternalIntelligencePanel") > starter.lastIndexOf('className="coverage-actions"'));
   assert.match(ondas, /FeaturedCompanyDossier/);
   assert.match(contributionClient, /External dataset observation/);
   assert.match(contributionClient, /CITE SOURCE OF SUBMITTED INFORMATION/);

@@ -199,7 +199,6 @@ export default async function CompanyStarterPage({
       {company.exchange !== "OTC" && <HistoricalValuationPanel ticker={company.ticker} />}
       {company.exchange !== "OTC" && <StockOwnershipPanel ticker={company.ticker} />}
       <ResearchFoundationPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} editorialUpdatedAt={catalogCompany?.dossier_updated_at ?? undefined} />
-      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
       <EarningsCallsPanel ticker={company.ticker} />
       <CompanyNewsPanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} />
       <div className="starter-sections">
@@ -208,6 +207,7 @@ export default async function CompanyStarterPage({
       <SecFilingsPanel ticker={company.ticker} />
       <CompanyConversations ticker={company.ticker} />
       <div className="coverage-actions"><div><span className="kicker">HELP BUILD THIS DOSSIER</span><h2>Know this business deeply?</h2><p>Submit a fact, source, correction, or question for management. Every contribution is reviewed before publication.</p></div><Link className="button dark-button" href={`/contribute?ticker=${encodeURIComponent(company.ticker)}`}>Start a contribution →</Link></div>
+      <ExternalIntelligencePanel ticker={company.ticker} companyName={displayName(company.name, company.ticker)} sector={company.sector} />
     </section>
     <AccessComparison />
   </main></>;
