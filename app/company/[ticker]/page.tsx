@@ -23,6 +23,7 @@ import { HistoricalValuationPanel } from "../../HistoricalValuationPanel";
 import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 import { PublicFactsPanel } from "../../PublicFactsPanel";
 import { CompanyLogo } from "../../CompanyLogo";
+import { ExternalResearchLinks } from "../../ExternalResearchLinks";
 import { findPublishedDossier, isIndexablePublishedDossier } from "../../../db/publishedDossier";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
@@ -191,6 +192,7 @@ export default async function CompanyStarterPage({
       <div className={`coverage-banner ${hasResearchFoundation ? "research-foundation-banner" : ""}`}><span>{hasResearchFoundation ? "LIVE RESEARCH FOUNDATION" : "FOUNDING COVERAGE"}</span><h2>{hasResearchFoundation ? "Primary-source research is active." : "This owner’s manual is ready to be built."}</h2><p>{hasResearchFoundation ? "Current market data, SEC filing facts, filing alerts, ownership records, official releases, and external coverage are pulled from their live sources. Editorial bull and bear analysis remains clearly labeled until it passes human evidence review." : "The company and ticker are now part of the research universe. Verified claims, sources, business-model analysis, theses, filings, and expert contributions will be added through the editorial workflow."}</p>{rolloutLabel && <strong className="rollout-rank-label">{rolloutLabel}</strong>}</div>
       <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ") || "No tracked membership"}</strong></div><div><small>{company.exchange === "OTC" ? "ISSUE TYPE" : "SECTOR"}</small><strong>{company.exchange === "OTC" ? company.securityType : company.sector}</strong></div><div><small>MARKET</small><strong>{company.exchange}</strong></div><div><small>PEOPLE FOLLOWING</small><CompanyFollowerCount ticker={company.ticker} /></div><div><small>DOSSIER STATUS</small><strong className={hasResearchFoundation ? "green-text" : "amber-text"}>{qualityLabel}</strong></div></div>
       {company.exchange !== "OTC" && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
+      <ExternalResearchLinks ticker={company.ticker} exchange={company.exchange} />
       {company.exchange !== "OTC" && <PublicFactsPanel ticker={company.ticker} />}
       {company.exchange !== "OTC" && <HistoricalValuationPanel ticker={company.ticker} />}
       {company.exchange !== "OTC" && <StockOwnershipPanel ticker={company.ticker} />}

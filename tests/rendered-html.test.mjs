@@ -698,6 +698,27 @@ test("adds sector-aware external intelligence with moderated public evidence", a
   assert.match(migration, /match_confidence/);
 });
 
+test("adds ticker-aware third-party research links to every company dossier", async () => {
+  const [registry, panel, featured, starter, styles] = await Promise.all([
+    source("app/data/externalResearchLinks.ts"),
+    source("app/ExternalResearchLinks.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  for (const provider of ["Yahoo Finance", "Google Finance", "TradingView", "Stocktwits", "Seeking Alpha", "Stock Analysis", "Finviz", "MarketWatch"]) {
+    assert.match(registry, new RegExp(provider));
+  }
+  assert.match(panel, /SUPPLEMENTAL RESEARCH · THIRD-PARTY DESTINATIONS/);
+  assert.match(panel, /third-party figures and opinions are not verified Learn What You Own claims/);
+  assert.match(featured, /<ExternalResearchLinks ticker=\{company\.ticker\} exchange=\{company\.exchange\}/);
+  assert.match(starter, /<ExternalResearchLinks ticker=\{company\.ticker\} exchange=\{company\.exchange\}/);
+  assert.match(featured, /href="#external-research">Research links/);
+  assert.match(styles, /\.external-research-link-grid/);
+  assert.match(styles, /grid-template-columns:1fr/);
+});
+
 test("keeps the public domains attached to the production Worker", async () => {
   const [config, architecture] = await Promise.all([
     source("vite.config.ts"),

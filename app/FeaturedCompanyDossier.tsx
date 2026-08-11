@@ -22,6 +22,7 @@ import { ComparableAnalysisPanel } from "./ComparableAnalysisPanel";
 import { HistoricalValuationPanel } from "./HistoricalValuationPanel";
 import { PublicFactsPanel } from "./PublicFactsPanel";
 import { CompanyLogo } from "./CompanyLogo";
+import { ExternalResearchLinks } from "./ExternalResearchLinks";
 
 function displayName(name: string, ticker: string) {
   if (ticker.toUpperCase() === "AMC") return "AMC Entertainment Holdings, Inc.";
@@ -66,9 +67,12 @@ export function FeaturedCompanyDossier({ company, dossier }: { company: Research
         <div><small>DOSSIER LAST UPDATED</small><strong>{dossier.reviewed ?? "July 2026"}</strong><span>Primary-source editorial review</span></div>
       </div>
     </section>
-    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#facts-methodology">FACTS</a><a href="#valuation-history">Valuation history</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#conversations">Conversations</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
+    <div className="dossier-nav"><div className="container"><a href="#market-data">Market data</a><a href="#external-research">Research links</a><a href="#facts-methodology">FACTS</a><a href="#valuation-history">Valuation history</a><a href="#ownership">Ownership</a><a href="#research-foundation">Facts &amp; relationships</a><a href="#external-intelligence">External data</a><a href="#earnings-calls">Calls</a><a href="#news">News</a><a href="#conversations">Conversations</a><a href="#summary">Summary</a>{hasPerformance && <a href="#performance">Performance</a>}<a href="#thesis">Thesis</a><a href="#financials">Drivers</a>{hasComparables && <a href="#comparables">Comparables</a>}<a href="#risks">Risks</a><a href="#changes">Monitor</a><a href="#filings">Filings</a></div></div>
     <div className="container market-data-wide">
       <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />
+    </div>
+    <div className="container external-research-wide">
+      <ExternalResearchLinks ticker={company.ticker} exchange={company.exchange} />
     </div>
     <div className="container public-facts-wide">
       <PublicFactsPanel ticker={company.ticker} />
