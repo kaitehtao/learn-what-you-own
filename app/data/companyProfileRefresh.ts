@@ -96,11 +96,18 @@ function validatePeople(response: unknown, sourceText: string) {
     const sourceExcerpt = citationExcerptResolves(sourceText,proposedExcerpt)
       ? proposedExcerpt
       : filedExcerptForName(sourceText,name) || (lastName.length >= 4 ? filedExcerptForName(sourceText,lastName) : "");
-    const biography = proposedBiography.length >= 30 ? proposedBiography : sourceExcerpt;
     const normalizedTitle = title.toLowerCase();
-    const directorOnly = /\b(former|director|board chair|co-?founder)\b/.test(normalizedTitle)
+    const formerOfficer = /\bformer\b/.test(normalizedTitle);
+    const directorOnly = /\b(director|board chair|co-?founder)\b/.test(normalizedTitle)
       && !/\b(current|chief|president|executive vice president|senior vice president|general counsel|secretary)\b/.test(normalizedTitle);
-    if (name.length < 3 || title.length < 2 || biography.length < 30 || directorOnly || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
+    const careerSignal = /\b(served|joined|appointed|experience|previously|prior to|responsible for|has been)\b/i;
+    const nearbyCareer = new RegExp(`(?:${lastName}.{0,220}${careerSignal.source}|${careerSignal.source}.{0,220}${lastName})`,"i");
+    const biography = proposedBiography.length >= 30 && careerSignal.test(proposedBiography)
+      ? proposedBiography
+      : nearbyCareer.test(sourceExcerpt)
+        ? sourceExcerpt
+        : `The filing identifies ${name} as ${title}. Additional career history was not disclosed in the cited passage.`;
+    if (name.length < 3 || title.length < 2 || formerOfficer || directorOnly || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
     valid.push({ name, title, biography, sourceExcerpt });
   }
   if (!valid.length) throw new Error("No management biography passed exact filing-excerpt validation.");
