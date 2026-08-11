@@ -88,7 +88,10 @@ function validatePeople(response: unknown, sourceText: string) {
       ? proposedExcerpt
       : filedExcerptForName(sourceText,name) || (lastName.length >= 4 ? filedExcerptForName(sourceText,lastName) : "");
     const biography = proposedBiography.length >= 30 ? proposedBiography : sourceExcerpt;
-    if (name.length < 3 || title.length < 2 || biography.length < 30 || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
+    const normalizedTitle = title.toLowerCase();
+    const directorOnly = /\b(former|director|board chair|co-?founder)\b/.test(normalizedTitle)
+      && !/\b(current|chief|president|executive vice president|senior vice president|general counsel|secretary)\b/.test(normalizedTitle);
+    if (name.length < 3 || title.length < 2 || biography.length < 30 || directorOnly || !citationExcerptResolves(sourceText, sourceExcerpt)) continue;
     valid.push({ name, title, biography, sourceExcerpt });
   }
   if (!valid.length) throw new Error("No management biography passed exact filing-excerpt validation.");
@@ -137,8 +140,8 @@ async function saveContact(target: Target, submissions: SubmissionProfile, submi
 }
 
 async function extractManagement(target: Target, submissions: SubmissionProfile) {
-  const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement")
-    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report");
+  const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report")
+    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement");
   if (!filing) return { sourceUrl: "", people: [] as ManagementPerson[] };
   const response = await fetch(filing.sourceUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`Management filing returned HTTP ${response.status}.`);
