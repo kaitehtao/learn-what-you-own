@@ -127,6 +127,11 @@ async function completeScheduledDossiers(env: Env, ctx: ExecutionContext) {
   if (!response.ok) throw new Error(`Automatic benchmark completion endpoint returned ${response.status}`);
 }
 
+async function refreshScheduledCompanyProfiles(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/company-profile-refresh", "learn-what-you-own-company-profile/1.0");
+  if (!response.ok) throw new Error(`Company profile refresh endpoint returned ${response.status}`);
+}
+
 async function refreshScheduledRolloutMarketCaps(env: Env, ctx: ExecutionContext) {
   const response = await runScheduledEndpoint(
     env,
@@ -178,6 +183,7 @@ const worker = {
         await Promise.all([
           backfillScheduledDossierSources(env, ctx),
           completeScheduledDossiers(env, ctx),
+          refreshScheduledCompanyProfiles(env, ctx),
         ]);
         return;
       }

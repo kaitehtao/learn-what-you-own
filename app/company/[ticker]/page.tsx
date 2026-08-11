@@ -24,6 +24,7 @@ import { CompanyMarketSnapshot } from "../../CompanyMarketSnapshot";
 import { PublicFactsPanel } from "../../PublicFactsPanel";
 import { CompanyLogo } from "../../CompanyLogo";
 import { ExternalResearchLinks } from "../../ExternalResearchLinks";
+import { CompanyProfilePanel } from "../../CompanyProfilePanel";
 import { findPublishedDossier, isIndexablePublishedDossier } from "../../../db/publishedDossier";
 
 // Company dossiers evolve continuously. Never serve an earlier generated dossier
@@ -193,6 +194,7 @@ export default async function CompanyStarterPage({
       <div className="starter-metrics"><div><small>INDEX MEMBERSHIP</small><strong>{company.memberships.join(" · ") || "No tracked membership"}</strong></div><div><small>{company.exchange === "OTC" ? "ISSUE TYPE" : "SECTOR"}</small><strong>{company.exchange === "OTC" ? company.securityType : company.sector}</strong></div><div><small>MARKET</small><strong>{company.exchange}</strong></div><div><small>PEOPLE FOLLOWING</small><CompanyFollowerCount ticker={company.ticker} /></div><div><small>DOSSIER STATUS</small><strong className={hasResearchFoundation ? "green-text" : "amber-text"}>{qualityLabel}</strong></div></div>
       {company.exchange !== "OTC" && <MarketDataPanel ticker={company.ticker} exchange={company.exchange} />}
       <ExternalResearchLinks ticker={company.ticker} exchange={company.exchange} />
+      <CompanyProfilePanel ticker={company.ticker} companyName={displayName(company.name,company.ticker)} />
       {company.exchange !== "OTC" && <PublicFactsPanel ticker={company.ticker} />}
       {company.exchange !== "OTC" && <HistoricalValuationPanel ticker={company.ticker} />}
       {company.exchange !== "OTC" && <StockOwnershipPanel ticker={company.ticker} />}

@@ -10,6 +10,9 @@
 ## Core public entities
 
 - `companies`: one searchable security record with issuer identity, CIK, listing state, index metadata, and sourced market-cap snapshot.
+- `company_contact_profiles`: SEC-submission address and telephone plus separately verified company and investor-relations destinations, email, provenance, and verification time.
+- `company_management_people`: current executive names, titles, concise biographies, and exact proxy or annual-filing excerpts. A row is published only after its excerpt resolves to the stored source text.
+- `company_profile_refresh_jobs`: auditable scheduled contact and management refresh outcomes, including partial profiles and extraction errors.
 - `company_dossiers`: publication state, quality tier, versioned content, verification, and timestamps.
 - `dossier_sources`: deduplicated exact source URLs and evidence metadata.
 - `issuer_filing_source_registry`: editor-verified issuer or regulator source packs for listed companies whose periodic reports are not available through the normal EDGAR submissions feed.

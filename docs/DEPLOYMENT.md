@@ -112,6 +112,8 @@ The migration lineage is:
 Later additive production migrations continue the numbered lineage. In particular,
 `drizzle/0035_russell_sec_source_backfill.sql` adds the resumable batch and
 per-ticker audit ledger for initial Russell-universe SEC evidence ingestion.
+`drizzle/0045_company_contacts_and_management.sql` adds sourced issuer contact,
+investor-relations, management-biography, and refresh-audit records.
 
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 
@@ -223,6 +225,15 @@ enrichment. Each five-minute completion cycle may enrich at most one dossier,
 selected by current market capitalization descending, and then passes it to the
 existing benchmark validator. A failed AI or source request remains an audited
 error and cannot promote the dossier.
+
+Apply `drizzle/0045_company_contacts_and_management.sql` before enabling company
+profile refresh. Each five-minute cycle processes at most one published dossier
+in descending market-cap order. Address and telephone come from the SEC
+submissions record. IR destinations and email must resolve from an official IR
+page. Executive names, roles, and biographies must come from the latest
+available definitive proxy or annual filing and pass exact excerpt validation.
+Missing contact fields remain visibly undisclosed; automation never guesses an
+email address, telephone number, title, or biography.
 
 ## Build and deploy
 

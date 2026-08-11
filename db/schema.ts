@@ -24,6 +24,44 @@ export const companies = sqliteTable("companies", {
   index("companies_name_idx").on(table.name),
 ]);
 
+export const companyContactProfiles = sqliteTable("company_contact_profiles", {
+  ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
+  legalName: text("legal_name").notNull().default(""),
+  street1: text("street_1").notNull().default(""),
+  street2: text("street_2").notNull().default(""),
+  city: text("city").notNull().default(""),
+  stateOrCountry: text("state_or_country").notNull().default(""),
+  postalCode: text("postal_code").notNull().default(""),
+  telephone: text("telephone").notNull().default(""),
+  companyWebsiteUrl: text("company_website_url").notNull().default(""),
+  investorRelationsUrl: text("investor_relations_url").notNull().default(""),
+  investorRelationsEmail: text("investor_relations_email").notNull().default(""),
+  investorRelationsPhone: text("investor_relations_phone").notNull().default(""),
+  secSourceUrl: text("sec_source_url").notNull(),
+  irSourceUrl: text("ir_source_url").notNull().default(""),
+  verifiedAt: text("verified_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index("company_contact_profile_verified_idx").on(table.verifiedAt, table.ticker)]);
+
+export const companyManagementPeople = sqliteTable("company_management_people", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  ticker: text("ticker").notNull().references(() => companies.ticker, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  title: text("title").notNull(),
+  biography: text("biography").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  sourceExcerpt: text("source_excerpt").notNull(),
+  sourceFilingDate: text("source_filing_date"),
+  isCurrent: integer("is_current", { mode: "boolean" }).notNull().default(true),
+  verifiedAt: text("verified_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("company_management_ticker_name_title_idx").on(table.ticker, table.name, table.title),
+  index("company_management_current_idx").on(table.ticker, table.isCurrent, table.verifiedAt),
+]);
+
 export const companyDossiers = sqliteTable("company_dossiers", {
   ticker: text("ticker").primaryKey().references(() => companies.ticker, { onDelete: "cascade" }),
   status: text("status", { enum: ["queued", "researching", "verified", "published"] }).notNull().default("queued"),

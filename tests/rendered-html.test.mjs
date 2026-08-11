@@ -2171,3 +2171,39 @@ test("keeps the complete masthead inside the viewport at every width", async () 
   assert.match(styles, /overflow-y:auto;overflow-x:hidden/);
   assert.match(styles, /\.workspace-menu\.research-menu,\.site-header \.nav-inner>nav\.open \.workspace-menu\.community-menu/);
 });
+
+test("adds sourced company contacts and management biographies to every dossier", async () => {
+  const [panel, route, refresh, worker, featured, starter, migration, schema, styles] = await Promise.all([
+    source("app/CompanyProfilePanel.tsx"),
+    source("app/api/company-profile/route.ts"),
+    source("app/data/companyProfileRefresh.ts"),
+    source("worker/index.ts"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("drizzle/0045_company_contacts_and_management.sql"),
+    source("db/schema.ts"),
+    source("app/globals.css"),
+  ]);
+  assert.match(panel, /COMPANY CONTACT &amp; MANAGEMENT/);
+  assert.match(panel, /Official investor-relations site/);
+  assert.match(panel, /Filed roles and biographies/);
+  assert.match(panel, /exact source validation/);
+  assert.match(route, /company_contact_profiles/);
+  assert.match(route, /company_management_people/);
+  assert.match(refresh, /data\.sec\.gov\/submissions\/CIK/);
+  assert.match(refresh, /investorWebsite/);
+  assert.match(refresh, /mailto:/);
+  assert.match(refresh, /citationExcerptResolves/);
+  assert.match(refresh, /proxy_statement/);
+  assert.match(refresh, /annual_report/);
+  assert.match(worker, /refreshScheduledCompanyProfiles/);
+  assert.match(worker, /company-profile-refresh/);
+  assert.match(featured, /CompanyProfilePanel/);
+  assert.match(starter, /CompanyProfilePanel/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS company_contact_profiles/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS company_management_people/);
+  assert.match(schema, /companyContactProfiles/);
+  assert.match(schema, /companyManagementPeople/);
+  assert.match(styles, /\.company-contact-grid/);
+  assert.match(styles, /@media\(max-width:800px\)/);
+});

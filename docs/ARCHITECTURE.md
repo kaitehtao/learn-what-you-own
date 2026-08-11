@@ -40,6 +40,7 @@ Cloudflare serves the vinext application, scheduled digest trigger, static asset
 - company directory and dossier publication state;
 - SEC filing facts and filing provenance;
 - claim-level evidence and source records;
+- SEC-sourced company contact profiles and filing-grounded current management biographies;
 - supplier/customer relationship edges;
 - approved public research records and legacy compatibility tables.
 
