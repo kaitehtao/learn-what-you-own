@@ -2211,3 +2211,17 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(styles, /\.company-contact-grid/);
   assert.match(styles, /@media\(max-width:800px\)/);
 });
+
+test("publishes verified IR contacts and discovers official contact pages", async () => {
+  const [refresh, migration] = await Promise.all([
+    source("app/data/companyProfileRefresh.ts"),
+    source("drizzle/0046_verified_ir_contacts.sql"),
+  ]);
+  assert.match(refresh, /normalizedIrHome/);
+  assert.match(refresh, /irContactLinks/);
+  assert.match(refresh, /investor-contacts/);
+  for (const ticker of ["AMC","AMD","PLTR","TSLA"]) assert.match(migration,new RegExp(`'${ticker}'`));
+  for (const email of ["InvestorRelations@amctheatres.com","Investor.Relations@amd.com","investors@palantir.com","ir@tesla.com"]) {
+    assert.match(migration,new RegExp(email.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"));
+  }
+});

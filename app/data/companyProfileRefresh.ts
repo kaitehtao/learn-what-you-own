@@ -21,6 +21,13 @@ function validWebUrl(value: unknown) {
   try { const url = new URL(value.trim()); return url.protocol === "https:" ? url.toString() : ""; } catch { return ""; }
 }
 
+function normalizedIrHome(value: unknown) {
+  const valid = validWebUrl(value);
+  if (!valid) return "";
+  const url = new URL(valid);
+  return /^(?:ir|investor|investors)\./i.test(url.hostname) ? `${url.origin}/` : url.toString();
+}
+
 function decodeAttribute(value: string) {
   return value.replace(/&amp;/gi, "&").replace(/&#64;|&#x40;/gi, "@").replace(/&quot;/gi, '"');
 }
@@ -30,6 +37,19 @@ function irEmailFromHtml(html: string) {
     .map((match) => decodeAttribute(match[1]).trim().toLowerCase())
     .filter((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && !/no-?reply|privacy|abuse/.test(email));
   return matches.find((email) => /invest|ir@|shareholder/.test(email)) ?? matches[0] ?? "";
+}
+
+function irContactLinks(html: string, baseUrl: string) {
+  const base = new URL(baseUrl);
+  const links = [...html.matchAll(/href=["']([^"'#]+)["']/gi)].flatMap((match) => {
+    try {
+      const url = new URL(decodeAttribute(match[1]),base);
+      return url.protocol === "https:" && url.hostname === base.hostname && /(?:contact|investor-contacts)/i.test(url.pathname)
+        ? [url.toString()]
+        : [];
+    } catch { return []; }
+  });
+  return [...new Set(links)].slice(0,3);
 }
 
 function managementText(text: string) {
@@ -129,15 +149,35 @@ async function selectTarget() {
 }
 
 async function officialIrUrl(ticker: string, submissions: SubmissionProfile) {
-  const disclosed = validWebUrl(submissions.investorWebsite);
+  const disclosed = normalizedIrHome(submissions.investorWebsite);
   if (disclosed) return disclosed;
   const source = await env.DB.prepare(`SELECT url FROM dossier_sources WHERE ticker=?
-    AND (source_type LIKE '%investor%' OR lower(title) LIKE '%investor relation%')
+    AND (source_type LIKE '%investor%' OR lower(title) LIKE '%investor relation%'
+      OR lower(url) LIKE 'https://ir.%' OR lower(url) LIKE 'https://investor.%' OR lower(url) LIKE 'https://investors.%')
     AND url LIKE 'https://%' ORDER BY evidence_date DESC,url LIMIT 1`).bind(ticker).first<{ url: string }>();
-  return validWebUrl(source?.url);
+  return normalizedIrHome(source?.url);
 }
 
-async function saveContact(target: Target, submissions: SubmissionProfile, submissionsUrl: string, irUrl: string, irEmail: string) {
+async function fetchIrContact(irUrl: string) {
+  if (!irUrl) return { email: "",sourceUrl: "" };
+  const headers = { accept: "text/html", "user-agent": SEC_AGENT };
+  const response = await fetch(irUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) return { email: "",sourceUrl: irUrl };
+  const html = await response.text();
+  const directEmail = irEmailFromHtml(html);
+  if (directEmail) return { email: directEmail,sourceUrl: response.url || irUrl };
+  for (const contactUrl of irContactLinks(html,response.url || irUrl)) {
+    try {
+      const contactResponse = await fetch(contactUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(10_000) });
+      if (!contactResponse.ok) continue;
+      const email = irEmailFromHtml(await contactResponse.text());
+      if (email) return { email,sourceUrl: contactResponse.url || contactUrl };
+    } catch { /* Try another official contact link. */ }
+  }
+  return { email: "",sourceUrl: response.url || irUrl };
+}
+
+async function saveContact(target: Target, submissions: SubmissionProfile, submissionsUrl: string, irUrl: string, irEmail: string, irSourceUrl: string) {
   const address = submissions.addresses?.business ?? submissions.addresses?.mailing ?? {};
   await env.DB.prepare(`INSERT INTO company_contact_profiles
     (ticker,legal_name,street_1,street_2,city,state_or_country,postal_code,telephone,company_website_url,
@@ -151,7 +191,7 @@ async function saveContact(target: Target, submissions: SubmissionProfile, submi
       target.ticker, submissions.name?.trim() || target.name, address.street1?.trim() || "", address.street2?.trim() || "",
       address.city?.trim() || "", address.stateOrCountryDescription?.trim() || address.stateOrCountry?.trim() || "",
       address.zipCode?.trim() || "", submissions.phone?.trim() || "", validWebUrl(submissions.website), irUrl, irEmail,
-      submissionsUrl, irUrl,
+      submissionsUrl, irSourceUrl || irUrl,
     ).run();
 }
 
@@ -183,14 +223,12 @@ export async function refreshNextCompanyProfile() {
   try {
     const submissions = await fetchSecJson<SubmissionProfile>(submissionsUrl, SEC_AGENT);
     const irUrl = await officialIrUrl(target.ticker, submissions);
-    let irEmail = "";
+    let irContact = { email: "",sourceUrl: irUrl };
     if (irUrl) {
-      try {
-        const irResponse = await fetch(irUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, redirect: "follow", signal: AbortSignal.timeout(10_000) });
-        if (irResponse.ok) irEmail = irEmailFromHtml(await irResponse.text());
-      } catch { /* The SEC contact remains publishable when an IR site blocks automation. */ }
+      try { irContact = await fetchIrContact(irUrl); }
+      catch { /* The SEC contact remains publishable when an IR site blocks automation. */ }
     }
-    await saveContact(target, submissions, submissionsUrl, irUrl, irEmail);
+    await saveContact(target, submissions, submissionsUrl, irUrl, irContact.email, irContact.sourceUrl);
     let management: Awaited<ReturnType<typeof extractManagement>> = { sourceUrl: "", people: [] };
     let managementError = "";
     try { management = await extractManagement(target, submissions); } catch (error) { managementError = error instanceof Error ? error.message : "Management extraction failed."; }
@@ -210,7 +248,7 @@ export async function refreshNextCompanyProfile() {
       management_count=?,error_message=?,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(
         status,submissionsUrl,management.sourceUrl,management.people.length,managementError.slice(0,500),jobId,
       ).run();
-    return { refreshed: true as const, ticker: target.ticker, status, managementCount: management.people.length, irEmailFound: Boolean(irEmail) };
+    return { refreshed: true as const, ticker: target.ticker, status, managementCount: management.people.length, irEmailFound: Boolean(irContact.email) };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Company profile refresh failed.";
     await env.DB.prepare("UPDATE company_profile_refresh_jobs SET status='error',error_message=?,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?")
