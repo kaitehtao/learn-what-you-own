@@ -742,9 +742,11 @@ test("keeps the public domains attached to the production Worker", async () => {
 });
 
 test("gives SEC and AI background work a bounded production CPU budget", async () => {
-  const config = await source("vite.config.ts");
+  const [config, preflight] = await Promise.all([source("vite.config.ts"), source("scripts/verify-production-config.mjs")]);
   assert.match(config, /limits: \{ cpu_ms: 30_000 \}/);
   assert.doesNotMatch(config, /cpu_ms: 100\b/);
+  assert.match(preflight, /cpu_ms !== 30_000/);
+  assert.doesNotMatch(preflight, /cpu_ms !== 100\b/);
 });
 
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
