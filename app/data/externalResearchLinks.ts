@@ -101,5 +101,13 @@ export function externalResearchLinks(ticker: string, exchange: string): Externa
       href: `https://www.marketwatch.com/investing/stock/${encodeURIComponent(yahooSymbol.toLowerCase())}`,
       mark: "MW",
     },
+    {
+      key: "earnings-whispers",
+      name: "Earnings Whispers",
+      category: "Earnings expectations",
+      description: `Upcoming earnings, reported results, consensus expectations, and independent whisper research for ${symbol}.`,
+      href: "https://www.earningswhispers.com/",
+      mark: "EW",
+    },
   ];
 }

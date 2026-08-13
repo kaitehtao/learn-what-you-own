@@ -6,11 +6,12 @@ test("builds direct ticker-aware links for the core external research services",
   const links = externalResearchLinks("AAPL", "NASDAQ");
   const byKey = Object.fromEntries(links.map((link) => [link.key, link]));
 
-  assert.equal(links.length, 8);
+  assert.equal(links.length, 9);
   assert.equal(byKey["yahoo-finance"].href, "https://finance.yahoo.com/quote/AAPL/");
   assert.equal(byKey["google-finance"].href, "https://www.google.com/finance/quote/AAPL:NASDAQ");
   assert.equal(byKey.tradingview.href, "https://www.tradingview.com/symbols/NASDAQ-AAPL/");
   assert.equal(byKey.stocktwits.href, "https://stocktwits.com/symbol/AAPL");
+  assert.equal(byKey["earnings-whispers"].href, "https://www.earningswhispers.com/");
 });
 
 test("uses provider-specific share-class and exchange formats", () => {

@@ -710,7 +710,7 @@ test("adds ticker-aware third-party research links to every company dossier", as
     source("app/globals.css"),
   ]);
 
-  for (const provider of ["Yahoo Finance", "Google Finance", "TradingView", "Stocktwits", "Seeking Alpha", "Stock Analysis", "Finviz", "MarketWatch"]) {
+  for (const provider of ["Yahoo Finance", "Google Finance", "TradingView", "Stocktwits", "Seeking Alpha", "Stock Analysis", "Finviz", "MarketWatch", "Earnings Whispers"]) {
     assert.match(registry, new RegExp(provider));
   }
   assert.match(panel, /SUPPLEMENTAL RESEARCH · THIRD-PARTY DESTINATIONS/);
@@ -720,6 +720,12 @@ test("adds ticker-aware third-party research links to every company dossier", as
   assert.match(featured, /href="#external-research">Research links/);
   assert.match(styles, /\.external-research-link-grid/);
   assert.match(styles, /grid-template-columns:1fr/);
+});
+
+test("links the earnings calendar to Earnings Whispers as a supplemental resource", async () => {
+  const earningsPage = await source("app/earnings/page.tsx");
+  assert.match(earningsPage, /https:\/\/www\.earningswhispers\.com\/calendar/);
+  assert.match(earningsPage, /Open Earnings Whispers calendar/);
 });
 
 test("keeps the public domains attached to the production Worker", async () => {
