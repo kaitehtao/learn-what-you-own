@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ProfileAvatar } from "../ProfileAvatar";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
@@ -32,23 +33,24 @@ const actions = [
 ] as const;
 
 export function AccountClient() {
+  const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     authenticatedFetch("/api/account").then(async response => {
-      if (response.status === 401) return void (window.location.href = loginPath("/account"));
+      if (response.status === 401) return void router.replace(loginPath("/account"));
       const data = await response.json() as Account & { error?: string };
       if (!response.ok) return setError(data.error ?? "Unable to load your account.");
-      if (!data.profile.onboarding_complete) return void (window.location.href = "/onboarding");
+      if (!data.profile.onboarding_complete) return void router.replace("/onboarding");
       setAccount(data);
     }).catch(caught => setError(caught instanceof Error ? caught.message : "Unable to load your account."));
-  }, []);
+  }, [router]);
 
   async function signOut() {
     const supabase = await getSupabaseBrowserClient();
     await supabase.auth.signOut();
-    window.location.href = "/";
+    router.replace("/");
   }
 
   if (error) return <section className="container account-layout"><p className="form-error">{error}</p></section>;

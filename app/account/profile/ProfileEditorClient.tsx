@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ProfileAvatar } from "../../ProfileAvatar";
 import { authenticatedFetch, loginPath } from "../../supabase-browser";
@@ -40,6 +41,7 @@ function formFromProfile(profile: PublicProfileFields): ProfileForm {
 }
 
 export function ProfileEditorClient() {
+  const router = useRouter();
   const [account, setAccount] = useState<AccountResponse | null>(null);
   const [form, setForm] = useState<ProfileForm>(blankForm);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -51,13 +53,13 @@ export function ProfileEditorClient() {
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
   useEffect(() => {
     authenticatedFetch("/api/account", { cache: "no-store" }).then(async response => {
-      if (response.status === 401) return void (window.location.href = loginPath("/account/profile"));
+      if (response.status === 401) return void router.replace(loginPath("/account/profile"));
       const data = await response.json() as AccountResponse;
       if (!response.ok) return setError(data.error ?? "Unable to load your profile.");
-      if (!data.profile.onboarding_complete) return void (window.location.href = "/onboarding");
+      if (!data.profile.onboarding_complete) return void router.replace("/onboarding");
       setAccount(data); setForm(formFromProfile(data.profile));
     }).catch(caught => setError(caught instanceof Error ? caught.message : "Unable to load your profile."));
-  }, []);
+  }, [router]);
 
   async function save(event: FormEvent) {
     event.preventDefault();

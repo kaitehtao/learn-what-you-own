@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-08 (America/Los_Angeles)
+Last verified: 2026-08-13 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,40 +35,54 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
-The 2026-08-08 audit verified the application and backup baseline at Git commit
-`1013d30db1b901668d35bb97b14f12dadb00794b`. The documentation-only release
-that records the audit necessarily follows that application commit. Its release
-procedure verified GitHub `main`, the Cloudflare apex, `www`, and the direct
-Workers.dev endpoint at one exact commit after production propagation completed.
-Use `npm run verify:authority` for that currently deployed SHA rather than
-treating a self-referential Markdown value as live proof.
+The 2026-08-13 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
+direct Workers.dev endpoint at application commit
+`c5520fb02d81bef233e9438948f16c52d3de0161`. This documentation update
+necessarily follows that application commit. Use `npm run verify:authority` for
+the currently deployed SHA rather than treating a self-referential Markdown
+value as live proof.
 
 The shared production D1 authority reported:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 62,722 distinct primary-source documents;
-- 6,703 published claims, all 6,703 linked to sources;
-- 769 `benchmark_complete`, 2,215 `machine_enriched`, and 15
+- 63,739 distinct primary-source documents;
+- 6,921 published claims, all 6,921 linked to sources;
+- 791 `benchmark_complete`, 2,193 `machine_enriched`, and 15
   `starting_point` dossier records; and
 - 2,983 freshness-check records, with zero current errors and zero records that
-  have never succeeded.
+  have never succeeded. The newest successful check was recorded on 2026-08-13.
 
 Index membership is stored once per company and exposed through labeled views.
 Current production coverage is:
 
 | Research view | Component ticker rows | Published | Five-source foundation | Benchmark complete | Machine enriched |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| S&P 500 | 502 | 502 | 502 | 502 | 0 |
-| Nasdaq-100 | 102 | 102 | 102 | 94 | 8 |
-| Russell 2000 | 1,950 | 1,950 | 1,950 | 206 | 1,744 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 757 | 2,208 |
+| S&P 500 | 503 | 503 | 503 | 503 | 0 |
+| Nasdaq-100 | 102 | 102 | 102 | 95 | 7 |
+| Russell 2000 | 1,959 | 1,950 | 1,950 | 206 | 1,744 |
+| Russell 3000 | 2,981 | 2,966 | 2,966 | 779 | 2,187 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
-Every current row in the four views is published and has at least five distinct
-primary sources, but `machine_enriched` is not the same quality claim as
-`benchmark_complete`.
+Every published row in the four views has at least five distinct primary
+sources, but `machine_enriched` is not the same quality claim as
+`benchmark_complete`. Nine current Russell 2000 rows and 15 current Russell
+3000 rows remain unpublished `starting_point` records without a five-source
+foundation; they are part of the tracked completion backlog.
+
+The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
+accidental 100 ms ceiling to 30,000 ms, reduced AI prompt size, added explicit
+deadlines, and replaced fragile model-copied quotations with stable evidence IDs
+that the server resolves to exact SEC excerpts. Migration
+`drizzle/0047_supersede_low_cpu_diagnostics.sql` preserved historical failures
+while relabeling 848 obsolete timeout records. The production rollback point is
+the checksum-verified D1 backup created immediately before that migration.
+
+Company-profile enrichment is active but incomplete: 268 contact profiles have
+been verified, including 253 IR URLs and 155 IR emails; 169 tickers currently
+have 940 sourced management biographies. Remaining work is tracked in GitHub
+issues 14 through 16.
 
 All 27 repository Supabase migrations were present remotely through
 `20260808052411_optimize_research_notebook_rls.sql`.
@@ -79,7 +93,7 @@ current claim.
 
 ## Optional ChatGPT Sites mirror verification
 
-The Sites mirror was audited independently on 2026-08-08:
+The Sites mirror was audited independently on 2026-08-13:
 
 - project `appgprj_6a6992149bac81918aea31053a6f8eb2` is active and public at
   `https://learn-what-you-own.julianspencer.chatgpt.site`;
@@ -87,17 +101,17 @@ The Sites mirror was audited independently on 2026-08-08:
   `/api/site-stats` all return HTTP 308 redirects to the corresponding
   `learnwhatyouown.com` production routes, so following those redirects verifies
   production rather than the mirror build itself;
-- the newest saved Sites artifact is version 163 from commit
-  `528a9f4772adf5c1aab452ebe7e60465e3596208`, which does not match the verified
+- the newest saved Sites artifact is version 165 from commit
+  `262f970488519e348bf5e31f899809cc2e8fd669`, which does not match the verified
   application baseline; and
-- recent mirror Worker logs contain repeated HTTP 500 responses from the
-  mirror-only `POST /api/internal/dossier-freshness` job.
+- the most recent 24-hour mirror Worker-log query returned no errors.
 
-The mirror is therefore **active but degraded and out of source parity**. It is
-not production proof, must not take ownership of `learnwhatyouown.com`, and must
-not be used as a second research-data authority. Repair requires packaging,
-saving, deploying, and then verifying a new Sites version from the exact tested
-Git commit; merely changing a mirror environment value is insufficient.
+The mirror is therefore **active, healthy as a redirect, and intentionally out
+of source parity**. Because every tested route delegates to canonical
+production, it is not production proof, must not take ownership of
+`learnwhatyouown.com`, and must not be used as a second research-data authority.
+Do not replace the redirect-only design with an independently writable research
+application.
 
 ## Backup and restore verification
 

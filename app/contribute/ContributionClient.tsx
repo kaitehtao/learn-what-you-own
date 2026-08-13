@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { authenticatedFetch, getSupabaseBrowserClient, loginPath } from "../supabase-browser";
 
 const contributionTypes = ["Factual correction","Thesis update","Industry observation","External dataset observation","Competitive analysis","Financial model","Earnings model","Research report","Question for management","Supplier / customer relationship","Upcoming IPO dossier","Private company dossier"];
@@ -40,6 +41,7 @@ const emptyForm = {
 };
 
 export function ContributionClient({ initialTicker, initialCompanyName, initialType, initialDraft }: { initialTicker?: string; initialCompanyName?: string; initialType?: string; initialDraft?: { claim?: string; whyItMatters?: string; sourceUrl?: string } }) {
+  const router = useRouter();
   const [form, setForm] = useState({ ...emptyForm, ticker: initialTicker || emptyForm.ticker, proposedCompanyName: initialCompanyName ?? "", contributionType: contributionTypes.includes(initialType ?? "") ? initialType! : emptyForm.contributionType, claim: initialDraft?.claim ?? "", whyItMatters: initialDraft?.whyItMatters ?? "", sourceUrl: initialDraft?.sourceUrl ?? "" });
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [username, setUsername] = useState("your username");
@@ -63,7 +65,7 @@ export function ContributionClient({ initialTicker, initialCompanyName, initialT
     Promise.all([authenticatedFetch("/api/contributions"), authenticatedFetch("/api/account")]).then(async ([response, accountResponse]) => {
       if (!active) return;
       if (response.status === 401 || accountResponse.status === 401) {
-        window.location.href = loginPath(`${window.location.pathname}${window.location.search}`);
+        router.replace(loginPath(`${window.location.pathname}${window.location.search}`));
         return;
       }
       if (!response.ok) return;
@@ -71,12 +73,12 @@ export function ContributionClient({ initialTicker, initialCompanyName, initialT
       if (active) setSubmissions(data.contributions);
       if (accountResponse.ok) {
         const account = await accountResponse.json() as { profile?: { username?: string; onboarding_complete?: boolean } };
-        if (!account.profile?.onboarding_complete) window.location.href = "/onboarding";
+        if (!account.profile?.onboarding_complete) router.replace("/onboarding");
         else if (account.profile.username) setUsername(account.profile.username);
       }
     });
     return () => { active = false; };
-  }, [initialTicker]);
+  }, [initialTicker, router]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

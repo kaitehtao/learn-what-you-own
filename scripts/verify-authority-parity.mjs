@@ -28,7 +28,8 @@ const results = await Promise.all(Object.entries(endpoints).map(async ([name, en
   });
   if (!response.ok) throw new Error(`${name} authority check failed with HTTP ${response.status}.`);
   const payload = await response.json();
-  const { checkedAt: _checkedAt, ...stable } = payload;
+  const stable = { ...payload };
+  delete stable.checkedAt;
   return { name, endpoint, finalUrl: response.url, payload, stable: JSON.stringify(canonicalize(stable)) };
 }));
 
