@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
-import { citationExcerptResolves, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, withDeadline } from "../app/data/dossierNarrativeText";
+import { citationExcerptResolves, filingEvidenceCatalog, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, withDeadline } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -64,4 +64,12 @@ test("builds compact verbatim filing evidence snippets", () => {
 
 test("bounds stalled model work with an explicit deadline", async () => {
   await assert.rejects(withDeadline(new Promise(() => undefined), 5, "Test model"), /Test model exceeded/);
+});
+
+test("resolves stable model evidence IDs to exact filing excerpts", () => {
+  const source = { url: "https://www.sec.gov/Archives/example.htm", text: "The company provides cloud infrastructure services to enterprise customers. Revenue depends on customer demand, product usage, pricing, and disciplined capital investment. Competition may pressure margins and cash flow." };
+  const catalog = filingEvidenceCatalog([source]);
+  const resolved = resolveNarrativeEvidenceIds({ description: { text: "A sufficiently complete description for validation.", sourceUrl: source.url, sourceExcerpt: catalog[0].id } }, catalog);
+  assert.equal((resolved.description as { sourceExcerpt: string }).sourceExcerpt, catalog[0].excerpt);
+  assert.equal(citationExcerptResolves(source.text, catalog[0].excerpt), true);
 });
