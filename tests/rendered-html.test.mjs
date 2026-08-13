@@ -741,6 +741,12 @@ test("keeps the public domains attached to the production Worker", async () => {
   assert.match(architecture, /Public origin \| `https:\/\/learnwhatyouown\.com`/);
 });
 
+test("gives SEC and AI background work a bounded production CPU budget", async () => {
+  const config = await source("vite.config.ts");
+  assert.match(config, /limits: \{ cpu_ms: 30_000 \}/);
+  assert.doesNotMatch(config, /cpu_ms: 100\b/);
+});
+
 test("locks the first A batch to ten alphabetical, SEC-sourced dossiers", async () => {
   const [claims, importRoute, factRepository] = await Promise.all([
     source("app/data/curatedDossierClaims.ts"),

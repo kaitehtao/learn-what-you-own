@@ -1,4 +1,4 @@
-const MAX_SOURCE_CHARACTERS = 14_000;
+const MAX_SOURCE_CHARACTERS = 9_000;
 
 function decodeHtml(value: string) {
   const entities: Record<string, string> = { amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"', ndash: "–", mdash: "—" };
@@ -30,6 +30,48 @@ export function strategicFilingExcerpt(text: string) {
     if (index >= 0) slices.push(text.slice(index, index + 3_000));
   }
   return slices.join("\n\n").slice(0, MAX_SOURCE_CHARACTERS);
+}
+
+const evidenceTerms = ["business", "revenue", "customer", "product", "service", "competition", "market", "demand", "margin", "cash", "debt", "risk", "supplier", "capital"];
+
+export function filingEvidenceSnippets(text: string, limit = 18) {
+  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (!words.length) return [];
+  const candidates: Array<{ score: number; index: number; text: string }> = [];
+  for (let index = 0; index < words.length; index += 1) {
+    const word = words[index].toLowerCase().replace(/[^a-z]/g, "");
+    if (!evidenceTerms.includes(word)) continue;
+    const start = Math.max(0, index - 7);
+    const excerpt = words.slice(start, Math.min(words.length, start + 24)).join(" ");
+    const normalized = excerpt.toLowerCase();
+    const score = evidenceTerms.reduce((total, term) => total + (normalized.includes(term) ? 1 : 0), 0);
+    candidates.push({ score, index: start, text: excerpt });
+  }
+  for (let index = 0; index < words.length; index += Math.max(24, Math.floor(words.length / 8))) {
+    candidates.push({ score: 0, index, text: words.slice(index, Math.min(words.length, index + 24)).join(" ") });
+  }
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates.sort((left, right) => right.score - left.score || left.index - right.index)) {
+    const key = candidate.text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (key.split(" ").length < 12 || seen.has(key)) continue;
+    seen.add(key);
+    selected.push(candidate.text);
+    if (selected.length >= Math.max(1, limit)) break;
+  }
+  return selected;
+}
+
+export async function withDeadline<T>(promise: Promise<T>, milliseconds: number, label: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => { timeout = setTimeout(() => reject(new Error(`${label} exceeded ${Math.round(milliseconds / 1_000)} seconds.`)), milliseconds); }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 function parseJsonText(value: string) {

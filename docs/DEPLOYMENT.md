@@ -114,6 +114,9 @@ Later additive production migrations continue the numbered lineage. In particula
 per-ticker audit ledger for initial Russell-universe SEC evidence ingestion.
 `drizzle/0045_company_contacts_and_management.sql` adds sourced issuer contact,
 investor-relations, management-biography, and refresh-audit records.
+`drizzle/0047_supersede_low_cpu_diagnostics.sql` preserves historical enrichment
+and profile-refresh failures while relabeling invocations that were terminated by
+the retired 100 ms Worker CPU limit. Apply it only after a verified D1 export.
 
 Before applying SQL, export or back up the remote database and inspect its existing schema. Older production databases may already contain part of this lineage. Apply only missing migrations; do not blindly replay a non-idempotent file.
 

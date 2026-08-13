@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { ensureCompanyProfileSchema } from "../../db/runtimeSchema";
 import { fetchSecJson } from "./secRequest";
-import { filingHtmlToText, citationExcerptResolves } from "./dossierNarrativeText";
+import { filingHtmlToText, citationExcerptResolves, withDeadline } from "./dossierNarrativeText";
 import { relevantSecFilings, type SecSubmissionFeed } from "./dossierFreshnessClassification";
 
 const SEC_AGENT = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com";
@@ -71,7 +71,7 @@ function managementText(text: string) {
     }
   }
   const slices = candidates.sort((left,right) => right.score - left.score).slice(0,5).map((candidate) => candidate.slice);
-  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0,28_000)).slice(0,30_000);
+  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0,12_000)).slice(0,14_000);
 }
 
 function parseAiResponse(response: unknown): Record<string, unknown> {
@@ -204,10 +204,10 @@ async function extractManagement(target: Target, submissions: SubmissionProfile)
   const text = managementText(filingHtmlToText(await response.text()));
   const ai = (env as unknown as { AI?: AiBinding }).AI;
   if (!ai) throw new Error("Workers AI binding is unavailable for management biography extraction.");
-  const output = await ai.run(MODEL, { messages: [
+  const output = await withDeadline(ai.run(MODEL, { messages: [
     { role: "system", content: "Extract current executive-management facts from SEC filing text. Return valid JSON only." },
-    { role: "user", content: `Identify up to eight current executive officers of ${target.name} (${target.ticker}). Use only the filing text. Do not include a director unless the person is also an executive officer. Biography must be a concise factual summary of role, tenure, and prior experience that appears in the filing. Every sourceExcerpt must copy at least eight consecutive words exactly. Return {"people":[{"name":"...","title":"...","biography":"...","sourceExcerpt":"..."}]}.\n\nFILING TEXT:\n${text}` },
-  ], response_format: { type: "json_object" }, max_tokens: 2_000, temperature: 0 });
+    { role: "user", content: `Identify up to six current executive officers of ${target.name} (${target.ticker}). Use only the filing text. Do not include a director unless the person is also an executive officer. Keep each biography under 45 words. Every sourceExcerpt must copy 8-30 consecutive words exactly. Return {"people":[{"name":"...","title":"...","biography":"...","sourceExcerpt":"..."}]}.\n\nFILING TEXT:\n${text}` },
+  ], response_format: { type: "json_object" }, max_tokens: 1_400, temperature: 0 }), 45_000, "Management biography extraction");
   return { sourceUrl: filing.sourceUrl, filingDate: filing.filingDate, people: validatePeople(output, text) };
 }
 

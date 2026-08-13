@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
-import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse } from "../app/data/dossierNarrativeText";
+import { citationExcerptResolves, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, withDeadline } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -52,4 +52,16 @@ test("accepts Workers AI JSON-mode and chat-compatible narrative responses", () 
 test("resolves filing excerpts across harmless punctuation and whitespace changes", () => {
   assert.equal(citationExcerptResolves("The company’s revenue depends on customer demand — and disciplined execution over time.", "company's revenue depends on customer demand - and disciplined execution"), true);
   assert.equal(citationExcerptResolves("The company has material risks.", "This unsupported claim does not occur in the filing at all"), false);
+});
+
+test("builds compact verbatim filing evidence snippets", () => {
+  const text = "The company provides cloud infrastructure services to enterprise customers. Revenue depends on customer demand, product usage, pricing, and disciplined capital investment. Competition may pressure margins and cash flow.";
+  const snippets = filingEvidenceSnippets(text, 4);
+  assert.ok(snippets.length >= 1);
+  assert.ok(snippets.every((snippet) => text.includes(snippet)));
+  assert.ok(snippets.every((snippet) => snippet.split(/\s+/).length >= 12));
+});
+
+test("bounds stalled model work with an explicit deadline", async () => {
+  await assert.rejects(withDeadline(new Promise(() => undefined), 5, "Test model"), /Test model exceeded/);
 });

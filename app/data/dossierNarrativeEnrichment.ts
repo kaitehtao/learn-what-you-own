@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
-import { citationExcerptResolves, filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt } from "./dossierNarrativeText";
+import { citationExcerptResolves, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, strategicFilingExcerpt, withDeadline } from "./dossierNarrativeText";
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const PIPELINE_MODEL = `${MODEL}#json-v5`;
+const PIPELINE_MODEL = `${MODEL}#evidence-snippets-v6`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -122,7 +122,7 @@ async function selectTarget() {
       AND NOT EXISTS (SELECT 1 FROM dossier_narrative_enrichment_jobs job WHERE job.ticker=d.ticker
         AND (job.status='completed' OR (job.status='running' AND job.started_at>datetime('now','-30 minutes'))))
       AND (SELECT COUNT(*) FROM dossier_narrative_enrichment_jobs failed
-        WHERE failed.ticker=d.ticker AND failed.status='error' AND failed.model=?)<3
+        WHERE failed.ticker=d.ticker AND failed.status IN ('error','timed_out') AND failed.model=?)<3
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).bind(PIPELINE_MODEL).first<TargetRow>();
 }
 
@@ -144,7 +144,7 @@ async function fetchSource(source: SourceRow) {
 
 function prompt(target: TargetRow, sources: Array<SourceRow & { text: string }>) {
   const allowed = sources.map((source) => source.url);
-  return `Create a balanced, source-grounded owner dossier for ${target.name} (${target.ticker}).\n\nRules:\n- Use only the filing text below.\n- Every cited sourceUrl must exactly match one of: ${JSON.stringify(allowed)}.\n- Every sourceExcerpt must contain at least eight consecutive words copied from that source's FILING TEXT.\n- If the filings do not name competitors, use an explicit insufficient-evidence statement instead of inventing a peer.\n- Separate filed facts from analysis. Never invent a number, customer, supplier, quote, competitor, or forecast.\n- Use concise institutional language. Identify the 2-3 drivers that matter most.\n- Bull and bear points must be falsifiable and balanced.\n- Return JSON only, with no markdown.\n\nRequired shape:\n{"description":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"lede":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"sells":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"revenueModel":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"opportunity":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"mustGoRight":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"thesisBreaker":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"editorNote":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"bullTitle":"...","bull":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"bearTitle":"...","bear":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"financialDrivers":[{"label":"...","value":"...","detail":"...","sourceUrl":"...","sourceExcerpt":"..."}],"risks":[{"title":"...","text":"...","signal":"...","sourceUrl":"...","sourceExcerpt":"..."}],"monitor":[{"title":"...","text":"...","impact":"BULL CASE|NEUTRAL|BEAR CASE","sourceUrl":"...","sourceExcerpt":"..."}],"questions":["..."],"competitors":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}}\n\nProvide at least 2 bull points, 2 bear points, 2 financial drivers, 2 risks, 2 monitor items, and 3 questions.\n\n${sources.map((source) => `SOURCE: ${source.title}\nURL: ${source.url}\nFILING TEXT:\n${source.text}`).join("\n\n---\n\n")}`;
+  return `Create a balanced, source-grounded owner dossier for ${target.name} (${target.ticker}).\n\nRules:\n- Use only the evidence snippets below.\n- Every cited sourceUrl must exactly match one of: ${JSON.stringify(allowed)}.\n- Every sourceExcerpt must copy one complete EVIDENCE SNIPPET verbatim. Do not paraphrase excerpts.\n- If the snippets do not name competitors, use an explicit insufficient-evidence statement instead of inventing a peer.\n- Separate filed facts from analysis. Never invent a number, customer, supplier, quote, competitor, or forecast.\n- Keep every text, detail, signal, and sourceExcerpt under 35 words and every title under 10 words.\n- Bull and bear points must be falsifiable and balanced.\n- Return JSON only, with no markdown.\n\nRequired shape:\n{"description":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"lede":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"sells":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"revenueModel":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"opportunity":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"mustGoRight":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"thesisBreaker":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"editorNote":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."},"bullTitle":"...","bull":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"bearTitle":"...","bear":[{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}],"financialDrivers":[{"label":"...","value":"...","detail":"...","sourceUrl":"...","sourceExcerpt":"..."}],"risks":[{"title":"...","text":"...","signal":"...","sourceUrl":"...","sourceExcerpt":"..."}],"monitor":[{"title":"...","text":"...","impact":"BULL CASE|NEUTRAL|BEAR CASE","sourceUrl":"...","sourceExcerpt":"..."}],"questions":["..."],"competitors":{"text":"...","sourceUrl":"...","sourceExcerpt":"..."}}\n\nProvide at least 2 bull points, 2 bear points, 2 financial drivers, 2 risks, 2 monitor items, and 3 questions.\n\n${sources.map((source) => `SOURCE: ${source.title}\nURL: ${source.url}\nEVIDENCE SNIPPETS (copy one complete line verbatim for each sourceExcerpt):\n${filingEvidenceSnippets(source.text).map((excerpt, index) => `[${index + 1}] ${excerpt}`).join("\n")}`).join("\n\n---\n\n")}`;
 }
 
 async function saveNarrative(target: TargetRow, narrative: EnrichedNarrative, sources: SourceRow[], jobId: string) {
@@ -183,10 +183,10 @@ export async function enrichNextDossierNarrative() {
   try {
     const documents: Array<SourceRow & { text: string }> = [];
     for (const source of sources) documents.push({ ...source, text: await fetchSource(source) });
-    const response = await bindings.AI.run(MODEL, { messages: [
+    const response = await withDeadline(bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
-    ], response_format: { type: "json_object" }, max_tokens: 2_600, temperature: 0.1 });
+    ], response_format: { type: "json_object" }, max_tokens: 2_200, temperature: 0.1 }), 45_000, "Dossier narrative generation");
     const narrative = validateNarrative(parseNarrativeModelResponse(response), new Map(documents.map((source) => [source.url, source.text])));
     const claims = await saveNarrative(target, narrative, sources, jobId);
     return { enriched: true as const, ticker: target.ticker, marketCap: target.market_cap, jobId, claims };
