@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { normalizedD1RestoreSql, restoreD1WithSqlite } from "../scripts/d1-backup-sql.mjs";
+import { normalizedD1RestoreSql, normalizeD1RestoreFile, restoreD1WithSqlite } from "../scripts/d1-backup-sql.mjs";
 
 test("normalizes and restores a D1 export atomically", async () => {
   const raw = [
@@ -25,4 +25,10 @@ test("normalizes and restores a D1 export atomically", async () => {
   await writeFile(sqlFile, normalized);
   const counts = restoreD1WithSqlite(sqlFile, path.join(directory, "restore.sqlite"));
   assert.deepEqual(counts, [{ companies: 1, dossiers: 1, filing_facts: 1 }]);
+
+  const rawFile = path.join(directory, "raw.sql");
+  const streamedFile = path.join(directory, "streamed.sql");
+  await writeFile(rawFile, raw);
+  await normalizeD1RestoreFile(rawFile, streamedFile);
+  assert.equal(await readFile(streamedFile, "utf8"), normalized);
 });

@@ -162,7 +162,9 @@ async function selectTarget() {
       AND (p.ticker IS NULL OR p.verified_at<datetime('now','-90 days')
         OR NOT EXISTS (SELECT 1 FROM company_management_people m WHERE m.ticker=d.ticker AND m.is_current=1))
       AND (SELECT COUNT(*) FROM company_profile_refresh_jobs j WHERE j.ticker=d.ticker
-        AND j.status='error' AND j.started_at>=datetime('now','-30 days'))<3
+        AND j.status='error' AND j.started_at>=datetime('now','-30 days')
+        AND j.error_message NOT LIKE 'Unterminated string in JSON%'
+        AND j.error_message NOT LIKE 'Unexpected end of JSON%')<3
       AND NOT EXISTS (SELECT 1 FROM company_profile_refresh_jobs j WHERE j.ticker=d.ticker
         AND j.status='running' AND j.started_at>=datetime('now','-20 minutes'))
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).first<Target>();
@@ -225,11 +227,15 @@ async function extractManagement(target: Target, submissions: SubmissionProfile)
   const text = managementText(filingHtmlToText(await response.text()));
   const ai = (env as unknown as { AI?: AiBinding }).AI;
   if (!ai) throw new Error("Workers AI binding is unavailable for management biography extraction.");
-  const output = await withDeadline(ai.run(MODEL, { messages: [
-    { role: "system", content: "Extract current executive-management facts from SEC filing text. Return valid JSON only." },
-    { role: "user", content: `Identify up to six current executive officers of ${target.name} (${target.ticker}). Use only the filing text. Do not include a director unless the person is also an executive officer. Keep each biography under 45 words. Every sourceExcerpt must copy 8-30 consecutive words exactly. Return {"people":[{"name":"...","title":"...","biography":"...","sourceExcerpt":"..."}]}.\n\nFILING TEXT:\n${text}` },
-  ], response_format: { type: "json_object" }, max_tokens: 900, temperature: 0 }), 15_000, "Management biography extraction");
-  return { sourceUrl: filing.sourceUrl, filingDate: filing.filingDate, people: validatePeople(output, text) };
+  const request = (retry: boolean) => withDeadline(ai.run(MODEL, { messages: [
+    { role: "system", content: "Extract current executive-management facts from SEC filing text. Return one complete valid JSON object only." },
+    { role: "user", content: `Identify up to ${retry ? "four" : "six"} current executive officers of ${target.name} (${target.ticker}). Use only the filing text. Do not include a director unless the person is also an executive officer. Keep each biography under ${retry ? "25" : "35"} words. Every sourceExcerpt must copy 8-30 consecutive words exactly. Return {"people":[{"name":"...","title":"...","biography":"...","sourceExcerpt":"..."}]}. ${retry ? "The prior answer was incomplete; shorten every field and close all JSON arrays and objects." : ""}\n\nFILING TEXT:\n${text}` },
+  ], response_format: { type: "json_object" }, max_tokens: retry ? 1_100 : 1_500, temperature: 0 }), 15_000,
+  retry ? "Management biography retry" : "Management biography extraction");
+  let people: ManagementPerson[];
+  try { people = validatePeople(await request(false), text); }
+  catch { people = validatePeople(await request(true), text); }
+  return { sourceUrl: filing.sourceUrl, filingDate: filing.filingDate, people };
 }
 
 export async function refreshNextCompanyProfile() {

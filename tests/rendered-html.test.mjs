@@ -1908,8 +1908,10 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(sourceBackfill, /INSERT INTO company_dossiers\(ticker,status,quality_tier,updated_at\)/);
   assert.match(sourceBackfill, /status='queued',published_at=NULL/);
   assert.match(sourceBackfill, /SOURCE_FOUNDATION_MINIMUM/);
-  assert.match(sourceBackfill, /NARRATIVE_SEC_ARCHIVE_MINIMUM/);
+  assert.match(sourceBackfill, /NARRATIVE_PRIMARY_DOCUMENT_MINIMUM/);
   assert.match(sourceBackfill, /url LIKE 'https:\/\/www\.sec\.gov\/Archives\/%'/);
+  assert.match(sourceBackfill, /registry\.url=ds\.url AND registry\.active=1/);
+  assert.match(sourceBackfill, /registry\.updated_at>prior\.completed_at/);
   assert.match(sourceBackfill, /DOSSIER_INGESTION_QUEUE/);
   assert.match(sourceBackfill, /acquireSelectionLease/);
   assert.match(sourceBackfill, /sendBatch/);
@@ -2221,6 +2223,9 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(refresh, /company_profile_refresh_already_running/);
   assert.match(refresh, /started_at<datetime\('now','-2 minutes'\)/);
   assert.match(refresh, /status='error' AND j\.started_at/);
+  assert.match(refresh, /Unterminated string in JSON/);
+  assert.match(refresh, /max_tokens: retry \? 1_100 : 1_500/);
+  assert.match(refresh, /validatePeople\(await request\(true\), text\)/);
   assert.match(worker, /refreshScheduledCompanyProfiles/);
   assert.match(worker, /company-profile-refresh/);
   assert.match(worker, /controller\.cron === "4-59\/5 \* \* \* \*"/);
@@ -2234,18 +2239,33 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(styles, /@media\(max-width:800px\)/);
 });
 
-test("keeps an issuer without two SEC archive documents from blocking narrative enrichment", async () => {
+test("accepts approved regulator sources without inventing SEC archive documents", async () => {
   const [enrichment,completion] = await Promise.all([
     source("app/data/dossierNarrativeEnrichment.ts"),
     source("app/data/dossierCompletion.ts"),
   ]);
-  assert.match(enrichment, /source\.url LIKE 'https:\/\/www\.sec\.gov\/Archives\/%'\)>=2/);
+  assert.match(enrichment, /issuer_filing_source_registry/);
+  assert.match(enrichment, /registry\.url=source\.url AND registry\.active=1/);
+  assert.match(enrichment, /approved primary regulator or issuer documents/);
+  assert.match(enrichment, /insufficientCompetitorEvidence/);
+  assert.match(enrichment, /ai\.toMarkdown/);
+  assert.match(enrichment, /signature === "%PDF-"/);
+  assert.match(enrichment, /output: \{ format: "text" \}/);
   assert.match(enrichment, /source_urls_json,attempt_count/);
   assert.match(enrichment, /PIPELINE_MODEL, "\[\]", target\.ticker/);
   assert.match(enrichment, /UPDATE dossier_narrative_enrichment_jobs SET source_urls_json=/);
   assert.match(enrichment, /company_description/);
   assert.match(enrichment, /section\.replaceAll\("_"," "\)/);
   assert.match(completion, /quality_tier IN \('machine_enriched','editorial_review'\)/);
+});
+
+test("replaces blocked bank IR pages with exact FDIC filing PDFs", async () => {
+  const migration = await source("drizzle/0048_replace_blocked_bank_ir_with_fdic_filings.sql");
+  assert.match(migration, /securitiesfilings\.fdicconnect\.fdic\.gov\/api\/instflng\/11868\/attachment\/1/);
+  assert.match(migration, /securitiesfilings\.fdicconnect\.fdic\.gov\/api\/instflng\/11992\/attachment\/1/);
+  assert.match(migration, /SET active=0/);
+  assert.match(migration, /status='source_foundation_complete'/);
+  assert.match(migration, /not_applicable_fdic_filer/);
 });
 
 test("publishes verified IR contacts and discovers official contact pages", async () => {

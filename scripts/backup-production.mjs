@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { run } from "./command.mjs";
-import { normalizedD1RestoreSql } from "./d1-backup-sql.mjs";
+import { normalizeD1RestoreFile } from "./d1-backup-sql.mjs";
 
 const CLOUDFLARE_ACCOUNT_ID = "e5c3672efaf52cf5b417da2b09e687af";
 const D1_DATABASE_ID = "8c2f7a1b-aa6e-45be-8e89-8c64bb0be557";
@@ -81,8 +81,7 @@ if (d1Info.uuid !== D1_DATABASE_ID) throw new Error("D1 identity does not match 
 
 const rawD1 = path.join(outputDir, "d1.sql");
 run("npx", ["wrangler", "d1", "export", D1_DATABASE_NAME, "--remote", "--output", rawD1, "--skip-confirmation"]);
-const rawSql = await readFile(rawD1, "utf8");
-await writeFile(path.join(outputDir, "d1-restore.sql"), normalizedD1RestoreSql(rawSql));
+await normalizeD1RestoreFile(rawD1, path.join(outputDir, "d1-restore.sql"));
 
 if (!d1Only) {
   run("node", ["scripts/native-supabase-backup.mjs", path.join(outputDir, "supabase.sql")]);

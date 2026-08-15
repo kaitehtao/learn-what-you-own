@@ -12,9 +12,9 @@ const MAX_BATCH_LIMIT = 25;
 const STALE_LEASE_MINUTES = 20;
 const SELECTION_LEASE_SECONDS = 90;
 const SOURCE_FOUNDATION_MINIMUM = 5;
-const NARRATIVE_SEC_ARCHIVE_MINIMUM = 2;
+const NARRATIVE_PRIMARY_DOCUMENT_MINIMUM = 2;
 const SELECTION_LOCK = "covered-universe-source-backfill-selection";
-const SELECTION_RULE = "Active Russell 3000 or Nasdaq-100 constituents with fewer than five dossier sources or fewer than two exact SEC archive filings, deduplicated and ordered by current market capitalization descending; every stored index membership is retained on the batch item.";
+const SELECTION_RULE = "Active Russell 3000 or Nasdaq-100 constituents with fewer than five dossier sources or fewer than two approved primary regulator or issuer documents, deduplicated and ordered by current market capitalization descending; every stored index membership is retained on the batch item.";
 
 export type DossierSourceBackfillMessage = {
   kind: "source_backfill";
@@ -109,8 +109,12 @@ async function sourceCount(ticker: string) {
   return Number(result?.count ?? 0);
 }
 
-async function secArchiveCount(ticker: string) {
-  const result = await env.DB.prepare("SELECT COUNT(*) AS count FROM dossier_sources WHERE ticker=? AND url LIKE 'https://www.sec.gov/Archives/%'")
+async function narrativePrimaryDocumentCount(ticker: string) {
+  const result = await env.DB.prepare(`SELECT COUNT(DISTINCT source.url) AS count FROM dossier_sources source
+    WHERE source.ticker=? AND (source.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (
+      SELECT 1 FROM issuer_filing_source_registry registry
+      WHERE registry.ticker=source.ticker AND registry.url=source.url AND registry.active=1
+    ))`)
     .bind(ticker).first<{ count: number }>();
   return Number(result?.count ?? 0);
 }
@@ -160,16 +164,24 @@ export async function recoverStaleDossierSourceBackfills(staleMinutes = STALE_LE
   await env.DB.prepare(`UPDATE dossier_source_backfill_items SET
     source_count_after=(SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker),
     status=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
-      AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND ds.url LIKE 'https://www.sec.gov/Archives/%')>=2
+      AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND
+        (ds.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (SELECT 1 FROM issuer_filing_source_registry registry
+          WHERE registry.ticker=ds.ticker AND registry.url=ds.url AND registry.active=1)))>=2
       THEN 'source_foundation_complete' ELSE 'error' END,
     facts_import_status=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
-      AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND ds.url LIKE 'https://www.sec.gov/Archives/%')>=2
+      AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND
+        (ds.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (SELECT 1 FROM issuer_filing_source_registry registry
+          WHERE registry.ticker=ds.ticker AND registry.url=ds.url AND registry.active=1)))>=2
       THEN CASE WHEN facts_import_status='not_attempted' THEN 'lease_recovered' ELSE facts_import_status END ELSE facts_import_status END,
     facts_import_detail=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
-      AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND ds.url LIKE 'https://www.sec.gov/Archives/%')>=2
+      AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND
+        (ds.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (SELECT 1 FROM issuer_filing_source_registry registry
+          WHERE registry.ticker=ds.ticker AND registry.url=ds.url AND registry.active=1)))>=2
       THEN CASE WHEN facts_import_detail='' THEN 'Source pack preserved after an interrupted batch; Company Facts can refresh on the normal cycle.' ELSE facts_import_detail END ELSE facts_import_detail END,
     error_message=CASE WHEN (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker)>=5
-      AND (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND ds.url LIKE 'https://www.sec.gov/Archives/%')>=2
+      AND (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=dossier_source_backfill_items.ticker AND
+        (ds.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (SELECT 1 FROM issuer_filing_source_registry registry
+          WHERE registry.ticker=ds.ticker AND registry.url=ds.url AND registry.active=1)))>=2
       THEN '' ELSE 'Lease expired before a complete source pack; ticker released for immediate retry.' END,
     completed_at=CURRENT_TIMESTAMP
     WHERE status IN ('queued','running') AND batch_id IN (${placeholders})`).bind(...ids).run();
@@ -288,8 +300,8 @@ async function processCandidate(batch: string, candidate: Candidate) {
   }
 
   const after = await sourceCount(candidate.ticker);
-  const secArchivesAfter = await secArchiveCount(candidate.ticker);
-  if (after < SOURCE_FOUNDATION_MINIMUM || secArchivesAfter < NARRATIVE_SEC_ARCHIVE_MINIMUM) {
+  const primaryDocumentsAfter = await narrativePrimaryDocumentCount(candidate.ticker);
+  if (after < SOURCE_FOUNDATION_MINIMUM || primaryDocumentsAfter < NARRATIVE_PRIMARY_DOCUMENT_MINIMUM) {
     await updateBatchItem(batch, candidate.ticker, {
       status: "partial_evidence",
       sourceCountAfter: after,
@@ -297,7 +309,7 @@ async function processCandidate(batch: string, candidate: Candidate) {
       factsDetail,
       error: after < SOURCE_FOUNDATION_MINIMUM
         ? `Only ${after} distinct supported sources are available; ${SOURCE_FOUNDATION_MINIMUM} are required for publication.`
-        : `Only ${secArchivesAfter} exact SEC archive filing is available; ${NARRATIVE_SEC_ARCHIVE_MINIMUM} are required for narrative enrichment.`,
+        : `Only ${primaryDocumentsAfter} approved primary regulator or issuer document is available; ${NARRATIVE_PRIMARY_DOCUMENT_MINIMUM} are required for narrative enrichment.`,
     });
     return { ticker: candidate.ticker, status: "partial_evidence", sourcesAdded: Math.max(0, after - candidate.source_count), sourceCount: after, factsStatus };
   }
@@ -413,8 +425,11 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
       WHERE c.is_active=1 AND c.listing_scope='listed'
         AND (c.memberships_json LIKE '%Russell 3000%' OR c.memberships_json LIKE '%Nasdaq-100%')
         AND ((SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker)<?
-          OR (SELECT COUNT(*) FROM dossier_sources ds WHERE ds.ticker=c.ticker
-            AND ds.url LIKE 'https://www.sec.gov/Archives/%')<?)
+          OR (SELECT COUNT(DISTINCT ds.url) FROM dossier_sources ds WHERE ds.ticker=c.ticker
+            AND (ds.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (
+              SELECT 1 FROM issuer_filing_source_registry registry
+              WHERE registry.ticker=c.ticker AND registry.url=ds.url AND registry.active=1
+            )))<?)
         AND NOT EXISTS (
           SELECT 1 FROM dossier_source_backfill_items prior
           WHERE prior.ticker=c.ticker AND (
@@ -425,14 +440,12 @@ export async function processDossierSourceBackfillBatch(requestedLimit = DEFAULT
               AND prior.completed_at>=datetime('now','-6 hours'))
             OR (prior.status IN ('no_sec_match','no_supported_filings','partial_evidence')
               AND prior.completed_at>=datetime('now','-30 days')
-              AND NOT EXISTS (
-                SELECT 1 FROM issuer_filing_source_registry registry
-                WHERE registry.ticker=c.ticker AND registry.active=1
-              ))
+              AND NOT EXISTS (SELECT 1 FROM issuer_filing_source_registry registry
+                WHERE registry.ticker=c.ticker AND registry.active=1 AND registry.updated_at>prior.completed_at))
           )
         )
       ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker ASC LIMIT ?`).bind(
-        SOURCE_FOUNDATION_MINIMUM,NARRATIVE_SEC_ARCHIVE_MINIMUM,limit,
+        SOURCE_FOUNDATION_MINIMUM,NARRATIVE_PRIMARY_DOCUMENT_MINIMUM,limit,
       ).all<Candidate>();
     if (!candidateResult.results.length) return { batchId: null, selected: 0, queued: 0, leaseRecovery };
 

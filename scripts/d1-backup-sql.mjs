@@ -1,6 +1,8 @@
-import { accessSync } from "node:fs";
+import { accessSync, createReadStream, createWriteStream } from "node:fs";
+import { once } from "node:events";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
+import { createInterface } from "node:readline";
 import { run } from "./command.mjs";
 
 export function normalizedD1RestoreSql(sql) {
@@ -9,6 +11,30 @@ export function normalizedD1RestoreSql(sql) {
 
   const remainingSql = sql.replace(`${companyTable}\n`, "");
   return `BEGIN IMMEDIATE;\n${companyTable}\n${remainingSql.trimEnd()}\nCOMMIT;\n`;
+}
+
+async function companyTableFromFile(inputFile) {
+  const lines = createInterface({ input: createReadStream(inputFile, { encoding: "utf8" }), crlfDelay: Infinity });
+  for await (const line of lines) {
+    if (/^CREATE TABLE companies .*;$/.test(line)) return line;
+  }
+  throw new Error("D1 export is missing the legacy companies table required by foreign keys.");
+}
+
+export async function normalizeD1RestoreFile(inputFile, outputFile) {
+  const companyTable = await companyTableFromFile(inputFile);
+  const output = createWriteStream(outputFile, { encoding: "utf8" });
+  const write = async (value) => { if (!output.write(value)) await once(output, "drain"); };
+  await write(`BEGIN IMMEDIATE;\n${companyTable}\n`);
+  let skippedCompanyTable = false;
+  const lines = createInterface({ input: createReadStream(inputFile, { encoding: "utf8" }), crlfDelay: Infinity });
+  for await (const line of lines) {
+    if (!skippedCompanyTable && line === companyTable) { skippedCompanyTable = true; continue; }
+    await write(`${line}\n`);
+  }
+  await write("COMMIT;\n");
+  output.end();
+  await once(output, "close");
 }
 
 export function sqliteBinary() {

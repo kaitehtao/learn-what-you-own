@@ -7,7 +7,11 @@ const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 const PIPELINE_MODEL = `${MODEL}#evidence-ids-v7`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
-type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
+type MarkdownConversion = { format?: string; data?: string; error?: string };
+type AiBinding = {
+  run(model: string, input: Record<string, unknown>): Promise<unknown>;
+  toMarkdown(file: { name: string; blob: Blob }, options?: Record<string, unknown>): Promise<MarkdownConversion | MarkdownConversion[]>;
+};
 type SourceRow = { title: string; url: string; evidence_date: string | null; source_type: string };
 type TargetRow = { ticker: string; name: string; market_cap: number | null };
 type CitedText = { text: string; sourceUrl: string; sourceExcerpt: string };
@@ -48,8 +52,22 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
     if (!Array.isArray(value[field]) || value[field].length < minimum) throw new Error(`${field} requires at least ${minimum} items.`);
     return value[field] as unknown[];
   };
+  const description = cited("description");
+  const insufficientCompetitorEvidence: CitedText = {
+    text: "The approved filing pack does not establish a complete named competitor set; peer selection requires separate verified market evidence.",
+    sourceUrl: description.sourceUrl,
+    sourceExcerpt: description.sourceExcerpt,
+  };
+  let competitors = insufficientCompetitorEvidence;
+  if (value.competitors) {
+    try {
+      const candidate = cited("competitors");
+      const document = sourceText.get(candidate.sourceUrl) ?? "";
+      if (document && citationExcerptResolves(document,candidate.sourceExcerpt)) competitors = candidate;
+    } catch { /* Preserve the explicit insufficient-evidence statement. */ }
+  }
   const result: EnrichedNarrative = {
-    description: cited("description"), lede: cited("lede"), sells: cited("sells"), revenueModel: cited("revenueModel"),
+    description, lede: cited("lede"), sells: cited("sells"), revenueModel: cited("revenueModel"),
     opportunity: cited("opportunity"), mustGoRight: cited("mustGoRight"), thesisBreaker: cited("thesisBreaker"), editorNote: cited("editorNote"),
     bullTitle: typeof value.bullTitle === "string" ? value.bullTitle.trim() : "Evidence supporting the bull case",
     bull: list("bull", 2).map((item, index) => exactText(item, `bull[${index}]`)),
@@ -71,11 +89,7 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
       return { title: String(row.title).trim(), text: String(row.text).trim(), impact: String(row.impact).trim(), sourceUrl: String(row.sourceUrl), sourceExcerpt: String(row.sourceExcerpt).trim() };
     }),
     questions: list("questions", 3).map((item) => String(item).trim()).filter(Boolean),
-    competitors: value.competitors ? cited("competitors") : {
-      text: "The approved filing pack does not establish a complete named competitor set; peer selection requires separate verified market evidence.",
-      sourceUrl: cited("description").sourceUrl,
-      sourceExcerpt: cited("description").sourceExcerpt,
-    },
+    competitors,
   };
   const urls = [result.description, result.lede, result.sells, result.revenueModel, result.opportunity, result.mustGoRight,
     result.thesisBreaker, result.editorNote, ...result.bull, ...result.bear, result.competitors,
@@ -121,8 +135,11 @@ function completionClaims(narrative: EnrichedNarrative, sources: SourceRow[]): C
 async function selectTarget() {
   return env.DB.prepare(`SELECT d.ticker,c.name,c.market_cap FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
     WHERE d.quality_tier='machine_enriched' AND (d.validated_at IS NULL OR NULLIF(TRIM(d.lede),'') IS NULL)
-      AND (SELECT COUNT(*) FROM dossier_sources source WHERE source.ticker=d.ticker
-        AND source.url LIKE 'https://www.sec.gov/Archives/%')>=2
+      AND (SELECT COUNT(DISTINCT source.url) FROM dossier_sources source WHERE source.ticker=d.ticker
+        AND (source.url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (
+          SELECT 1 FROM issuer_filing_source_registry registry
+          WHERE registry.ticker=d.ticker AND registry.url=source.url AND registry.active=1
+        )))>=2
       AND NOT EXISTS (SELECT 1 FROM dossier_narrative_enrichment_jobs job WHERE job.ticker=d.ticker
         AND (job.status='completed' OR (job.status='running' AND job.started_at>datetime('now','-30 minutes'))))
       AND (SELECT COUNT(*) FROM dossier_narrative_enrichment_jobs failed
@@ -132,18 +149,35 @@ async function selectTarget() {
 
 async function sourcePack(ticker: string) {
   const rows = await env.DB.prepare(`SELECT title,url,evidence_date,source_type FROM dossier_sources
-    WHERE ticker=? AND url LIKE 'https://www.sec.gov/Archives/%'
+    WHERE ticker=? AND (url LIKE 'https://www.sec.gov/Archives/%' OR EXISTS (
+      SELECT 1 FROM issuer_filing_source_registry registry
+      WHERE registry.ticker=dossier_sources.ticker AND registry.url=dossier_sources.url AND registry.active=1
+    ))
     ORDER BY CASE WHEN title LIKE '10-K %' OR title LIKE '10-K/A %' OR title LIKE '20-F %' THEN 0
-      WHEN title LIKE '10-Q %' THEN 1 WHEN title LIKE '6-K %' THEN 2 WHEN title LIKE 'DEF 14A %' THEN 3 ELSE 4 END,
+      WHEN title LIKE '10-Q %' THEN 1 WHEN title LIKE '6-K %' THEN 2 WHEN title LIKE 'DEF 14A %' THEN 3
+      WHEN lower(title) LIKE '%annual report%' OR lower(title) LIKE '%full-year%' OR lower(title) LIKE '%form 10-k%' THEN 4
+      WHEN lower(title) LIKE '%quarter%result%' OR lower(title) LIKE '%quarter%earning%' THEN 5 ELSE 6 END,
       evidence_date DESC LIMIT 2`).bind(ticker).all<SourceRow>();
-  if (rows.results.length < 2) throw new Error("At least two exact SEC filings are required for narrative enrichment.");
+  if (rows.results.length < 2) throw new Error("At least two approved primary regulator or issuer documents are required for narrative enrichment.");
   return rows.results;
 }
 
-async function fetchSource(source: SourceRow) {
-  const response = await fetch(source.url, { headers: { accept: "text/html", "user-agent": SEC_USER_AGENT }, signal: AbortSignal.timeout(20_000) });
+async function fetchSource(source: SourceRow, ai: AiBinding) {
+  const response = await fetch(source.url, { headers: { accept: "text/html,application/pdf", "user-agent": SEC_USER_AGENT }, signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`${source.title} returned HTTP ${response.status}.`);
-  return strategicFilingExcerpt(filingHtmlToText(await response.text()));
+  const bytes = await response.arrayBuffer();
+  const signature = new TextDecoder().decode(bytes.slice(0, 5));
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("application/pdf") || signature === "%PDF-") {
+    const converted = await withDeadline(ai.toMarkdown(
+      { name: `${source.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 80) || "filing"}.pdf`, blob: new Blob([bytes], { type: "application/pdf" }) },
+      { conversionOptions: { output: { format: "text" }, pdf: { metadata: false } } },
+    ), 30_000, "Primary filing PDF conversion");
+    const result = Array.isArray(converted) ? converted[0] : converted;
+    if (!result || result.format === "error" || !result.data?.trim()) throw new Error(result?.error || `${source.title} PDF conversion returned no filing text.`);
+    return strategicFilingExcerpt(result.data);
+  }
+  return strategicFilingExcerpt(filingHtmlToText(new TextDecoder().decode(bytes)));
 }
 
 function prompt(target: TargetRow, sources: Array<SourceRow & { text: string }>) {
@@ -189,7 +223,7 @@ export async function enrichNextDossierNarrative() {
     await env.DB.prepare("UPDATE dossier_narrative_enrichment_jobs SET source_urls_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
       .bind(JSON.stringify(sources.map((source) => source.url)),jobId).run();
     const documents: Array<SourceRow & { text: string }> = [];
-    for (const source of sources) documents.push({ ...source, text: await fetchSource(source) });
+    for (const source of sources) documents.push({ ...source, text: await fetchSource(source, bindings.AI) });
     const response = await withDeadline(bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
