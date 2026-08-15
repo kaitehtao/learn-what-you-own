@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-14 (America/Los_Angeles)
+Last verified: 2026-08-15 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,9 +35,9 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
-The 2026-08-14 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
-direct Workers.dev endpoint at application commit
-`d0823ffc54dcda0207030c2fdee3fcbd48336318`. Use
+The 2026-08-15 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
+direct Workers.dev endpoint at application repair commit
+`44560f80f4f6dc830629178e7c3f2b6efedce276`. Use
 `npm run verify:authority` for the currently deployed SHA rather than treating a
 dated Markdown value as live proof.
 
@@ -45,12 +45,13 @@ The shared production D1 authority reported:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 64,460 distinct primary-source documents;
-- 8,357 published claims, all 8,357 linked to sources;
-- 938 `benchmark_complete`, 2,046 `machine_enriched`, zero `editorial_review`,
+- 74,419 distinct primary-source documents;
+- 9,721 published claims, all 9,721 linked to sources;
+- 1,057 `benchmark_complete`, 1,927 `machine_enriched`, zero `editorial_review`,
   and 15 inactive `starting_point` dossier records; and
 - 2,983 freshness-check records, with zero current errors and zero records that
-  have never succeeded. The newest successful check was recorded on 2026-08-13.
+  have never succeeded. The newest successful check was recorded at
+  2026-08-15 18:00 UTC.
 
 Index membership is stored once per company and exposed through labeled views.
 Current production coverage is:
@@ -59,15 +60,15 @@ Current production coverage is:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | S&P 500 | 502 | 502 | 502 | 502 | 0 |
 | Nasdaq-100 | 102 | 102 | 102 | 100 | 2 |
-| Russell 2000 | 1,950 | 1,950 | 1,950 | 206 | 1,744 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 921 | 2,044 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 236 | 1,714 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 1,040 | 1,925 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
 Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
 `benchmark_complete`. All current component rows in these four views have a
-published source foundation; 2,046 dossiers still need a validated structured
+published source foundation; 1,927 dossiers still need a validated structured
 owner narrative before they can pass the benchmark rule.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
@@ -78,9 +79,9 @@ that the server resolves to exact SEC excerpts. Migration
 while relabeling 848 obsolete timeout records. The production rollback point is
 the checksum-verified D1 backup created immediately before that migration.
 
-Company-profile enrichment is active but incomplete. Production now has 405
-contact profiles, including 359 IR URLs
-and 212 IR emails; 353 tickers currently have 1,840 sourced current-management
+Company-profile enrichment is active but incomplete. Production now has 464
+contact profiles, including 395 IR URLs
+and 232 IR emails; 423 tickers currently have 2,145 sourced current-management
 biographies. Remaining work is tracked in GitHub issues 14 through 16.
 
 The 2026-08-14 reliability release removed a silent narrative-queue blocker:
@@ -107,6 +108,21 @@ management-bio sources for newly listed issuers. The first post-release profile
 cycle validated that path by extracting three sourced ARM management biographies
 from its SEC registration statement in three seconds.
 
+The 2026-08-15 repair at `44560f80f4f6dc830629178e7c3f2b6efedce276`
+removed three active failure modes. Bank issuers whose public periodic reports
+are filed with the FDIC now satisfy the same evidence gate through registered
+FDIC filing documents instead of being retried indefinitely for unavailable SEC
+archive URLs. PDF regulator filings are converted to bounded plain text through
+the production Workers AI binding before evidence extraction. Narrative
+competitor evidence now fails closed to an explicit insufficient-evidence
+statement, and management-profile extraction retries malformed or truncated
+model JSON with a smaller output shape without consuming the permanent retry
+allowance. Migration `drizzle/0048_replace_blocked_bank_ir_with_fdic_filings.sql`
+registered exact 10-K, 10-Q, and proxy documents for OZK and PFBC and reconciled
+their historical partial source jobs. After deployment, the source worker had
+no incomplete jobs in the observed 30-minute window and six consecutive
+narrative cycles completed, including KNSL at 18:08 UTC.
+
 All 27 repository Supabase migrations were present remotely through
 `20260808052411_optimize_research_notebook_rls.sql`.
 
@@ -116,7 +132,7 @@ current claim.
 
 ## Optional ChatGPT Sites mirror verification
 
-The Sites mirror was audited independently on 2026-08-13:
+The Sites mirror was audited independently again on 2026-08-15:
 
 - project `appgprj_6a6992149bac81918aea31053a6f8eb2` is active and public at
   `https://learn-what-you-own.julianspencer.chatgpt.site`;
@@ -127,7 +143,8 @@ The Sites mirror was audited independently on 2026-08-13:
 - the newest saved Sites artifact is version 165 from commit
   `262f970488519e348bf5e31f899809cc2e8fd669`, which does not match the verified
   application baseline; and
-- the most recent 24-hour mirror Worker-log query returned no errors.
+- the homepage, BA dossier, Russell 2000 research view, and site-statistics API
+  each returned HTTP 308 to the exact corresponding canonical production route.
 
 The mirror is therefore **active, healthy as a redirect, and intentionally out
 of source parity**. Because every tested route delegates to canonical
@@ -157,6 +174,17 @@ completed successfully on 2026-08-08 (America/Los_Angeles) from commit
 The D1 count above includes database records outside the active public symbol
 and published-dossier views, so it should not be substituted for the public
 coverage figures in the release snapshot.
+
+Before the 2026-08-15 regulator-source migration, a raw 552 MB production D1
+export was written and SHA-256 verified as
+`82670629f7bdc62bb9fe25b3ae46c56fe011edaed174e8534deb1a261490acd3`.
+The backup helper was changed to stream D1 restore normalization rather than
+loading the complete SQL export into one JavaScript string. The migration was
+also exercised against an isolated SQLite fixture covering the affected bank
+source records and backfill ledgers before the production write. A future full
+restore drill should continue using the encrypted scheduled backup workflow or
+a deliberately provisioned disposable database rather than a time-constrained
+interactive session.
 
 ## Consolidated product decisions
 
