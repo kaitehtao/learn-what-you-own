@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-13 (America/Los_Angeles)
+Last verified: 2026-08-14 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,21 +35,20 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
-The 2026-08-13 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
+The 2026-08-14 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
 direct Workers.dev endpoint at application commit
-`c5520fb02d81bef233e9438948f16c52d3de0161`. This documentation update
-necessarily follows that application commit. Use `npm run verify:authority` for
-the currently deployed SHA rather than treating a self-referential Markdown
-value as live proof.
+`a94f87f928aa77ffc08f253f601503bde3dbc47e`. Use
+`npm run verify:authority` for the currently deployed SHA rather than treating a
+dated Markdown value as live proof.
 
 The shared production D1 authority reported:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
 - 63,739 distinct primary-source documents;
-- 6,921 published claims, all 6,921 linked to sources;
-- 791 `benchmark_complete`, 2,193 `machine_enriched`, and 15
-  `starting_point` dossier records; and
+- 8,261 published claims, all 8,261 linked to sources;
+- 923 `benchmark_complete`, 2,056 `machine_enriched`, five `editorial_review`,
+  and 15 `starting_point` dossier records; and
 - 2,983 freshness-check records, with zero current errors and zero records that
   have never succeeded. The newest successful check was recorded on 2026-08-13.
 
@@ -58,18 +57,18 @@ Current production coverage is:
 
 | Research view | Component ticker rows | Published | Five-source foundation | Benchmark complete | Machine enriched |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| S&P 500 | 503 | 503 | 503 | 503 | 0 |
-| Nasdaq-100 | 102 | 102 | 102 | 95 | 7 |
-| Russell 2000 | 1,959 | 1,950 | 1,950 | 206 | 1,744 |
-| Russell 3000 | 2,981 | 2,966 | 2,966 | 779 | 2,187 |
+| S&P 500 | 502 | 502 | 502 | 502 | 0 |
+| Nasdaq-100 | 102 | 102 | 102 | 100 | 2 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 206 | 1,744 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 905 | 2,055 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
 Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
-`benchmark_complete`. Nine current Russell 2000 rows and 15 current Russell
-3000 rows remain unpublished `starting_point` records without a five-source
-foundation; they are part of the tracked completion backlog.
+`benchmark_complete`. All current component rows in these four views have a
+published source foundation; 2,056 dossiers still need a validated structured
+owner narrative before they can pass the benchmark rule.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
 accidental 100 ms ceiling to 30,000 ms, reduced AI prompt size, added explicit
@@ -79,10 +78,21 @@ that the server resolves to exact SEC excerpts. Migration
 while relabeling 848 obsolete timeout records. The production rollback point is
 the checksum-verified D1 backup created immediately before that migration.
 
-Company-profile enrichment is active but incomplete: 268 contact profiles have
-been verified, including 253 IR URLs and 155 IR emails; 169 tickers currently
-have 940 sourced management biographies. Remaining work is tracked in GitHub
-issues 14 through 16.
+Company-profile enrichment is active but incomplete. Production now has 394
+contact profiles, including 353 IR URLs
+and 208 IR emails; 352 tickers currently have 1,828 sourced current-management
+biographies. Remaining work is tracked in GitHub issues 14 through 16.
+
+The 2026-08-14 reliability release removed a silent narrative-queue blocker:
+issuers without two exact SEC archive documents can no longer be selected for
+AI narrative generation, and every selected job is now recorded before source
+fetching begins. It also separated company-profile AI work onto
+`4-59/5 * * * *`, limited it to one active job, split contact and management
+stages, and bounded external and model calls. The first production narrative
+cycle after deployment completed Wayfair (`W`) in nine seconds and promoted it
+through the automatic benchmark pipeline. The first profile cycle completed in
+one second with an explicit validation failure rather than leaving another
+orphaned running job.
 
 All 27 repository Supabase migrations were present remotely through
 `20260808052411_optimize_research_notebook_rls.sql`.
