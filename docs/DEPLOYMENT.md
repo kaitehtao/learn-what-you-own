@@ -167,7 +167,9 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled filing freshness and daily digest
 
-`vite.config.ts` declares `2-59/5 * * * *` for the initial-source scheduler and
+`vite.config.ts` declares `2-59/5 * * * *` for the initial-source and narrative
+scheduler, `4-59/5 * * * *` for the independently bounded company-profile
+scheduler, and
 `*/15 * * * *` for the dossier freshness monitor. Each scheduler invocation
 acquires a short D1 selection lease, records up to 12 Russell 3000 constituents
 with fewer than five sources in descending market-cap order, and publishes one
@@ -236,7 +238,10 @@ submissions record. IR destinations and email must resolve from an official IR
 page. Executive names, roles, and biographies must come from the latest
 available definitive proxy or annual filing and pass exact excerpt validation.
 Missing contact fields remain visibly undisclosed; automation never guesses an
-email address, telephone number, title, or biography.
+email address, telephone number, title, or biography. Contact discovery and
+management extraction run as separate bounded stages, only one profile job may
+be active at a time, and profile AI work runs on a separate scheduled invocation
+from owner-narrative generation.
 
 ## Build and deploy
 

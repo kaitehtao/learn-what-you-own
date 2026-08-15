@@ -183,8 +183,11 @@ const worker = {
         await Promise.all([
           backfillScheduledDossierSources(env, ctx),
           completeScheduledDossiers(env, ctx),
-          refreshScheduledCompanyProfiles(env, ctx),
         ]);
+        return;
+      }
+      if (controller.cron === "4-59/5 * * * *") {
+        await refreshScheduledCompanyProfiles(env, ctx);
         return;
       }
       if (controller.cron === "*/15 * * * *") {

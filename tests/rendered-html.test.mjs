@@ -2214,8 +2214,12 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(refresh, /filedExcerptForName/);
   assert.match(refresh, /proxy_statement/);
   assert.match(refresh, /annual_report/);
+  assert.match(refresh, /company_profile_refresh_already_running/);
+  assert.match(refresh, /started_at<datetime\('now','-2 minutes'\)/);
+  assert.match(refresh, /status='error' AND j\.started_at/);
   assert.match(worker, /refreshScheduledCompanyProfiles/);
   assert.match(worker, /company-profile-refresh/);
+  assert.match(worker, /controller\.cron === "4-59\/5 \* \* \* \*"/);
   assert.match(featured, /CompanyProfilePanel/);
   assert.match(starter, /CompanyProfilePanel/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS company_contact_profiles/);
@@ -2224,6 +2228,14 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(schema, /companyManagementPeople/);
   assert.match(styles, /\.company-contact-grid/);
   assert.match(styles, /@media\(max-width:800px\)/);
+});
+
+test("keeps an issuer without two SEC archive documents from blocking narrative enrichment", async () => {
+  const enrichment = await source("app/data/dossierNarrativeEnrichment.ts");
+  assert.match(enrichment, /source\.url LIKE 'https:\/\/www\.sec\.gov\/Archives\/%'\)>=2/);
+  assert.match(enrichment, /source_urls_json,attempt_count/);
+  assert.match(enrichment, /PIPELINE_MODEL, "\[\]", target\.ticker/);
+  assert.match(enrichment, /UPDATE dossier_narrative_enrichment_jobs SET source_urls_json=/);
 });
 
 test("publishes verified IR contacts and discovers official contact pages", async () => {

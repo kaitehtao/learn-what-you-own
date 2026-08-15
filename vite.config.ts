@@ -38,7 +38,7 @@ const localBindingConfig = {
   // Rotate filing refreshes through the dossier universe every six hours.
   // 15:00 UTC is 08:00 PDT and 16:00 UTC is 08:00 PST; the Worker confirms
   // local time before member alerts and the digest are delivered.
-  triggers: { crons: ["2-59/5 * * * *", "*/15 * * * *", "0 0,6,12,18 * * *", "0 15,16 * * *"] },
+  triggers: { crons: ["2-59/5 * * * *", "4-59/5 * * * *", "*/15 * * * *", "0 0,6,12,18 * * *", "0 15,16 * * *"] },
   queues: {
     producers: [
       { binding: "DOSSIER_INGESTION_QUEUE", queue: DOSSIER_INGESTION_QUEUE },

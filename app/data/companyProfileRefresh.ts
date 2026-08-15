@@ -8,7 +8,7 @@ const SEC_AGENT = "LearnWhatYouOwn/1.0 research@learnwhatyouown.com";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
-type Target = { ticker: string; cik: string; name: string; market_cap: number | null };
+type Target = { ticker: string; cik: string; name: string; market_cap: number | null; needs_contact: number; needs_management: number };
 type SecAddress = { street1?: string; street2?: string; city?: string; stateOrCountry?: string; stateOrCountryDescription?: string; zipCode?: string };
 type SubmissionProfile = SecSubmissionFeed & {
   name?: string; phone?: string; website?: string; investorWebsite?: string;
@@ -71,7 +71,7 @@ function managementText(text: string) {
     }
   }
   const slices = candidates.sort((left,right) => right.score - left.score).slice(0,5).map((candidate) => candidate.slice);
-  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0,12_000)).slice(0,14_000);
+  return (slices.length ? slices.join("\n\n---\n\n") : text.slice(0,8_000)).slice(0,9_000);
 }
 
 function parseAiResponse(response: unknown): Record<string, unknown> {
@@ -135,14 +135,17 @@ function validatePeople(response: unknown, sourceText: string) {
 }
 
 async function selectTarget() {
-  return env.DB.prepare(`SELECT d.ticker,c.cik,c.name,c.market_cap
+  return env.DB.prepare(`SELECT d.ticker,c.cik,c.name,c.market_cap,
+      CASE WHEN p.ticker IS NULL OR p.verified_at<datetime('now','-90 days') THEN 1 ELSE 0 END AS needs_contact,
+      CASE WHEN NOT EXISTS (SELECT 1 FROM company_management_people current_management
+        WHERE current_management.ticker=d.ticker AND current_management.is_current=1) THEN 1 ELSE 0 END AS needs_management
     FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
     LEFT JOIN company_contact_profiles p ON p.ticker=d.ticker
     WHERE d.status='published' AND c.cik IS NOT NULL AND c.cik<>''
       AND (p.ticker IS NULL OR p.verified_at<datetime('now','-90 days')
         OR NOT EXISTS (SELECT 1 FROM company_management_people m WHERE m.ticker=d.ticker AND m.is_current=1))
       AND (SELECT COUNT(*) FROM company_profile_refresh_jobs j WHERE j.ticker=d.ticker
-        AND j.status IN ('error','contact_only') AND j.started_at>=datetime('now','-30 days'))<3
+        AND j.status='error' AND j.started_at>=datetime('now','-30 days'))<3
       AND NOT EXISTS (SELECT 1 FROM company_profile_refresh_jobs j WHERE j.ticker=d.ticker
         AND j.status='running' AND j.started_at>=datetime('now','-20 minutes'))
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).first<Target>();
@@ -161,14 +164,14 @@ async function officialIrUrl(ticker: string, submissions: SubmissionProfile) {
 async function fetchIrContact(irUrl: string) {
   if (!irUrl) return { email: "",sourceUrl: "" };
   const headers = { accept: "text/html", "user-agent": SEC_AGENT };
-  const response = await fetch(irUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(irUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(5_000) });
   if (!response.ok) return { email: "",sourceUrl: irUrl };
   const html = await response.text();
   const directEmail = irEmailFromHtml(html);
   if (directEmail) return { email: directEmail,sourceUrl: response.url || irUrl };
-  for (const contactUrl of irContactLinks(html,response.url || irUrl)) {
+  for (const contactUrl of irContactLinks(html,response.url || irUrl).slice(0,1)) {
     try {
-      const contactResponse = await fetch(contactUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(10_000) });
+      const contactResponse = await fetch(contactUrl,{ headers,redirect: "follow",signal: AbortSignal.timeout(5_000) });
       if (!contactResponse.ok) continue;
       const email = irEmailFromHtml(await contactResponse.text());
       if (email) return { email,sourceUrl: contactResponse.url || contactUrl };
@@ -199,7 +202,7 @@ async function extractManagement(target: Target, submissions: SubmissionProfile)
   const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement")
     ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report");
   if (!filing) return { sourceUrl: "", people: [] as ManagementPerson[] };
-  const response = await fetch(filing.sourceUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, signal: AbortSignal.timeout(20_000) });
+  const response = await fetch(filing.sourceUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, signal: AbortSignal.timeout(8_000) });
   if (!response.ok) throw new Error(`Management filing returned HTTP ${response.status}.`);
   const text = managementText(filingHtmlToText(await response.text()));
   const ai = (env as unknown as { AI?: AiBinding }).AI;
@@ -207,31 +210,41 @@ async function extractManagement(target: Target, submissions: SubmissionProfile)
   const output = await withDeadline(ai.run(MODEL, { messages: [
     { role: "system", content: "Extract current executive-management facts from SEC filing text. Return valid JSON only." },
     { role: "user", content: `Identify up to six current executive officers of ${target.name} (${target.ticker}). Use only the filing text. Do not include a director unless the person is also an executive officer. Keep each biography under 45 words. Every sourceExcerpt must copy 8-30 consecutive words exactly. Return {"people":[{"name":"...","title":"...","biography":"...","sourceExcerpt":"..."}]}.\n\nFILING TEXT:\n${text}` },
-  ], response_format: { type: "json_object" }, max_tokens: 1_400, temperature: 0 }), 45_000, "Management biography extraction");
+  ], response_format: { type: "json_object" }, max_tokens: 900, temperature: 0 }), 15_000, "Management biography extraction");
   return { sourceUrl: filing.sourceUrl, filingDate: filing.filingDate, people: validatePeople(output, text) };
 }
 
 export async function refreshNextCompanyProfile() {
   await ensureCompanyProfileSchema();
   await env.DB.prepare(`UPDATE company_profile_refresh_jobs SET status='error',error_message='Worker invocation timed out.',
-    completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE status='running' AND started_at<datetime('now','-20 minutes')`).run();
+    completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE status='running' AND started_at<datetime('now','-2 minutes')`).run();
+  const active = await env.DB.prepare("SELECT ticker FROM company_profile_refresh_jobs WHERE status='running' AND started_at>=datetime('now','-2 minutes') LIMIT 1")
+    .first<{ ticker: string }>();
+  if (active) return { refreshed: false as const, reason: "company_profile_refresh_already_running", ticker: active.ticker };
   const target = await selectTarget();
   if (!target) return { refreshed: false as const, reason: "no_company_profile_due" };
   const jobId = `profile-${target.ticker.toLowerCase()}-${crypto.randomUUID()}`;
   await env.DB.prepare("INSERT INTO company_profile_refresh_jobs(id,ticker,status) VALUES (?,?,'running')").bind(jobId,target.ticker).run();
   const submissionsUrl = `https://data.sec.gov/submissions/CIK${target.cik.padStart(10,"0")}.json`;
   try {
-    const submissions = await fetchSecJson<SubmissionProfile>(submissionsUrl, SEC_AGENT);
-    const irUrl = await officialIrUrl(target.ticker, submissions);
-    let irContact = { email: "",sourceUrl: irUrl };
-    if (irUrl) {
-      try { irContact = await fetchIrContact(irUrl); }
-      catch { /* The SEC contact remains publishable when an IR site blocks automation. */ }
+    const submissions = await fetchSecJson<SubmissionProfile>(submissionsUrl, SEC_AGENT, { timeoutMs: 6_000,maxAttempts: 1 });
+    if (target.needs_contact) {
+      const irUrl = await officialIrUrl(target.ticker, submissions);
+      let irContact = { email: "",sourceUrl: irUrl };
+      if (irUrl) {
+        try { irContact = await fetchIrContact(irUrl); }
+        catch { /* The SEC contact remains publishable when an IR site blocks automation. */ }
+      }
+      await saveContact(target, submissions, submissionsUrl, irUrl, irContact.email, irContact.sourceUrl);
+      const status = target.needs_management ? "contact_only" : "completed";
+      await env.DB.prepare(`UPDATE company_profile_refresh_jobs SET status=?,contact_source_url=?,management_count=0,
+        completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,submissionsUrl,jobId).run();
+      return { refreshed: true as const,ticker: target.ticker,status,managementCount: 0,irEmailFound: Boolean(irContact.email) };
     }
-    await saveContact(target, submissions, submissionsUrl, irUrl, irContact.email, irContact.sourceUrl);
     let management: Awaited<ReturnType<typeof extractManagement>> = { sourceUrl: "", people: [] };
     let managementError = "";
     try { management = await extractManagement(target, submissions); } catch (error) { managementError = error instanceof Error ? error.message : "Management extraction failed."; }
+    if (!management.people.length && !managementError) managementError = "No current management biography passed filing validation.";
     if (management.people.length) {
       await env.DB.prepare("UPDATE company_management_people SET is_current=0,updated_at=CURRENT_TIMESTAMP WHERE ticker=?").bind(target.ticker).run();
       for (const person of management.people) await env.DB.prepare(`INSERT INTO company_management_people
@@ -243,12 +256,14 @@ export async function refreshNextCompanyProfile() {
             target.ticker,person.name,person.title,person.biography,management.sourceUrl,person.sourceExcerpt,management.filingDate ?? null,
           ).run();
     }
-    const status = management.people.length ? "completed" : "contact_only";
+    const status = management.people.length ? "completed" : "error";
     await env.DB.prepare(`UPDATE company_profile_refresh_jobs SET status=?,contact_source_url=?,management_source_url=?,
       management_count=?,error_message=?,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(
         status,submissionsUrl,management.sourceUrl,management.people.length,managementError.slice(0,500),jobId,
       ).run();
-    return { refreshed: true as const, ticker: target.ticker, status, managementCount: management.people.length, irEmailFound: Boolean(irContact.email) };
+    return management.people.length
+      ? { refreshed: true as const, ticker: target.ticker, status, managementCount: management.people.length, irEmailFound: false }
+      : { refreshed: false as const, ticker: target.ticker, reason: "management_profile_not_verified", error: managementError };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Company profile refresh failed.";
     await env.DB.prepare("UPDATE company_profile_refresh_jobs SET status='error',error_message=?,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?")

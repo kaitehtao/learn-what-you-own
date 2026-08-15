@@ -119,6 +119,8 @@ function completionClaims(narrative: EnrichedNarrative, sources: SourceRow[]): C
 async function selectTarget() {
   return env.DB.prepare(`SELECT d.ticker,c.name,c.market_cap FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
     WHERE d.quality_tier='machine_enriched' AND (d.validated_at IS NULL OR NULLIF(TRIM(d.lede),'') IS NULL)
+      AND (SELECT COUNT(*) FROM dossier_sources source WHERE source.ticker=d.ticker
+        AND source.url LIKE 'https://www.sec.gov/Archives/%')>=2
       AND NOT EXISTS (SELECT 1 FROM dossier_narrative_enrichment_jobs job WHERE job.ticker=d.ticker
         AND (job.status='completed' OR (job.status='running' AND job.started_at>datetime('now','-30 minutes'))))
       AND (SELECT COUNT(*) FROM dossier_narrative_enrichment_jobs failed
@@ -175,13 +177,15 @@ export async function enrichNextDossierNarrative() {
   if (!bindings.AI) return { enriched: false as const, reason: "workers_ai_binding_unavailable" };
   const target = await selectTarget();
   if (!target) return { enriched: false as const, reason: "no_machine_enriched_dossier_pending_narrative" };
-  const sources = await sourcePack(target.ticker);
   const jobId = `narrative-${target.ticker.toLowerCase()}-${crypto.randomUUID()}`;
   await env.DB.prepare(`INSERT INTO dossier_narrative_enrichment_jobs
     (id,ticker,priority_market_cap,status,model,source_urls_json,attempt_count)
     VALUES (?,?,?,'running',?,?,(SELECT 1+COUNT(*) FROM dossier_narrative_enrichment_jobs WHERE ticker=?))`).bind(
-      jobId, target.ticker, target.market_cap, PIPELINE_MODEL, JSON.stringify(sources.map((source) => source.url)), target.ticker).run();
+      jobId, target.ticker, target.market_cap, PIPELINE_MODEL, "[]", target.ticker).run();
   try {
+    const sources = await sourcePack(target.ticker);
+    await env.DB.prepare("UPDATE dossier_narrative_enrichment_jobs SET source_urls_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+      .bind(JSON.stringify(sources.map((source) => source.url)),jobId).run();
     const documents: Array<SourceRow & { text: string }> = [];
     for (const source of sources) documents.push({ ...source, text: await fetchSource(source) });
     const response = await withDeadline(bindings.AI.run(MODEL, { messages: [
