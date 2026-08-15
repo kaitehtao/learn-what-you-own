@@ -37,7 +37,7 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 The 2026-08-14 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
 direct Workers.dev endpoint at application commit
-`a94f87f928aa77ffc08f253f601503bde3dbc47e`. Use
+`d0823ffc54dcda0207030c2fdee3fcbd48336318`. Use
 `npm run verify:authority` for the currently deployed SHA rather than treating a
 dated Markdown value as live proof.
 
@@ -45,10 +45,10 @@ The shared production D1 authority reported:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 63,739 distinct primary-source documents;
-- 8,261 published claims, all 8,261 linked to sources;
-- 923 `benchmark_complete`, 2,056 `machine_enriched`, five `editorial_review`,
-  and 15 `starting_point` dossier records; and
+- 64,460 distinct primary-source documents;
+- 8,357 published claims, all 8,357 linked to sources;
+- 938 `benchmark_complete`, 2,046 `machine_enriched`, zero `editorial_review`,
+  and 15 inactive `starting_point` dossier records; and
 - 2,983 freshness-check records, with zero current errors and zero records that
   have never succeeded. The newest successful check was recorded on 2026-08-13.
 
@@ -60,14 +60,14 @@ Current production coverage is:
 | S&P 500 | 502 | 502 | 502 | 502 | 0 |
 | Nasdaq-100 | 102 | 102 | 102 | 100 | 2 |
 | Russell 2000 | 1,950 | 1,950 | 1,950 | 206 | 1,744 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 905 | 2,055 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 921 | 2,044 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
 Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
 `benchmark_complete`. All current component rows in these four views have a
-published source foundation; 2,056 dossiers still need a validated structured
+published source foundation; 2,046 dossiers still need a validated structured
 owner narrative before they can pass the benchmark rule.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
@@ -78,9 +78,9 @@ that the server resolves to exact SEC excerpts. Migration
 while relabeling 848 obsolete timeout records. The production rollback point is
 the checksum-verified D1 backup created immediately before that migration.
 
-Company-profile enrichment is active but incomplete. Production now has 394
-contact profiles, including 353 IR URLs
-and 208 IR emails; 352 tickers currently have 1,828 sourced current-management
+Company-profile enrichment is active but incomplete. Production now has 405
+contact profiles, including 359 IR URLs
+and 212 IR emails; 353 tickers currently have 1,840 sourced current-management
 biographies. Remaining work is tracked in GitHub issues 14 through 16.
 
 The 2026-08-14 reliability release removed a silent narrative-queue blocker:
@@ -93,6 +93,19 @@ cycle after deployment completed Wayfair (`W`) in nine seconds and promoted it
 through the automatic benchmark pipeline. The first profile cycle completed in
 one second with an explicit validation failure rather than leaving another
 orphaned running job.
+
+The follow-up release at `d0823ffc54dcda0207030c2fdee3fcbd48336318`
+rebuilds completion claims from stored narrative output using unique,
+section-labeled claim text, allows recoverable editorial-review dossiers back
+into the deterministic completion pipeline, and requires at least two exact SEC
+archive filings in every narrative-ready source pack. Its first production
+cycle cleared all five stalled editorial-review dossiers and raised the
+benchmark count from 924 to 938. The source worker also began repairing thin
+packs for major issuers, adding exact filings to AAPL, NVDA, MSFT, AMZN, AVGO,
+META, LLY, MU, JPM, WMT, and AMD. Registration statements are now eligible
+management-bio sources for newly listed issuers. The first post-release profile
+cycle validated that path by extracting three sourced ARM management biographies
+from its SEC registration statement in three seconds.
 
 All 27 repository Supabase migrations were present remotely through
 `20260808052411_optimize_research_notebook_rls.sql`.
