@@ -15,6 +15,7 @@ type SubmissionProfile = SecSubmissionFeed & {
   addresses?: { business?: SecAddress; mailing?: SecAddress };
 };
 type ManagementPerson = { name: string; title: string; biography: string; sourceExcerpt: string };
+type ManagementFiling = { sourceUrl: string; filingDate: string };
 
 function validWebUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return "";
@@ -134,6 +135,22 @@ function validatePeople(response: unknown, sourceText: string) {
   return valid;
 }
 
+function registrationManagementFiling(cik: string, submissions: SubmissionProfile): ManagementFiling | null {
+  const recent = submissions.filings?.recent;
+  if (!recent?.form?.length) return null;
+  for (let index=0;index<recent.form.length;index+=1) {
+    if (!/^(?:S-1|F-1|S-4|F-4|10-12B)(?:\/A)?$/i.test(recent.form[index] ?? "")) continue;
+    const accession = recent.accessionNumber?.[index] ?? "";
+    const primaryDocument = recent.primaryDocument?.[index] ?? "";
+    if (!accession || !primaryDocument) continue;
+    return {
+      filingDate: recent.filingDate?.[index] ?? "",
+      sourceUrl: `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accession.replaceAll("-","")}/${primaryDocument}`,
+    };
+  }
+  return null;
+}
+
 async function selectTarget() {
   return env.DB.prepare(`SELECT d.ticker,c.cik,c.name,c.market_cap,
       CASE WHEN p.ticker IS NULL OR p.verified_at<datetime('now','-90 days') THEN 1 ELSE 0 END AS needs_contact,
@@ -200,7 +217,8 @@ async function saveContact(target: Target, submissions: SubmissionProfile, submi
 
 async function extractManagement(target: Target, submissions: SubmissionProfile) {
   const filing = relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "proxy_statement")
-    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report");
+    ?? relevantSecFilings(target.cik, submissions).find((item) => item.eventType === "annual_report")
+    ?? registrationManagementFiling(target.cik,submissions);
   if (!filing) return { sourceUrl: "", people: [] as ManagementPerson[] };
   const response = await fetch(filing.sourceUrl, { headers: { accept: "text/html", "user-agent": SEC_AGENT }, signal: AbortSignal.timeout(8_000) });
   if (!response.ok) throw new Error(`Management filing returned HTTP ${response.status}.`);

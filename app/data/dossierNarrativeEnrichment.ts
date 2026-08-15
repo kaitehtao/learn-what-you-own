@@ -97,12 +97,14 @@ function completionClaims(narrative: EnrichedNarrative, sources: SourceRow[]): C
   const source = (url: string) => sources.find((item) => item.url === url) ?? sources[0];
   const claim = (section: string, claimType: CompletionClaim["claimType"], item: CitedText, whyItMatters: string): CompletionClaim => {
     const citedSource = source(item.sourceUrl);
-    return { section, claimType, claim: item.text, whyItMatters, sourceTitle: citedSource.title, sourceUrl: citedSource.url,
+    const label = section.replaceAll("_"," ").replace(/\b\w/g,(character) => character.toUpperCase());
+    return { section, claimType, claim: `${label}: ${item.text}`, whyItMatters, sourceTitle: citedSource.title, sourceUrl: citedSource.url,
       sourceExcerpt: item.sourceExcerpt,
       evidenceDate: citedSource.evidence_date || new Date().toISOString().slice(0, 10) };
   };
   const driver = narrative.financialDrivers[0]; const risk = narrative.risks[0];
   return [
+    claim("company_description", "verified_fact", narrative.description, "Establishes the filed identity and scope of the operating business."),
     claim("owner_summary", "editorial_analysis", narrative.lede, "Defines the central owner lens and the variables that determine long-term value."),
     claim("business_model", "verified_fact", narrative.sells, "Identifies the products, services, and customers that produce revenue."),
     claim("revenue_model", "editorial_analysis", narrative.revenueModel, "Explains how operating activity converts into reported revenue and owner economics."),
@@ -209,7 +211,20 @@ export async function latestEnrichmentClaims(ticker: string) {
     WHERE ticker=? AND status='completed' ORDER BY completed_at DESC LIMIT 1`).bind(ticker).first<{ output_json: string }>();
   if (!row) return null;
   try {
-    const parsed = JSON.parse(row.output_json) as { claims?: CompletionClaim[] };
+    const parsed = JSON.parse(row.output_json) as { narrative?: EnrichedNarrative; claims?: CompletionClaim[] };
+    if (parsed.narrative) {
+      const urls = [...new Set([
+        parsed.narrative.description,parsed.narrative.lede,parsed.narrative.sells,parsed.narrative.revenueModel,
+        parsed.narrative.opportunity,parsed.narrative.mustGoRight,parsed.narrative.thesisBreaker,parsed.narrative.editorNote,
+        ...parsed.narrative.bull,...parsed.narrative.bear,parsed.narrative.competitors,
+        ...parsed.narrative.financialDrivers,...parsed.narrative.risks,...parsed.narrative.monitor,
+      ].map((item) => item.sourceUrl))];
+      if (!urls.length) return Array.isArray(parsed.claims) ? parsed.claims : null;
+      const placeholders = urls.map(() => "?").join(",");
+      const sources = await env.DB.prepare(`SELECT title,url,evidence_date,source_type FROM dossier_sources
+        WHERE ticker=? AND url IN (${placeholders})`).bind(ticker,...urls).all<SourceRow>();
+      if (sources.results.length) return completionClaims(parsed.narrative,sources.results);
+    }
     return Array.isArray(parsed.claims) ? parsed.claims : null;
   } catch { return null; }
 }

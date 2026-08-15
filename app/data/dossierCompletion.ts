@@ -124,7 +124,7 @@ async function prepareNewBatch(count: number, actor: string) {
     d.opportunity,d.must_go_right,d.thesis_breaker,d.bull_json,d.bear_json,d.financial_drivers_json,d.risks_json,
     (SELECT COUNT(DISTINCT s.url) FROM dossier_sources s WHERE s.ticker=d.ticker AND s.url LIKE 'https://%') AS source_count
     FROM company_dossiers d JOIN companies c ON c.ticker=d.ticker
-    WHERE d.quality_tier='machine_enriched' AND d.validated_at IS NOT NULL
+    WHERE d.quality_tier IN ('machine_enriched','editorial_review') AND d.validated_at IS NOT NULL
       AND NULLIF(TRIM(d.description),'') IS NOT NULL AND NULLIF(TRIM(d.lede),'') IS NOT NULL
       AND NULLIF(TRIM(d.sells),'') IS NOT NULL AND NULLIF(TRIM(d.revenue_model),'') IS NOT NULL
       AND NULLIF(TRIM(d.opportunity),'') IS NOT NULL AND NULLIF(TRIM(d.must_go_right),'') IS NOT NULL
@@ -135,7 +135,9 @@ async function prepareNewBatch(count: number, actor: string) {
       AND json_valid(d.financial_drivers_json) AND json_valid(d.risks_json)
       AND json_valid(d.monitor_json) AND json_valid(d.questions_json)
       AND (SELECT COUNT(DISTINCT s.url) FROM dossier_sources s WHERE s.ticker=d.ticker AND s.url LIKE 'https://%')>=?
-      AND NOT EXISTS (SELECT 1 FROM dossier_completion_candidates cc WHERE cc.ticker=d.ticker)
+      AND NOT EXISTS (SELECT 1 FROM dossier_completion_candidates cc WHERE cc.ticker=d.ticker
+        AND (cc.status IN ('approved','evidence_packet_ready','editorial_review')
+          OR (cc.status='needs_revision' AND cc.reviewed_at>=datetime('now','-1 hour'))))
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT ?`).bind(rule.min_source_count, limit).all<EligibleDossier>();
 
   const prepared: Candidate[] = [];
