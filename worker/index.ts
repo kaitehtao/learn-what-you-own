@@ -117,6 +117,16 @@ async function refreshScheduledDossiers(env: Env, ctx: ExecutionContext) {
   if (!response.ok) throw new Error(`Dossier freshness endpoint returned ${response.status}`);
 }
 
+async function discoverScheduledSecFilings(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/sec-current-filings?limit=25", "learn-what-you-own-sec-current-filings/1.0");
+  if (!response.ok) throw new Error(`SEC current-filings endpoint returned ${response.status}`);
+}
+
+async function backfillScheduledFilingChanges(env: Env, ctx: ExecutionContext) {
+  const response = await runScheduledEndpoint(env, ctx, "/api/internal/filing-change-backfill?limit=25", "learn-what-you-own-filing-change-backfill/1.0");
+  if (!response.ok) throw new Error(`Filing change backfill endpoint returned ${response.status}`);
+}
+
 async function backfillScheduledDossierSources(env: Env, ctx: ExecutionContext) {
   const response = await runScheduledEndpoint(env, ctx, "/api/internal/dossier-source-backfill?limit=12", "learn-what-you-own-sec-source-backfill/1.0");
   if (!response.ok) throw new Error(`Dossier source backfill endpoint returned ${response.status}`);
@@ -179,11 +189,19 @@ const worker = {
     // per day. The member digest and earnings alerts still run only at 08:00
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
+      if (controller.cron === "1-59/5 * * * *") {
+        await discoverScheduledSecFilings(env, ctx);
+        return;
+      }
       if (controller.cron === "2-59/5 * * * *") {
         await Promise.all([
           backfillScheduledDossierSources(env, ctx),
           completeScheduledDossiers(env, ctx),
         ]);
+        return;
+      }
+      if (controller.cron === "3-59/5 * * * *") {
+        await backfillScheduledFilingChanges(env, ctx);
         return;
       }
       if (controller.cron === "4-59/5 * * * *") {

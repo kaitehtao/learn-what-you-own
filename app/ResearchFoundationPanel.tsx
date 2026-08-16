@@ -66,6 +66,14 @@ type QuarterlyDossierUpdate = {
   filedAt: string;
   sourceUrl: string;
   status: "facts_refreshed" | "editorial_review" | "published";
+  objectiveSummary: string;
+  comparisons: Array<{
+    metricKey: string; label: string; unit: string; currentValue: number; currentPeriodEnd: string; currentSourceUrl: string;
+    priorQuarterValue: number | null; priorQuarterPeriodEnd: string | null; priorQuarterSourceUrl: string | null; quarterOverQuarterPercent: number | null;
+    priorYearValue: number | null; priorYearPeriodEnd: string | null; priorYearSourceUrl: string | null; yearOverYearPercent: number | null;
+  }>;
+  comparisonBasis: string;
+  comparisonGeneratedAt: string | null;
   editorialSummary: string;
   reviewedAt: string | null;
   publishedAt: string | null;
@@ -183,6 +191,17 @@ export function ResearchFoundationPanel({ ticker, companyName, editorialUpdatedA
       {data.quarterlyUpdates[0] && <div className="quarterly-update-block">
         <div><small>QUARTERLY DOSSIER REFRESH</small><h3>{data.quarterlyUpdates[0].form} filed {shortDate(data.quarterlyUpdates[0].filedAt)}</h3><p>Primary financial facts now reflect the period ended {data.quarterlyUpdates[0].periodEnd}. The filing and filed facts appear automatically without analyst approval. Any later change to the owner summary, bull case, bear case, risks, or valuation framing remains separately moderated.</p></div>
         <div className={`quarterly-update-status ${data.quarterlyUpdates[0].status.replaceAll("_", "-")}`}><span>{quarterlyStatusLabel(data.quarterlyUpdates[0].status)}</span><a href={data.quarterlyUpdates[0].sourceUrl} target="_blank" rel="noreferrer">Open exact SEC filing ↗</a></div>
+        {data.quarterlyUpdates[0].objectiveSummary && <div className="filing-change-summary"><small>AUTOMATIC WHAT CHANGED · FILED FACTS</small><p>{data.quarterlyUpdates[0].objectiveSummary}</p></div>}
+        {!!data.quarterlyUpdates[0].comparisons?.length && <div className="filing-change-table" role="table" aria-label="Quarter over quarter and year over year filed fact comparisons">
+          <div className="filing-change-row filing-change-head" role="row"><span>Metric</span><span>Current</span><span>QoQ</span><span>YoY</span></div>
+          {data.quarterlyUpdates[0].comparisons.map((comparison) => <div className="filing-change-row" role="row" key={comparison.metricKey}>
+            <a href={comparison.currentSourceUrl} target="_blank" rel="noreferrer">{comparison.label}</a>
+            <strong>{compactNumber(comparison.currentValue, comparison.unit)}</strong>
+            <span className={comparison.quarterOverQuarterPercent === null ? "" : comparison.quarterOverQuarterPercent >= 0 ? "positive" : "negative"}>{comparison.quarterOverQuarterPercent === null ? "—" : `${comparison.quarterOverQuarterPercent >= 0 ? "+" : ""}${comparison.quarterOverQuarterPercent.toFixed(1)}%`}</span>
+            <span className={comparison.yearOverYearPercent === null ? "" : comparison.yearOverYearPercent >= 0 ? "positive" : "negative"}>{comparison.yearOverYearPercent === null ? "—" : `${comparison.yearOverYearPercent >= 0 ? "+" : ""}${comparison.yearOverYearPercent.toFixed(1)}%`}</span>
+          </div>)}
+          <p>{data.quarterlyUpdates[0].comparisonBasis}</p>
+        </div>}
         {data.quarterlyUpdates[0].editorialSummary && <blockquote>{data.quarterlyUpdates[0].editorialSummary}</blockquote>}
       </div>}
 

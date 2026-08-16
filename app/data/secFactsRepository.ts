@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { ensureQuarterlyDossierUpdatesSchema } from "../../db/runtimeSchema";
 import { companies, companyDossiers, dossierSources, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../db/schema";
@@ -6,6 +6,7 @@ import { featuredDossiers } from "./featuredDossiers";
 import { getSecCompany } from "./secCompanies.generated";
 import { normalizeCompanyFacts, type SecCompanyFacts } from "./secMetrics";
 import { fetchSecJson } from "./secRequest";
+import { buildFilingChangePacket, type FilingChangeFact } from "./filingChangeAnalysis";
 import { researchUniverse } from "./universe";
 
 const D1_FACT_BATCH_SIZE = 5;
@@ -128,6 +129,7 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
   const published = await db.select({ ticker: companyDossiers.ticker }).from(companyDossiers)
     .where(and(eq(companyDossiers.ticker, ticker), eq(companyDossiers.status, "published"))).limit(1);
   if (!published.length) return null;
+  const packet = buildFilingChangePacket(normalized as FilingChangeFact[], latest.accessionNumber);
 
   await db.insert(quarterlyDossierUpdates).values({
     ticker,
@@ -136,6 +138,10 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
     periodEnd: latest.periodEnd,
     filedAt: latest.filedAt,
     sourceUrl: latest.sourceUrl,
+    objectiveSummary: packet.objectiveSummary,
+    comparisonsJson: JSON.stringify(packet.comparisons),
+    comparisonBasis: packet.comparisonBasis,
+    comparisonGeneratedAt: sql`CURRENT_TIMESTAMP`,
   }).onConflictDoUpdate({
     target: [quarterlyDossierUpdates.ticker, quarterlyDossierUpdates.accessionNumber],
     set: {
@@ -143,6 +149,10 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
       periodEnd: latest.periodEnd,
       filedAt: latest.filedAt,
       sourceUrl: latest.sourceUrl,
+      objectiveSummary: packet.objectiveSummary,
+      comparisonsJson: JSON.stringify(packet.comparisons),
+      comparisonBasis: packet.comparisonBasis,
+      comparisonGeneratedAt: sql`CURRENT_TIMESTAMP`,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     },
   });
@@ -153,6 +163,29 @@ async function recordLatestQuarterlyUpdate(ticker: string, normalized: ReturnTyp
     filedAt: latest.filedAt,
     periodEnd: latest.periodEnd,
   };
+}
+
+export async function backfillFilingChangePackets(limit = 25) {
+  await ensureQuarterlyDossierUpdatesSchema();
+  const db = getDb();
+  const updates = await db.select().from(quarterlyDossierUpdates)
+    .where(eq(quarterlyDossierUpdates.objectiveSummary, ""))
+    .orderBy(asc(quarterlyDossierUpdates.filedAt))
+    .limit(Math.max(1, Math.min(limit, 50)));
+  const results: Array<{ ticker: string; accessionNumber: string; comparisonCount: number }> = [];
+  for (const update of updates) {
+    const facts = await db.select().from(filingFacts).where(eq(filingFacts.ticker, update.ticker));
+    const packet = buildFilingChangePacket(facts as FilingChangeFact[], update.accessionNumber);
+    await db.update(quarterlyDossierUpdates).set({
+      objectiveSummary: packet.objectiveSummary || "No comparable normalized SEC metrics were available for this filing.",
+      comparisonsJson: JSON.stringify(packet.comparisons),
+      comparisonBasis: packet.comparisonBasis,
+      comparisonGeneratedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    }).where(eq(quarterlyDossierUpdates.id, update.id));
+    results.push({ ticker: update.ticker, accessionNumber: update.accessionNumber, comparisonCount: packet.comparisons.length });
+  }
+  return { processed: results.length, results };
 }
 
 export async function importSecFilingFacts(tickerValue: string): Promise<SecFactImportResult> {

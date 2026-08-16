@@ -32,6 +32,15 @@ function relatedEndpoint(ticker: string, row: typeof companyRelationships.$infer
   };
 }
 
+function parseJsonArray(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: Request) {
   const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!researchUniverse.some((company) => company.ticker === ticker)) {
@@ -151,6 +160,10 @@ export async function GET(request: Request) {
         filedAt: update.filedAt,
         sourceUrl: update.sourceUrl,
         status: update.status,
+        objectiveSummary: update.objectiveSummary,
+        comparisons: parseJsonArray(update.comparisonsJson),
+        comparisonBasis: update.comparisonBasis,
+        comparisonGeneratedAt: update.comparisonGeneratedAt,
         editorialSummary: update.status === "published" ? update.editorialSummary : "",
         reviewedAt: update.reviewedAt,
         publishedAt: update.publishedAt,

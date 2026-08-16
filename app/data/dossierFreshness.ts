@@ -12,7 +12,7 @@ function bootstrapFilings(rows: ClassifiedSecFiling[]) {
   return [...latest.values()];
 }
 
-type Candidate = { ticker: string; cik: string; name: string; last_success_at: string | null };
+export type DossierFreshnessCandidate = { ticker: string; cik: string; name: string; last_success_at: string | null };
 
 const LEGACY_SOURCE_COLUMN_ERROR = "D1_ERROR: table dossier_sources has no column named filing_type: SQLITE_ERROR";
 
@@ -35,7 +35,7 @@ export async function reconcileLegacyFreshnessSchemaErrors() {
   return Number(result.meta.changes ?? 0);
 }
 
-async function scanCandidate(candidate: Candidate) {
+export async function scanDossierFreshnessCandidate(candidate: DossierFreshnessCandidate) {
   const database = env.DB;
   const paddedCik = candidate.cik.padStart(10, "0");
   const submissionsUrl = `https://data.sec.gov/submissions/CIK${paddedCik}.json`;
@@ -90,7 +90,7 @@ async function scanCandidate(candidate: Candidate) {
     const latestFilingDate = allRelevant[0]?.filingDate ?? null;
     await database.prepare(`INSERT INTO dossier_freshness_checks (ticker,last_attempted_at,last_success_at,latest_filing_date,detected_count,error_message)
       VALUES (?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?,NULL)
-      ON CONFLICT(ticker) DO UPDATE SET last_attempted_at=CURRENT_TIMESTAMP,last_success_at=CURRENT_TIMESTAMP,latest_filing_date=excluded.latest_filing_date,detected_count=dossier_freshness_checks.detected_count+excluded.detected_count,error_message=NULL`)
+      ON CONFLICT(ticker) DO UPDATE SET last_attempted_at=CURRENT_TIMESTAMP,last_success_at=CURRENT_TIMESTAMP,latest_filing_date=COALESCE(excluded.latest_filing_date,dossier_freshness_checks.latest_filing_date),detected_count=dossier_freshness_checks.detected_count+excluded.detected_count,error_message=NULL`)
       .bind(candidate.ticker, latestFilingDate, inserted.length).run();
     return { ticker: candidate.ticker, detected: inserted.length, latestFilingDate, events: inserted.map((event) => ({ accessionNumber: event.accessionNumber, eventType: event.eventType, form: event.form })) };
   } catch (error) {
@@ -110,10 +110,10 @@ export async function processDossierFreshnessBatch(limit = 10) {
     LEFT JOIN dossier_freshness_checks f ON f.ticker=d.ticker
     WHERE d.status='published' AND c.cik IS NOT NULL AND c.cik<>''
     ORDER BY CASE WHEN f.error_message IS NOT NULL THEN 0 ELSE 1 END,
-      COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 10))).all<Candidate>();
+      COALESCE(f.last_attempted_at,'') ASC,d.ticker ASC LIMIT ?`).bind(Math.max(1, Math.min(limit, 10))).all<DossierFreshnessCandidate>();
   const scans = [];
   for (const candidate of result.results) {
-    scans.push(await scanCandidate(candidate));
+    scans.push(await scanDossierFreshnessCandidate(candidate));
     await new Promise((resolve) => setTimeout(resolve, 125));
   }
   return { processed: scans.length, detected: scans.reduce((total, scan) => total + scan.detected, 0), errors: scans.filter((scan) => "error" in scan).length, legacyErrorsReconciled, scans };

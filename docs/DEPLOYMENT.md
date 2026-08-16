@@ -167,9 +167,10 @@ Email notifications never include a private-message body. Daily digests send not
 
 ## Scheduled filing freshness and daily digest
 
-`vite.config.ts` declares `2-59/5 * * * *` for the initial-source and narrative
+`vite.config.ts` declares `1-59/5 * * * *` for SEC current-filings discovery,
+`2-59/5 * * * *` for the initial-source and narrative
 scheduler, `4-59/5 * * * *` for the independently bounded company-profile
-scheduler, and
+scheduler, `3-59/5 * * * *` for filing-comparison backfill, and
 `*/15 * * * *` for the dossier freshness monitor. Each scheduler invocation
 acquires a short D1 selection lease, records up to 12 Russell 3000 constituents
 with fewer than five sources in descending market-cap order, and publishes one
@@ -180,12 +181,18 @@ batch with concurrency capped at two, bounded retry delay, and
 scheduler reconciles any queued or running ledger batch left for more than 20
 minutes: complete source packs are preserved and unfinished tickers become
 eligible for retry. The separate
-quarter-hour freshness invocation checks the 10 highest-priority published dossiers against the
+five-minute current-filings invocation identifies tracked issuers from the SEC
+Atom feeds and immediately runs the exact-accession scanner, targeting discovery
+within 30 minutes. The quarter-hour freshness invocation remains a complete-universe
+fallback and checks the 10 highest-priority published dossiers against the
 SEC submissions feed. Failed checks are retried before the normal least-recently
 scanned rotation. Newly detected earnings releases,
 10-Ks, 10-Qs, definitive proxies, and material 8-Ks are recorded in
 `dossier_freshness_events`. Periodic reports and earnings events also trigger a
-Company Facts refresh. The exact filing event and source publish automatically
+Company Facts refresh. New 10-Q and 10-K facts also create a deterministic,
+citation-linked comparison packet with standalone-quarter sequential changes,
+same-period year-over-year changes, and period-end balance-sheet comparisons.
+The exact filing event, source, and objective comparison publish automatically
 with a system audit identity; filing detection never silently rewrites a bull
 case, bear case, valuation conclusion, or owner summary.
 
