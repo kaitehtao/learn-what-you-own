@@ -61,6 +61,10 @@ function comparableFiscalYear(left: FilingChangeFact, right: FilingChangeFact) {
   return left.fiscalYear !== null && right.fiscalYear !== null && left.fiscalYear === right.fiscalYear;
 }
 
+function daysBetween(later: string, earlier: string) {
+  return (Date.parse(`${later}T00:00:00Z`) - Date.parse(`${earlier}T00:00:00Z`)) / 86_400_000;
+}
+
 function standaloneValue(fact: FilingChangeFact, facts: FilingChangeFact[]) {
   if (instantMetrics.has(fact.metricKey) || fact.fiscalPeriod === "Q1") return fact.value;
   const priorPeriod = fact.fiscalPeriod === "Q2" ? "Q1" : fact.fiscalPeriod === "Q3" ? "Q2" : fact.fiscalPeriod === "FY" ? "Q3" : null;
@@ -117,9 +121,8 @@ export function buildFilingChangePacket(facts: FilingChangeFact[], accessionNumb
       .sort((left, right) => right.periodEnd.localeCompare(left.periodEnd))
       .find((fact) => fact.periodEnd !== current.periodEnd) ?? null;
     const priorYear = [...metricFacts]
-      .filter((fact) => fact.fiscalPeriod === current.fiscalPeriod
-        && (current.fiscalYear === null || fact.fiscalYear === null || fact.fiscalYear === current.fiscalYear - 1))
-      .sort((left, right) => right.periodEnd.localeCompare(left.periodEnd))[0] ?? null;
+      .filter((fact) => fact.fiscalPeriod === current.fiscalPeriod && daysBetween(current.periodEnd, fact.periodEnd) >= 300 && daysBetween(current.periodEnd, fact.periodEnd) <= 430)
+      .sort((left, right) => Math.abs(daysBetween(current.periodEnd, left.periodEnd) - 365) - Math.abs(daysBetween(current.periodEnd, right.periodEnd) - 365))[0] ?? null;
     const priorQuarterValue = priorQuarter ? standaloneValue(priorQuarter, facts) : null;
     const priorYearValue = priorYear ? standaloneValue(priorYear, facts) : null;
     return {
