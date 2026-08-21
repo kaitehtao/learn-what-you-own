@@ -47,6 +47,18 @@ function displayName(name: string, ticker: string) {
   return normalized(firstWord) === normalized(ticker) ? `${ticker}${formatted.slice(firstWord.length)}` : formatted;
 }
 
+function companySeoTitle(name: string, ticker: string) {
+  const compactName = name.replace(/\b(Corporation|Corp\.?|Incorporated|Inc\.?|Limited|Ltd\.?|Holdings?)\b.*$/i, "").trim() || name;
+  const candidate = `${compactName} (${ticker}) Stock Research & SEC Filings`;
+  return candidate.length <= 65 ? candidate : `${ticker} Stock Research, SEC Filings & Valuation`;
+}
+
+function companySeoDescription(name: string, ticker: string) {
+  const candidate = `Research ${name} (${ticker}) with SEC filings, financials, ownership, valuation, earnings, risks, catalysts, and evidence-linked bull and bear cases.`;
+  if (candidate.length <= 160) return candidate;
+  return `Research ${ticker} with SEC filings, financials, ownership, valuation, earnings, risks, catalysts, and evidence-linked bull and bear cases.`;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker: slug } = await params;
   const ticker = tickerFromSlug(slug);
@@ -55,10 +67,9 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
   const name = displayName(catalogCompany?.name || universeCompany?.name || `${ticker} company`, ticker);
   const storedDossier = await loadPublishedDossier(ticker);
   const indexable = Boolean(storedDossier) || await loadIndexEligibility(ticker);
-  const fallbackDossier = featuredDossiers[ticker];
-  const description = storedDossier?.description || fallbackDossier?.description || `Research ${name} (${ticker}), including SEC filings, ownership, valuation, earnings, risks, catalysts, and source-linked evidence.`;
+  const description = companySeoDescription(name, ticker);
   const canonical = `${publicOrigin}/company/${companySlug(ticker)}`;
-  const title = `${name} (${ticker}) Stock Research, SEC Filings & Valuation | Learn What You Own`;
+  const title = companySeoTitle(name, ticker);
 
   return {
     title,
@@ -95,6 +106,7 @@ function CompanyStructuredData({ company, description, benchmarkComplete, update
     headline: benchmarkComplete ? `${name} (${company.ticker}) ownership dossier` : undefined,
     description,
     dateModified: updatedAt || undefined,
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     inLanguage: "en-US",
     author: benchmarkComplete ? { "@type": "Organization", name: "Learn What You Own", url: publicOrigin } : undefined,
     publisher: benchmarkComplete ? { "@type": "Organization", name: "Learn What You Own", url: publicOrigin } : undefined,

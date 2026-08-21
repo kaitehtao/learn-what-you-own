@@ -243,6 +243,25 @@ test("canonicalizes public pages and gives company dossiers unique indexable met
   assert.match(auditScript, /has no matching self-canonical/);
 });
 
+test("publishes concise company search metadata and structured index research hubs", async () => {
+  const [company, structuredData, sp500, russell2000, russell3000, nasdaq100] = await Promise.all([
+    source("app/company/[ticker]/page.tsx"),
+    source("app/ResearchUniverseStructuredData.tsx"),
+    source("app/research/sp-500/page.tsx"),
+    source("app/research/russell-2000/page.tsx"),
+    source("app/research/russell-3000/page.tsx"),
+    source("app/research/nasdaq-100/page.tsx"),
+  ]);
+  assert.match(company, /companySeoTitle/);
+  assert.match(company, /candidate\.length <= 65/);
+  assert.match(company, /companySeoDescription/);
+  assert.match(company, /candidate\.length <= 160/);
+  assert.match(company, /mainEntityOfPage/);
+  assert.match(structuredData, /"@type": "CollectionPage"/);
+  assert.match(structuredData, /"@type": "BreadcrumbList"/);
+  for (const page of [sp500, russell2000, russell3000, nasdaq100]) assert.match(page, /ResearchUniverseStructuredData/);
+});
+
 test("keeps the redirect-only Sites mirror detached from D1", async () => {
   const [hosting, packager, verifier, worker] = await Promise.all([
     source(".openai/hosting.json"),
