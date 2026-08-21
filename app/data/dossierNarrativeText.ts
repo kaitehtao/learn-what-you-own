@@ -79,7 +79,8 @@ export function resolveNarrativeEvidenceIds(value: Record<string, unknown>, cata
     if (!input || typeof input !== "object") return input;
     const record = Object.fromEntries(Object.entries(input as Record<string, unknown>).map(([key, nested]) => [key, visit(nested)]));
     if (typeof record.sourceUrl === "string" && typeof record.sourceExcerpt === "string") {
-      const entry = byId.get(record.sourceExcerpt.trim());
+      const evidenceId = record.sourceExcerpt.trim().match(/\bS\d+-\d+\b/i)?.[0]?.toUpperCase();
+      const entry = evidenceId ? byId.get(evidenceId) : undefined;
       // The evidence ID is server-generated and therefore authoritative. The
       // model occasionally selects a valid ID but repeats the other approved
       // filing URL beside it. Resolve both fields from the catalog so a valid

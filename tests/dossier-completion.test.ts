@@ -89,3 +89,13 @@ test("server evidence IDs repair a model-copied filing URL mismatch", () => {
   assert.equal(resolved.description.sourceExcerpt, quarterly.excerpt);
   assert.equal(citationExcerptResolves(sources[1].text, resolved.description.sourceExcerpt), true);
 });
+
+test("server evidence IDs resolve when the model wraps the ID in extra text", () => {
+  const source = { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to customers through recurring contracts and usage arrangements." };
+  const catalog = filingEvidenceCatalog([source]);
+  const resolved = resolveNarrativeEvidenceIds({
+    description: { text: "A sufficiently complete description for validation.", sourceUrl: source.url, sourceExcerpt: `Evidence: ${catalog[0].id}` },
+  }, catalog) as { description: { sourceUrl: string; sourceExcerpt: string } };
+  assert.equal(resolved.description.sourceUrl, source.url);
+  assert.equal(resolved.description.sourceExcerpt, catalog[0].excerpt);
+});

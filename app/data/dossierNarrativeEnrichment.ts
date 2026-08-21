@@ -4,7 +4,7 @@ import type { CompletionClaim } from "./dossierCompletionClaims";
 import { citationExcerptResolves, filingEvidenceCatalog, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, strategicFilingExcerpt, withDeadline } from "./dossierNarrativeText";
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const PIPELINE_MODEL = `${MODEL}#evidence-ids-v7`;
+const PIPELINE_MODEL = `${MODEL}#evidence-ids-v8`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type MarkdownConversion = { format?: string; data?: string; error?: string };
