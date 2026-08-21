@@ -202,6 +202,10 @@ const worker = {
       }
       if (controller.cron === "3-59/5 * * * *") {
         await backfillScheduledFilingChanges(env, ctx);
+        // Use the otherwise idle remainder of this scheduled invocation for a
+        // second bounded narrative attempt. The completion lease prevents an
+        // overlap if the minute-two attempt is still running.
+        await completeScheduledDossiers(env, ctx);
         return;
       }
       if (controller.cron === "4-59/5 * * * *") {

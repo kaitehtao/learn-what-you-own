@@ -73,3 +73,19 @@ test("resolves stable model evidence IDs to exact filing excerpts", () => {
   assert.equal((resolved.description as { sourceExcerpt: string }).sourceExcerpt, catalog[0].excerpt);
   assert.equal(citationExcerptResolves(source.text, catalog[0].excerpt), true);
 });
+
+test("server evidence IDs repair a model-copied filing URL mismatch", () => {
+  const sources = [
+    { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to customers through recurring contracts and usage arrangements." },
+    { url: "https://www.sec.gov/Archives/quarterly.htm", text: "Revenue and cash flow depend on demand, pricing, customer retention, competition, and disciplined capital allocation." },
+  ];
+  const catalog = filingEvidenceCatalog(sources);
+  const quarterly = catalog.find((entry) => entry.url === sources[1].url);
+  assert.ok(quarterly);
+  const resolved = resolveNarrativeEvidenceIds({
+    description: { text: "A sufficiently complete description for validation.", sourceUrl: sources[0].url, sourceExcerpt: quarterly.id },
+  }, catalog) as { description: { sourceUrl: string; sourceExcerpt: string } };
+  assert.equal(resolved.description.sourceUrl, sources[1].url);
+  assert.equal(resolved.description.sourceExcerpt, quarterly.excerpt);
+  assert.equal(citationExcerptResolves(sources[1].text, resolved.description.sourceExcerpt), true);
+});
