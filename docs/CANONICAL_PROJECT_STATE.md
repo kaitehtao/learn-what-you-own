@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-15 (America/Los_Angeles)
+Last verified: 2026-08-21 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,23 +35,28 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
-The 2026-08-15 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
-direct Workers.dev endpoint at application repair commit
-`44560f80f4f6dc830629178e7c3f2b6efedce276`. Use
-`npm run verify:authority` for the currently deployed SHA rather than treating a
-dated Markdown value as live proof.
+The 2026-08-21 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
+direct Workers.dev endpoint at SEO release commit
+`363c2d5c8a32c2f903d795a6733bade3a94f53f6`. The release standardized company
+metadata, added `CollectionPage` and breadcrumb structured data to the four
+index research hubs, and added `mainEntityOfPage` to dossier article data. The
+live SEO audit passed 32 sampled public pages drawn from 3,006 canonical URLs
+across three sitemaps. Use `npm run verify:authority` for the currently deployed
+SHA rather than treating a dated Markdown value as live proof.
 
 The shared production D1 authority reported:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 74,419 distinct primary-source documents;
-- 9,721 published claims, all 9,721 linked to sources;
-- 1,057 `benchmark_complete`, 1,927 `machine_enriched`, zero `editorial_review`,
-  and 15 inactive `starting_point` dossier records; and
-- 2,983 freshness-check records, with zero current errors and zero records that
-  have never succeeded. The newest successful check was recorded at
-  2026-08-15 18:00 UTC.
+- 75,129 distinct primary-source documents; and
+- 27,882 published claims, all 27,882 linked to sources.
+
+The most recent complete freshness-ledger audit remains the 2026-08-15 check:
+2,983 freshness records, zero current errors, and zero records that had never
+succeeded. The public coverage counters and authority endpoints were refreshed
+again on 2026-08-21; protected job-level error ledgers still require an
+authenticated administrator or D1 session and should not be inferred from the
+public counters alone.
 
 Index membership is stored once per company and exposed through labeled views.
 Current production coverage is:
@@ -59,17 +64,21 @@ Current production coverage is:
 | Research view | Component ticker rows | Published | Five-source foundation | Benchmark complete | Machine enriched |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | S&P 500 | 502 | 502 | 502 | 502 | 0 |
-| Nasdaq-100 | 102 | 102 | 102 | 100 | 2 |
-| Russell 2000 | 1,950 | 1,950 | 1,950 | 236 | 1,714 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 1,040 | 1,925 |
+| Nasdaq-100 | 102 | 102 | 102 | 101 | 1 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 1,695 | 255 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 2,703 | 262 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
 Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
 `benchmark_complete`. All current component rows in these four views have a
-published source foundation; 1,927 dossiers still need a validated structured
-owner narrative before they can pass the benchmark rule.
+published source foundation. The remaining index backlog overlaps across
+universes: 262 Russell 3000 rows remain machine-enriched, including 255 Russell
+2000 rows. Thomson Reuters (`TRI`) is the single remaining machine-enriched
+Nasdaq-100 row. The highest-market-cap remaining Russell 3000 names at the time
+of verification began with `NU`, `BSY`, `DDS`, `REXR`, `UGI`, `BIRK`, `RDN`,
+`DLO`, `WDFC`, and `CALY`.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
 accidental 100 ms ceiling to 30,000 ms, reduced AI prompt size, added explicit
