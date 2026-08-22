@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { filingHistoryLabel, selectComparableHistory, selectDisplayedFact } from "./filingHistory";
+import { filingHistoryLabel, filingPeriodLabel, selectComparableHistory, selectDisplayedFact } from "./filingHistory";
 import { SaveToNotebookButton } from "./SaveToNotebookButton";
 
 type FilingFact = {
@@ -11,6 +11,7 @@ type FilingFact = {
   label: string;
   value: number;
   unit: string;
+  periodStart: string | null;
   periodEnd: string;
   fiscalPeriod: string | null;
   form: string;
@@ -208,13 +209,13 @@ export function ResearchFoundationPanel({ ticker, companyName, editorialUpdatedA
       <div className="filing-facts-block">
         <div className="research-subheading"><div><small>PUBLIC FILING FACTS</small><h3>Filed financial history</h3></div><span>{data.facts.length ? `${factsByMetric.size} metrics · through ${latestPeriodEnd}` : data.factsImport?.status === "no_compatible_facts" ? "SEC data reviewed" : "Financial import queued"}</span></div>
         {latestFacts.length ? <>
-          <p className="filing-facts-explainer">Values are normalized from SEC XBRL and link to the exact 10-K or 10-Q accession. Comparable-period changes use the same fiscal-period label, avoiding a quarterly-versus-annual comparison.</p>
+          <p className="filing-facts-explainer">Values are normalized from SEC XBRL and link to the exact 10-K or 10-Q accession. Each card states whether a value covers a standalone quarter, a year-to-date period, a full year, or a period-end balance.</p>
           <div className="filing-fact-grid">{latestFacts.map((fact) => {
             const history = selectComparableHistory(ticker, factsByMetric.get(fact.metricKey) ?? [], fact);
             const prior = history[1];
             const change = prior ? percentChange(fact.value, prior.value) : null;
             const displayLabel = filingHistoryLabel(ticker, fact, fact.label);
-            return <div className="filing-fact-card" key={`${fact.metricKey}-${fact.periodEnd}`}><a href={fact.sourceUrl} target="_blank" rel="noreferrer"><small>{displayLabel}</small><strong>{compactNumber(fact.value, fact.unit)}</strong>{change !== null && <b className={change >= 0 ? "fact-change positive" : "fact-change negative"}>{change >= 0 ? "+" : ""}{change.toFixed(1)}% vs prior {fact.fiscalPeriod ?? "period"}</b>}<span>{fact.fiscalPeriod ?? fact.form} · period ended {fact.periodEnd}</span><div className="filing-history" aria-label={`${displayLabel} comparable filing history`}>{[...history].reverse().map((point) => <i key={`${point.periodEnd}-${point.fiscalPeriod}`}><span>{point.periodEnd.slice(0, 4)}</span><em>{compactNumber(point.value, point.unit)}</em></i>)}</div><em>{fact.form} filed {fact.filedAt} · open SEC filing ↗</em></a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={`${displayLabel}: ${compactNumber(fact.value, fact.unit)}`} sourceTitle={`${fact.form} filed ${fact.filedAt}`} sourceUrl={fact.sourceUrl} sourceExcerpt={`${displayLabel} was ${compactNumber(fact.value, fact.unit)} for the period ended ${fact.periodEnd}.`} /></div>;
+            return <div className="filing-fact-card" key={`${fact.metricKey}-${fact.periodEnd}`}><a href={fact.sourceUrl} target="_blank" rel="noreferrer"><small>{displayLabel}</small><strong>{compactNumber(fact.value, fact.unit)}</strong>{change !== null && <b className={change >= 0 ? "fact-change positive" : "fact-change negative"}>{change >= 0 ? "+" : ""}{change.toFixed(1)}% vs prior comparable period</b>}<span>{filingPeriodLabel(fact)}</span><div className="filing-history" aria-label={`${displayLabel} comparable filing history`}>{[...history].reverse().map((point) => <i key={`${point.periodEnd}-${point.fiscalPeriod}`}><span>{point.periodEnd.slice(0, 4)}</span><em>{compactNumber(point.value, point.unit)}</em></i>)}</div><em>{fact.form} filed {fact.filedAt} · open SEC filing ↗</em></a><SaveToNotebookButton compact ticker={ticker} companyName={companyName} title={`${displayLabel}: ${compactNumber(fact.value, fact.unit)}`} sourceTitle={`${fact.form} filed ${fact.filedAt}`} sourceUrl={fact.sourceUrl} sourceExcerpt={`${displayLabel} was ${compactNumber(fact.value, fact.unit)} for the period ended ${fact.periodEnd}.`} /></div>;
           })}</div>
           <div className="filing-facts-provenance"><span>Source: SEC Company Facts and direct EDGAR accessions</span>{data.factsImport?.sourceUrl && <a href={data.factsImport.sourceUrl} target="_blank" rel="noreferrer">Open machine-readable source ↗</a>}<span>Refreshed {shortDate(data.factsImport?.lastSuccessAt ?? data.facts[0]?.updatedAt)}</span></div>
         </> : data.factsImport?.status === "no_compatible_facts" ? <div className="research-foundation-state compact"><strong>No compatible standardized facts were reported.</strong><p>The SEC Company Facts record was checked, but this issuer did not expose the supported US-GAAP or IFRS concepts. No estimates were substituted.</p><a href={data.factsImport.sourceUrl} target="_blank" rel="noreferrer">Inspect the SEC Company Facts record ↗</a></div> : <div className="research-foundation-state compact"><strong>Filed financial history is being normalized.</strong><p>The dossier can remain readable while the scheduled importer retries the SEC record. No placeholder or analyst estimate is shown as a filed fact.</p></div>}

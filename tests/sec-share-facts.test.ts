@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filingHistoryLabel, selectComparableHistory, selectDisplayedFact } from "../app/filingHistory";
+import { filingHistoryLabel, filingPeriodLabel, selectComparableHistory, selectDisplayedFact } from "../app/filingHistory";
 import { normalizeCompanyFacts, type SecCompanyFacts as MetricCompanyFacts } from "../app/data/secMetrics";
 import { latestSharesOutstanding, sharesFromInlineFiling, type SecCompanyFacts, type ShareFiling } from "../app/data/secShareFacts";
 
@@ -73,4 +73,19 @@ test("merges equivalent Tesla revenue tags so the 2022 Q2 fact is not skipped", 
   const revenue = normalizeCompanyFacts("1318605", payload).filter((fact) => fact.metricKey === "revenue");
   assert.deepEqual(revenue.map((fact) => fact.periodEnd), ["2023-06-30", "2022-06-30", "2018-06-30"]);
   assert.equal(revenue.find((fact) => fact.periodEnd === "2022-06-30")?.concept, "Revenues");
+});
+
+test("prefers standalone 10-Q facts and labels cumulative facts explicitly", () => {
+  const payload: MetricCompanyFacts = { facts: { "us-gaap": {
+    RevenueFromContractWithCustomerExcludingAssessedTax: { units: { USD: [
+      { val: 2_642_100_000, start: "2026-01-01", end: "2026-06-30", fy: 2026, fp: "Q2", form: "10-Q", filed: "2026-08-05", accn: "0001-26-000001" },
+      { val: 1_596_700_000, start: "2026-04-01", end: "2026-06-30", fy: 2026, fp: "Q2", form: "10-Q", filed: "2026-08-05", accn: "0001-26-000001" },
+    ] } },
+  } } };
+
+  const revenue = normalizeCompanyFacts("1411579", payload).find((fact) => fact.metricKey === "revenue");
+  assert.equal(revenue?.value, 1_596_700_000);
+  assert.equal(filingPeriodLabel(revenue!), "Q2 · three months ended 2026-06-30");
+  assert.equal(filingPeriodLabel({ metricKey: "operating_cash_flow", fiscalPeriod: "Q2", periodStart: "2026-01-01", periodEnd: "2026-06-30" }), "Q2 YTD · six months ended 2026-06-30");
+  assert.equal(filingPeriodLabel({ metricKey: "cash", fiscalPeriod: "Q2", periodStart: null, periodEnd: "2026-06-30" }), "Q2 · as of 2026-06-30");
 });

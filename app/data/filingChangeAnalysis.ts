@@ -47,6 +47,8 @@ const instantMetrics = new Set([
   "stockholders_equity", "long_term_debt", "shares_outstanding",
 ]);
 
+const nonAdditiveDurationMetrics = new Set(["eps_diluted", "diluted_shares"]);
+
 function metricRank(metricKey: string) {
   const index = priorityMetrics.indexOf(metricKey);
   return index === -1 ? priorityMetrics.length : index;
@@ -66,7 +68,11 @@ function daysBetween(later: string, earlier: string) {
 }
 
 function standaloneValue(fact: FilingChangeFact, facts: FilingChangeFact[]) {
-  if (instantMetrics.has(fact.metricKey) || fact.fiscalPeriod === "Q1") return fact.value;
+  const duration = fact.periodStart ? daysBetween(fact.periodEnd, fact.periodStart) : null;
+  if (instantMetrics.has(fact.metricKey)
+    || nonAdditiveDurationMetrics.has(fact.metricKey)
+    || fact.fiscalPeriod === "Q1"
+    || (duration !== null && duration <= 120)) return fact.value;
   const priorPeriod = fact.fiscalPeriod === "Q2" ? "Q1" : fact.fiscalPeriod === "Q3" ? "Q2" : fact.fiscalPeriod === "FY" ? "Q3" : null;
   if (!priorPeriod) return fact.value;
   const prior = facts

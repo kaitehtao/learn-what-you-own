@@ -1762,7 +1762,8 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   ]);
 
   assert.match(panel, /Filed financial history/);
-  assert.match(panel, /Comparable-period changes/);
+  assert.match(panel, /standalone quarter, a year-to-date period, a full year, or a period-end balance/);
+  assert.match(panel, /filingPeriodLabel/);
   assert.match(panel, /No estimates were substituted/);
   assert.match(panel, /Open machine-readable source/);
   assert.match(researchApi, /factsImport/);

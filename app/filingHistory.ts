@@ -1,8 +1,14 @@
 export type FilingHistoryFact = {
   metricKey: string;
   fiscalPeriod: string | null;
+  periodStart?: string | null;
   periodEnd: string;
 };
+
+function durationDays(fact: FilingHistoryFact) {
+  if (!fact.periodStart) return null;
+  return (Date.parse(`${fact.periodEnd}T00:00:00Z`) - Date.parse(`${fact.periodStart}T00:00:00Z`)) / 86_400_000;
+}
 
 function usesAnnualRevenueHistory(ticker: string, metricKey: string) {
   return ticker.toUpperCase() === "TSLA" && metricKey === "revenue";
@@ -24,4 +30,14 @@ export function selectComparableHistory<T extends FilingHistoryFact>(ticker: str
 
 export function filingHistoryLabel(ticker: string, fact: FilingHistoryFact, fallback: string) {
   return usesAnnualRevenueHistory(ticker, fact.metricKey) && fact.fiscalPeriod === "FY" ? "Annual revenue" : fallback;
+}
+
+export function filingPeriodLabel(fact: FilingHistoryFact) {
+  const period = fact.fiscalPeriod ?? "Filed period";
+  const days = durationDays(fact);
+  if (days === null) return `${period} · as of ${fact.periodEnd}`;
+  if (period === "FY" || days > 310) return `${period} · year ended ${fact.periodEnd}`;
+  if (days <= 120) return `${period} · three months ended ${fact.periodEnd}`;
+  if (days <= 220) return `${period} YTD · six months ended ${fact.periodEnd}`;
+  return `${period} YTD · nine months ended ${fact.periodEnd}`;
 }

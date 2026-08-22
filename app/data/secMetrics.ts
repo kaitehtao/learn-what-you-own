@@ -73,6 +73,23 @@ function filingUrl(cik: string, accessionNumber: string) {
   return `https://www.sec.gov/Archives/edgar/data/${compactCik}/${compactAccession}/`;
 }
 
+function durationDays(fact: CompanyFactUnit) {
+  if (!fact.start || !fact.end) return null;
+  return (Date.parse(`${fact.end}T00:00:00Z`) - Date.parse(`${fact.start}T00:00:00Z`)) / 86_400_000;
+}
+
+function preferredDuration(candidate: CompanyFactUnit, current: CompanyFactUnit, fiscalPeriod: string) {
+  const candidateDays = durationDays(candidate);
+  const currentDays = durationDays(current);
+  if (candidateDays === null || currentDays === null || candidateDays === currentDays) return false;
+
+  // A 10-Q can expose both the standalone quarter and the cumulative YTD fact
+  // with the same end date and fiscal-period tag. Quarterly cards should use
+  // the standalone three-month fact when one exists. Annual cards should use
+  // the full-year fact rather than a fourth-quarter fact included in a 10-K.
+  return fiscalPeriod === "FY" ? candidateDays > currentDays : candidateDays < currentDays;
+}
+
 export function normalizeCompanyFacts(cik: string, payload: SecCompanyFacts): NormalizedFilingFact[] {
   const normalized: NormalizedFilingFact[] = [];
 
@@ -105,10 +122,10 @@ export function normalizeCompanyFacts(cik: string, payload: SecCompanyFacts): No
       const current = latestByPeriod.get(key);
       const newerFiling = !current || (current.fact.filed ?? "") < fact.filed;
       const sameFilingPreferredConcept = current?.fact.filed === fact.filed && candidate.conceptPriority < current.conceptPriority;
-      const sameConceptLongerDuration = current?.fact.filed === fact.filed
+      const sameConceptPreferredDuration = current?.fact.filed === fact.filed
         && candidate.conceptPriority === current.conceptPriority
-        && (fact.start ?? "9999-12-31") < (current.fact.start ?? "9999-12-31");
-      if (newerFiling || sameFilingPreferredConcept || sameConceptLongerDuration) latestByPeriod.set(key, candidate);
+        && preferredDuration(fact, current.fact, fiscalPeriod);
+      if (newerFiling || sameFilingPreferredConcept || sameConceptPreferredDuration) latestByPeriod.set(key, candidate);
     }
 
     const facts = [...latestByPeriod.values()]
