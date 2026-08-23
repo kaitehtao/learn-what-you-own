@@ -3,6 +3,7 @@ import { companies, companyRelationships, emergingCompanyDossiers } from "../../
 import { researchUniverse } from "../../../data/universe";
 import { apiError, requireEditor } from "../../../supabase-server";
 import { awardPoints, rewardRules } from "../../../../db/rewards";
+import { normalizeRelevantLinks } from "../../../contribution-links";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ function mapRow(row: Record<string, unknown>) {
     claim: row.claim,
     whyItMatters: row.why_it_matters,
     sourceUrl: row.source_url,
+    relevantLinks: normalizeRelevantLinks(row.relevant_links) ?? [],
     positionDisclosure: row.position_disclosure,
     status: row.status,
     moderationNote: row.moderation_note,

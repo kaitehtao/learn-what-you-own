@@ -3,6 +3,7 @@ import { CONTRIBUTION_RESEARCH_BUCKET, normalizeGoogleSheetUrl } from "../../con
 import { apiError, getSupabaseAdminClient, getSupabaseForRequest, requireSupabaseUser } from "../../supabase-server";
 import { enforceActionRateLimit } from "../../community-safety";
 import { notifyPrivilegedReviewersSafely } from "../../admin-action-notifications";
+import { normalizeRelevantLinks } from "../../contribution-links";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ function mapContribution(row: Record<string, unknown>) {
     claim: row.claim,
     whyItMatters: row.why_it_matters,
     sourceUrl: row.source_url,
+    relevantLinks: normalizeRelevantLinks(row.relevant_links) ?? [],
     evidenceDate: row.evidence_date,
     confidence: row.confidence,
     timeHorizon: row.time_horizon,
@@ -103,12 +105,14 @@ export async function POST(request: Request) {
     const claim = String(payload.claim ?? "").trim();
     const whyItMatters = String(payload.whyItMatters ?? "").trim();
     const sourceUrl = String(payload.sourceUrl ?? "").trim();
+    const relevantLinks = normalizeRelevantLinks(payload.relevantLinks);
     const evidenceDate = String(payload.evidenceDate ?? "").trim();
     const positionDisclosure = String(payload.positionDisclosure ?? "").trim();
     if (!allowedTypes.includes(contributionType)) return Response.json({ error: "Choose a valid contribution type." }, { status: 400 });
     if (!isCompanyProposal && !researchUniverse.some((company) => company.ticker === ticker)) return Response.json({ error: "Choose a valid company ticker." }, { status: 400 });
     if (claim.length < 20 || whyItMatters.length < 20) return Response.json({ error: "Explain the claim and why it matters in at least 20 characters each." }, { status: 400 });
     try { new URL(sourceUrl); } catch { return Response.json({ error: "Enter a valid source URL." }, { status: 400 }); }
+    if (!relevantLinks) return Response.json({ error: "Add no more than five valid web links, one per line." }, { status: 400 });
     if (!evidenceDate || !positionDisclosure) return Response.json({ error: "Evidence date and position disclosure are required." }, { status: 400 });
     const supportsResearchAsset = ["Financial model", "Earnings model", "Research report"].includes(contributionType);
     const researchAssetType = String(payload.researchAssetType ?? "");
@@ -193,6 +197,7 @@ export async function POST(request: Request) {
       claim: claim.slice(0, 2500),
       why_it_matters: whyItMatters.slice(0, 2500),
       source_url: sourceUrl.slice(0, 1000),
+      relevant_links: relevantLinks,
       evidence_date: evidenceDate,
       confidence: String(payload.confidence ?? "Medium — supported inference").slice(0, 80),
       time_horizon: String(payload.timeHorizon ?? "Current fact").slice(0, 80),
@@ -242,6 +247,9 @@ export async function POST(request: Request) {
       }
       if (supportsResearchAsset && (error.code === "PGRST204" || error.message.includes("research_asset_") || error.message.includes("google_sheet_"))) {
         return Response.json({ error: "Research uploads are temporarily unavailable while the database upgrade is applied." }, { status: 503 });
+      }
+      if (error.code === "PGRST204" || error.message.includes("relevant_links")) {
+        return Response.json({ error: "Supporting links are temporarily unavailable while the database upgrade is applied." }, { status: 503 });
       }
       throw error;
     }

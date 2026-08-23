@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { featuredDossiers } from "../app/data/featuredDossiers";
+import { normalizeRelevantLinks, relevantLinkLabel } from "../app/contribution-links";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("normalizes optional contribution links including X posts", () => {
+  assert.deepEqual(normalizeRelevantLinks("x.com/owner/status/123\nhttps://example.com/research\nhttps://example.com/research"), [
+    "https://x.com/owner/status/123",
+    "https://example.com/research",
+  ]);
+  assert.equal(relevantLinkLabel("https://x.com/owner/status/123"), "View X post");
+  assert.equal(normalizeRelevantLinks("javascript:alert(1)"), null);
+  assert.equal(normalizeRelevantLinks("a.com\nb.com\nc.com\nd.com\ne.com\nf.com"), null);
+});
 
 test("long-form research remains private until an editor approves it", () => {
   const memberRoute = read("app/api/publications/route.ts");

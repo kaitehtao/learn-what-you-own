@@ -80,6 +80,7 @@ Apply each file once, in this order, using the production project's SQL editor o
 25. `supabase/migrations/20260806234600_harden_collaborative_earnings_model_grants.sql`
 26. `supabase/migrations/20260808051624_private_company_research_profiles.sql`
 27. `supabase/migrations/20260808052411_optimize_research_notebook_rls.sql`
+28. `supabase/migrations/20260821000000_contribution_relevant_links.sql`
 
 These migrations are designed to preserve member data and establish RLS policies. Never apply them to an unverified project merely because its display name looks similar. Confirm the project reference from `SUPABASE_URL` first.
 

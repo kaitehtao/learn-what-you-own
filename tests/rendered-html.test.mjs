@@ -599,8 +599,8 @@ test("publishes only moderated relationship research to the D1 graph", async () 
   assert.match(supabaseMigration, /company_to_customer/);
 });
 
-test("moderates public research reports, earnings models, and collaborative Google Sheets", async () => {
-  const [client, contributionRoute, uploadRoute, publicAssetRoute, moderation, community, migration] = await Promise.all([
+test("moderates public research reports, earnings models, collaborative Google Sheets, and supporting links", async () => {
+  const [client, contributionRoute, uploadRoute, publicAssetRoute, moderation, community, migration, linksMigration] = await Promise.all([
     source("app/contribute/ContributionClient.tsx"),
     source("app/api/contributions/route.ts"),
     source("app/api/contributions/assets/route.ts"),
@@ -608,6 +608,7 @@ test("moderates public research reports, earnings models, and collaborative Goog
     source("app/admin/ModerationClient.tsx"),
     source("app/CommunityInsights.tsx"),
     source("supabase/migrations/20260802010000_public_contribution_research_assets.sql"),
+    source("supabase/migrations/20260821000000_contribution_relevant_links.sql"),
   ]);
 
   assert.match(client, /Earnings model/);
@@ -622,6 +623,12 @@ test("moderates public research reports, earnings models, and collaborative Goog
   assert.match(moderation, /Review collaborative Google Sheet/);
   assert.match(community, /sandbox="allow-scripts allow-same-origin allow-forms allow-popups"/);
   assert.match(community, /COMMUNITY RESEARCH ASSET/);
+  assert.match(client, /RELEVANT LINKS · OPTIONAL/);
+  assert.match(contributionRoute, /normalizeRelevantLinks/);
+  assert.match(moderation, /Relevant supporting links/);
+  assert.match(community, /community-relevant-links/);
+  assert.match(linksMigration, /relevant_links/);
+  assert.match(linksMigration, /jsonb_array_length\(relevant_links\) <= 5/);
   assert.match(migration, /public = false/);
   assert.match(migration, /contribution-research-assets/);
   assert.match(migration, /editor.*admin/);
