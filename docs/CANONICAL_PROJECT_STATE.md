@@ -132,8 +132,8 @@ their historical partial source jobs. After deployment, the source worker had
 no incomplete jobs in the observed 30-minute window and six consecutive
 narrative cycles completed, including KNSL at 18:08 UTC.
 
-All 27 repository Supabase migrations were present remotely through
-`20260808052411_optimize_research_notebook_rls.sql`.
+All 28 repository Supabase migrations were present remotely through
+`20260821000000_contribution_relevant_links.sql`.
 
 These numbers are a dated snapshot and will drift as research coverage expands.
 Re-run the repository verification scripts and live D1 queries before making a
