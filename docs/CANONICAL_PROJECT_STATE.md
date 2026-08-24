@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-21 (America/Los_Angeles)
+Last verified: 2026-08-24 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -34,6 +34,16 @@ Material factual claims should be traceable to evidence. Management statements, 
 The release order is GitHub `main` -> Cloudflare -> Supabase migration verification -> ChatGPT Sites mirror. The public domain and direct Worker must read the same D1 authority. The Sites project is a secondary mirror and must not take ownership of the custom domain or become a second production database authority.
 
 ## Verified release snapshot
+
+The 2026-08-24 research-transparency release at code commit
+`6eea851a643e2175d026cf7e7727a5d8d880ec26` adds one standardized coverage and
+freshness panel to both flagship and developing dossiers. It exposes complete,
+partial, and unavailable research layers; the latest automatic filing change;
+live primary-source counts; SEC taxonomy, concept, and accession provenance for
+displayed facts; and the public `/methodology` definition and source-hierarchy
+page. The complete production suite passed 145 tests and the 520-ticker
+repository dossier audit before release. Deployment parity must still be
+verified from the release SHA and public routes after Cloudflare publication.
 
 The 2026-08-21 audit verified GitHub `main`, the Cloudflare apex, `www`, and the
 direct Workers.dev endpoint at SEO release commit
