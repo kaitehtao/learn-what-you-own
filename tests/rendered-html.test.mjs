@@ -2308,3 +2308,35 @@ test("publishes verified IR contacts and discovers official contact pages", asyn
     assert.match(migration,new RegExp(email.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"));
   }
 });
+
+test("publishes standardized dossier coverage, freshness, definitions, and methodology", async () => {
+  const [status, methodology, featured, starter, research, route, navigation, sitemap, styles] = await Promise.all([
+    source("app/DossierResearchStatus.tsx"),
+    source("app/methodology/page.tsx"),
+    source("app/FeaturedCompanyDossier.tsx"),
+    source("app/company/[ticker]/page.tsx"),
+    source("app/ResearchFoundationPanel.tsx"),
+    source("app/api/research/route.ts"),
+    source("app/ui.tsx"),
+    source("app/sitemaps/core.xml/route.ts"),
+    source("app/globals.css"),
+  ]);
+  assert.match(status, /RESEARCH COVERAGE &amp; FRESHNESS/);
+  assert.match(status, /Know what is complete before relying on it/);
+  assert.match(status, /LATEST AUTOMATIC CHANGE/);
+  assert.match(status, /sourceCount/);
+  assert.match(methodology, /SOURCE HIERARCHY/);
+  assert.match(methodology, /Enterprise value/);
+  assert.match(methodology, /Quarterly comparisons/);
+  assert.match(featured, /DossierResearchStatus/);
+  assert.match(starter, /DossierResearchStatus/);
+  assert.match(research, /fact\.taxonomy/);
+  assert.match(research, /fact\.accessionNumber/);
+  assert.match(route, /taxonomy: fact\.taxonomy/);
+  assert.match(route, /accessionNumber: fact\.accessionNumber/);
+  assert.match(route, /from\(dossierSources\)/);
+  assert.match(navigation, /Data &amp; coverage methodology/);
+  assert.match(sitemap, /\/methodology/);
+  assert.match(styles, /\.research-coverage-grid/);
+  assert.match(styles, /\.fact-definition/);
+});

@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, or } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { ensureDossierFreshnessSchema, ensureQuarterlyDossierUpdatesSchema } from "../../../db/runtimeSchema";
-import { companyDossiers, companyRelationships, dossierClaims, dossierFreshnessChecks, dossierFreshnessEvents, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
+import { companyDossiers, companyRelationships, dossierClaims, dossierFreshnessChecks, dossierFreshnessEvents, dossierSources, filingFactImports, filingFacts, quarterlyDossierUpdates } from "../../../db/schema";
 import { importSecFilingFacts } from "../../data/secFactsRepository";
 import { researchUniverse } from "../../data/universe";
 
@@ -72,8 +72,9 @@ export async function GET(request: Request) {
       db.select().from(dossierFreshnessChecks).where(eq(dossierFreshnessChecks.ticker, ticker)).limit(1),
       db.select({ status: companyDossiers.status, qualityTier: companyDossiers.qualityTier, updatedAt: companyDossiers.updatedAt })
         .from(companyDossiers).where(eq(companyDossiers.ticker, ticker)).limit(1),
+      db.select({ value: count() }).from(dossierSources).where(eq(dossierSources.ticker, ticker)),
     ]);
-    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult, freshnessResult, freshnessCheckResult, dossierResult] = queries;
+    const [factsResult, claimsResult, relationshipsResult, importsResult, quarterlyResult, freshnessResult, freshnessCheckResult, dossierResult, sourceCountResult] = queries;
     let facts = factsResult.status === "fulfilled" ? factsResult.value : [];
     const claims = claimsResult.status === "fulfilled" ? claimsResult.value : [];
     const relationships = relationshipsResult.status === "fulfilled" ? relationshipsResult.value : [];
@@ -82,6 +83,7 @@ export async function GET(request: Request) {
     const freshnessEvents = freshnessResult.status === "fulfilled" ? freshnessResult.value : [];
     const freshnessChecks = freshnessCheckResult.status === "fulfilled" ? freshnessCheckResult.value : [];
     const dossierRows = dossierResult.status === "fulfilled" ? dossierResult.value : [];
+    const sourceCountRows = sourceCountResult.status === "fulfilled" ? sourceCountResult.value : [];
     const dossierState = dossierRows[0] ?? null;
 
     // Any published evidence-bearing dossier can safely bootstrap its filing
@@ -108,6 +110,7 @@ export async function GET(request: Request) {
       freshnessEvents: freshnessResult.status === "fulfilled" ? "available" : "unavailable",
       freshnessCheck: freshnessCheckResult.status === "fulfilled" ? "available" : "unavailable",
       dossierState: dossierResult.status === "fulfilled" ? "available" : "unavailable",
+      sourceCount: sourceCountResult.status === "fulfilled" ? "available" : "unavailable",
     };
     queries.forEach((result, index) => {
       if (result.status === "rejected") console.error(`Research source ${Object.keys(sourceStatus)[index]} failed for ${ticker}.`, result.reason);
@@ -116,10 +119,13 @@ export async function GET(request: Request) {
     return Response.json({
       ticker,
       dossier: dossierState,
+      sourceCount: sourceCountRows[0]?.value ?? 0,
       sourceStatus,
       facts: facts.map((fact) => ({
         id: fact.id,
         metricKey: fact.metricKey,
+        taxonomy: fact.taxonomy,
+        concept: fact.concept,
         label: fact.label,
         value: fact.value,
         unit: fact.unit,
@@ -129,6 +135,7 @@ export async function GET(request: Request) {
         fiscalPeriod: fact.fiscalPeriod,
         form: fact.form,
         filedAt: fact.filedAt,
+        accessionNumber: fact.accessionNumber,
         sourceUrl: fact.sourceUrl,
         updatedAt: fact.updatedAt,
       })),

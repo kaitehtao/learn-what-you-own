@@ -71,6 +71,7 @@ export function Header() {
               <Link href="/research/russell-2000">Russell 2000 dossiers</Link>
               <Link href="/research/batches">Coverage program</Link>
               <Link href="/facts">FACTS methodology</Link>
+              <Link href="/methodology">Data &amp; coverage methodology</Link>
             </div>
           </details>
           <details className="workspace-menu community-menu">

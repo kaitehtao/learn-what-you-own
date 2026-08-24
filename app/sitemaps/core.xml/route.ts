@@ -14,6 +14,7 @@ const publicPaths = [
   "/insider-activity",
   "/interviews",
   "/learn",
+  "/methodology",
   "/research/batches",
   "/research/sp-500",
   "/research/nasdaq-100",
