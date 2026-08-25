@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildCompletionClaims, completionClaimMetrics } from "../app/data/dossierCompletionClaims";
-import { citationExcerptResolves, filingEvidenceCatalog, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, withDeadline } from "../app/data/dossierNarrativeText";
+import { citationExcerptResolves, fetchPrimarySourceDocument, filingEvidenceCatalog, filingEvidenceSnippets, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, withDeadline } from "../app/data/dossierNarrativeText";
 
 test("completion packets satisfy the active evidence dimensions before automatic validation", () => {
   const claims = buildCompletionClaims({
@@ -98,4 +98,43 @@ test("server evidence IDs resolve when the model wraps the ID in extra text", ()
   }, catalog) as { description: { sourceUrl: string; sourceExcerpt: string } };
   assert.equal(resolved.description.sourceUrl, source.url);
   assert.equal(resolved.description.sourceExcerpt, catalog[0].excerpt);
+});
+
+test("snaps a lightly paraphrased excerpt back to an unambiguous server evidence snippet", () => {
+  const source = { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to enterprise customers through recurring contracts and usage based arrangements. Revenue depends on customer demand and disciplined capital allocation." };
+  const catalog = filingEvidenceCatalog([source]);
+  const resolved = resolveNarrativeEvidenceIds({
+    description: {
+      text: "A sufficiently complete description for validation.",
+      sourceUrl: source.url,
+      sourceExcerpt: "The business provides software services to enterprise customers through recurring contracts and usage arrangements.",
+    },
+  }, catalog) as { description: { sourceExcerpt: string } };
+  assert.equal(resolved.description.sourceExcerpt, catalog[0].excerpt);
+  assert.equal(citationExcerptResolves(source.text, resolved.description.sourceExcerpt), true);
+});
+
+test("does not snap an ambiguous or weak excerpt to filing evidence", () => {
+  const source = { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to customers. Revenue depends on demand and pricing. Competition may pressure margins and cash flow." };
+  const catalog = filingEvidenceCatalog([source]);
+  const raw = "Management believes the future could be attractive.";
+  const resolved = resolveNarrativeEvidenceIds({ description: { text: "Analysis.", sourceUrl: source.url, sourceExcerpt: raw } }, catalog) as { description: { sourceExcerpt: string } };
+  assert.equal(resolved.description.sourceExcerpt, raw);
+});
+
+test("retries a transient primary-source rate limit", async () => {
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  globalThis.fetch = (async () => {
+    attempts += 1;
+    if (attempts === 1) return new Response("slow down", { status: 429, headers: { "retry-after": "0" } });
+    return new Response("<p>Filed business evidence</p>", { status: 200, headers: { "content-type": "text/html" } });
+  }) as typeof fetch;
+  try {
+    const result = await fetchPrimarySourceDocument("https://www.sec.gov/Archives/test.htm", "test-agent", { maxAttempts: 2, baseDelayMs: 100 });
+    assert.equal(new TextDecoder().decode(result.bytes), "<p>Filed business evidence</p>");
+    assert.equal(attempts, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

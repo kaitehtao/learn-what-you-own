@@ -64,6 +64,37 @@ export function filingEvidenceSnippets(text: string, limit = 18) {
 
 export type FilingEvidenceEntry = { id: string; url: string; excerpt: string };
 
+const RETRYABLE_PRIMARY_SOURCE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+export async function fetchPrimarySourceDocument(url: string, userAgent: string, options: { maxAttempts?: number; timeoutMs?: number; baseDelayMs?: number } = {}) {
+  const maxAttempts = Math.max(1, Math.min(4, options.maxAttempts ?? 3));
+  const timeoutMs = Math.max(1_000, Math.min(30_000, options.timeoutMs ?? 20_000));
+  const baseDelayMs = Math.max(100, Math.min(2_000, options.baseDelayMs ?? 300));
+  let lastError: Error = new Error("Primary source request failed.");
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "text/html,application/pdf", "user-agent": userAgent },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (response.ok) return { bytes: await response.arrayBuffer(), contentType: response.headers.get("content-type")?.toLowerCase() ?? "" };
+      lastError = new Error(`Primary source returned HTTP ${response.status}.`);
+      if (!RETRYABLE_PRIMARY_SOURCE_STATUSES.has(response.status) || attempt === maxAttempts) break;
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+      const delay = Number.isFinite(retryAfter) && retryAfter >= 0
+        ? Math.min(5_000, retryAfter * 1_000)
+        : baseDelayMs * (2 ** (attempt - 1));
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Primary source request failed.");
+      if (attempt === maxAttempts) break;
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (2 ** (attempt - 1))));
+    }
+  }
+  throw lastError;
+}
+
 export function filingEvidenceCatalog(sources: Array<{ url: string; text: string }>) {
   return sources.flatMap((source, sourceIndex) => filingEvidenceSnippets(source.text).map((excerpt, excerptIndex) => ({
     id: `S${sourceIndex + 1}-${excerptIndex + 1}`,
@@ -74,13 +105,31 @@ export function filingEvidenceCatalog(sources: Array<{ url: string; text: string
 
 export function resolveNarrativeEvidenceIds(value: Record<string, unknown>, catalog: FilingEvidenceEntry[]) {
   const byId = new Map(catalog.map((entry) => [entry.id, entry]));
+  const normalizedUrl = (url: string) => url.trim().replace(/\/$/, "").toLowerCase();
+  const closestCatalogEntry = (sourceUrl: string, rawExcerpt: string) => {
+    const rawWords = evidenceWords(rawExcerpt);
+    if (rawWords.length < 6) return undefined;
+    const rawSet = new Set(rawWords);
+    const candidates = catalog.filter((entry) => normalizedUrl(entry.url) === normalizedUrl(sourceUrl)).map((entry) => {
+      const candidateWords = evidenceWords(entry.excerpt);
+      const candidateSet = new Set(candidateWords);
+      const overlap = [...rawSet].filter((word) => candidateSet.has(word)).length;
+      const coverage = overlap / Math.max(1, Math.min(rawSet.size, candidateSet.size));
+      return { entry, overlap, coverage };
+    }).sort((left, right) => right.coverage - left.coverage || right.overlap - left.overlap);
+    const best = candidates[0];
+    const runnerUp = candidates[1];
+    if (!best || best.overlap < 6 || best.coverage < 0.6) return undefined;
+    if (runnerUp && best.coverage < 0.8 && best.overlap - runnerUp.overlap < 2) return undefined;
+    return best.entry;
+  };
   const visit = (input: unknown): unknown => {
     if (Array.isArray(input)) return input.map(visit);
     if (!input || typeof input !== "object") return input;
     const record = Object.fromEntries(Object.entries(input as Record<string, unknown>).map(([key, nested]) => [key, visit(nested)]));
     if (typeof record.sourceUrl === "string" && typeof record.sourceExcerpt === "string") {
       const evidenceId = record.sourceExcerpt.trim().match(/\bS\d+-\d+\b/i)?.[0]?.toUpperCase();
-      const entry = evidenceId ? byId.get(evidenceId) : undefined;
+      const entry = evidenceId ? byId.get(evidenceId) : closestCatalogEntry(record.sourceUrl, record.sourceExcerpt);
       // The evidence ID is server-generated and therefore authoritative. The
       // model occasionally selects a valid ID but repeats the other approved
       // filing URL beside it. Resolve both fields from the catalog so a valid

@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { ensureDossierNarrativeEnrichmentSchema } from "../../db/runtimeSchema";
 import type { CompletionClaim } from "./dossierCompletionClaims";
-import { citationExcerptResolves, filingEvidenceCatalog, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, strategicFilingExcerpt, withDeadline } from "./dossierNarrativeText";
+import { citationExcerptResolves, fetchPrimarySourceDocument, filingEvidenceCatalog, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, strategicFilingExcerpt, withDeadline } from "./dossierNarrativeText";
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const PIPELINE_MODEL = `${MODEL}#evidence-ids-v8`;
+const PIPELINE_MODEL = `${MODEL}#evidence-ids-v9`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type MarkdownConversion = { format?: string; data?: string; error?: string };
@@ -163,11 +163,8 @@ async function sourcePack(ticker: string) {
 }
 
 async function fetchSource(source: SourceRow, ai: AiBinding) {
-  const response = await fetch(source.url, { headers: { accept: "text/html,application/pdf", "user-agent": SEC_USER_AGENT }, signal: AbortSignal.timeout(20_000) });
-  if (!response.ok) throw new Error(`${source.title} returned HTTP ${response.status}.`);
-  const bytes = await response.arrayBuffer();
+  const { bytes, contentType } = await fetchPrimarySourceDocument(source.url, SEC_USER_AGENT);
   const signature = new TextDecoder().decode(bytes.slice(0, 5));
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (contentType.includes("application/pdf") || signature === "%PDF-") {
     const converted = await withDeadline(ai.toMarkdown(
       { name: `${source.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 80) || "filing"}.pdf`, blob: new Blob([bytes], { type: "application/pdf" }) },
