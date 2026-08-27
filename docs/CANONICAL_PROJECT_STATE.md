@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-24 (America/Los_Angeles)
+Last verified: 2026-08-26 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,6 +35,20 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
+The 2026-08-25 narrative-reliability release at code commit
+`1442d60fd9b83947f2512f106358ff7c7be3a96d` repaired the final small cohort of
+filing-backed dossiers that had exhausted the prior model retry window. The
+server now snaps a lightly paraphrased model citation back to an exact filing
+excerpt only when the filing URL and word-overlap test identify one
+unambiguous server-held source; weak or ambiguous evidence still fails closed.
+Primary-source retrieval now retries transient HTTP 429 and 5xx responses with
+bounded backoff. The new pipeline generation gives only still-incomplete
+records a controlled retry window without deleting the historical audit trail.
+The complete production suite passed lint, the 520-ticker repository dossier
+audit, and all 148 automated tests. The public authority endpoint reported the
+exact release commit after deployment. The first production cycles promoted 17
+of the 34 previously blocked dossiers, including `REXR`, to benchmark complete.
+
 The 2026-08-24 research-transparency release at code commit
 `6eea851a643e2175d026cf7e7727a5d8d880ec26` adds one standardized coverage and
 freshness panel to both flagship and developing dossiers. It exposes complete,
@@ -54,12 +68,12 @@ live SEO audit passed 32 sampled public pages drawn from 3,006 canonical URLs
 across three sitemaps. Use `npm run verify:authority` for the currently deployed
 SHA rather than treating a dated Markdown value as live proof.
 
-The shared production D1 authority reported:
+The shared production D1 authority reported on 2026-08-26:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 75,129 distinct primary-source documents; and
-- 27,882 published claims, all 27,882 linked to sources.
+- 75,228 distinct primary-source documents; and
+- 30,544 published claims, all 30,544 linked to sources.
 
 The most recent complete freshness-ledger audit remains the 2026-08-15 check:
 2,983 freshness records, zero current errors, and zero records that had never
@@ -75,8 +89,8 @@ Current production coverage is:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | S&P 500 | 502 | 502 | 502 | 502 | 0 |
 | Nasdaq-100 | 102 | 102 | 102 | 101 | 1 |
-| Russell 2000 | 1,950 | 1,950 | 1,950 | 1,695 | 255 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 2,703 | 262 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 1,939 | 11 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 2,949 | 16 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
@@ -84,11 +98,12 @@ Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
 `benchmark_complete`. All current component rows in these four views have a
 published source foundation. The remaining index backlog overlaps across
-universes: 262 Russell 3000 rows remain machine-enriched, including 255 Russell
+universes: 16 Russell 3000 rows remain machine-enriched, including 11 Russell
 2000 rows. Thomson Reuters (`TRI`) is the single remaining machine-enriched
-Nasdaq-100 row. The highest-market-cap remaining Russell 3000 names at the time
-of verification began with `NU`, `BSY`, `DDS`, `REXR`, `UGI`, `BIRK`, `RDN`,
-`DLO`, `WDFC`, and `CALY`.
+Nasdaq-100 row. Across the complete listed universe, 17 dossiers remain
+machine-enriched. The remaining names at the time of verification were `NU`,
+`TRI`, `BSY`, `DDS`, `UGI`, `BIRK`, `RDN`, `DLO`, `FCPT`, `NEXT`, `KOS`, `ODC`,
+`SPIR`, `LZM`, `NREF`, `TRDA`, and `KGEI`.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
 accidental 100 ms ceiling to 30,000 ms, reduced AI prompt size, added explicit
@@ -98,10 +113,11 @@ that the server resolves to exact SEC excerpts. Migration
 while relabeling 848 obsolete timeout records. The production rollback point is
 the checksum-verified D1 backup created immediately before that migration.
 
-Company-profile enrichment is active but incomplete. Production now has 464
-contact profiles, including 395 IR URLs
-and 232 IR emails; 423 tickers currently have 2,145 sourced current-management
-biographies. Remaining work is tracked in GitHub issues 14 through 16.
+Company-profile enrichment is active but incomplete. The most recent protected
+production audit found 1,741 contact profiles, including 616 IR URLs and 360 IR
+emails; 1,687 tickers had 8,193 sourced current-management people. Direct IR
+phone coverage remained sparse. Remaining work is tracked in GitHub issues 14
+through 16.
 
 The 2026-08-14 reliability release removed a silent narrative-queue blocker:
 issuers without two exact SEC archive documents can no longer be selected for
