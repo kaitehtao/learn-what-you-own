@@ -141,7 +141,7 @@ export default function HomePageClient() {
     return demandDifference || companies.indexOf(a) - companies.indexOf(b);
   }), [demand]);
   const nextRequested = useMemo(() => Object.values(demand)
-    .filter((item) => !companies.some((company) => company.ticker === item.ticker) && researchUniverse.some((company) => company.ticker === item.ticker))
+    .filter((item) => item.vote_count > 0 && !companies.some((company) => company.ticker === item.ticker) && researchUniverse.some((company) => company.ticker === item.ticker))
     .sort((a, b) => b.demand_score - a.demand_score || a.ticker.localeCompare(b.ticker)).slice(0, 6), [demand]);
 
   async function toggleDemand(ticker: string) {
@@ -267,7 +267,7 @@ export default function HomePageClient() {
             </article>
           ))}
         </div>
-        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">NEXT IN THE RESEARCH QUEUE</span><strong>Community-requested companies beyond the featured dossiers</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{followingLabel(followerCounts[item.ticker] ?? 0)} · {item.vote_count} requests · {item.page_views} readers</span></Link>)}</nav></div>}
+        {nextRequested.length > 0 && <div className="community-research-queue"><div><span className="kicker">MOST REQUESTED RESEARCH</span><strong>Companies members have explicitly asked us to prioritize</strong></div><nav>{nextRequested.map((item) => <Link href={dossierHref(item.ticker)} key={item.ticker}><b>{item.ticker}</b><span>{followingLabel(followerCounts[item.ticker] ?? 0)} · {item.vote_count} member requests · {item.page_views} readers</span></Link>)}</nav></div>}
       </section>
 
       <section className="dark-section">

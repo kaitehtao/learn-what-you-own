@@ -1550,7 +1550,9 @@ test("ranks featured homepage dossiers by verified community research demand", a
   assert.match(home, /Hot companies, ranked by owners/);
   assert.match(home, /toggleDemand/);
   assert.match(home, /viewerVotes/);
-  assert.match(home, /NEXT IN THE RESEARCH QUEUE/);
+  assert.match(home, /item\.vote_count > 0/);
+  assert.match(home, /MOST REQUESTED RESEARCH/);
+  assert.doesNotMatch(home, /NEXT IN THE RESEARCH QUEUE/);
   assert.match(route, /company_research_demand/);
   assert.match(route, /requireSupabaseUser/);
   assert.match(migration, /create table if not exists public\.company_research_votes/);
