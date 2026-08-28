@@ -1879,7 +1879,7 @@ test("separates publication from dossier quality and ranks index research from t
   assert.match(directory, /href="\/research\/sp-500"/);
   assert.match(directory, /aria-label="Company research universes"/);
   assert.match(directory, /href="\/companies">All Companies/);
-  assert.match(directory, /S&amp;P 500[\s\S]*Nasdaq-100[\s\S]*Russell 2000[\s\S]*Russell 3000[\s\S]*OTC \/ Pink/);
+  assert.match(directory, /S&amp;P 500[\s\S]*Nasdaq-100[\s\S]*Russell 2000[\s\S]*Russell 3000[\s\S]*All Companies[\s\S]*OTC \/ Pink/);
   assert.match(directory, /<option value="">All exchanges<\/option><option>NYSE<\/option><option>NASDAQ<\/option>/);
   assert.doesNotMatch(directory, /href="\/companies">NYSE &amp; Nasdaq/);
   assert.match(directory, /indexMembership === "Russell 2000"/);
