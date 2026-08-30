@@ -61,7 +61,7 @@ export function Header() {
           <Link href="/insider-activity">Insider Activity</Link>
           <Link href="/facts">FACTS</Link>
           <Link href="/comps">Comps</Link>
-          <Link href="/emerging-companies">Private Companies &amp; YC</Link>
+          <Link href="/emerging-companies">Private Companies &amp; IPOs</Link>
           <details className="workspace-menu research-menu">
             <summary>Research</summary>
             <div>
@@ -69,6 +69,7 @@ export function Header() {
               <Link href="/research/nasdaq-100">Nasdaq-100 dossiers</Link>
               <Link href="/research/russell-3000">Russell 3000 dossiers</Link>
               <Link href="/research/russell-2000">Russell 2000 dossiers</Link>
+              <Link href="/emerging-companies/y-combinator">Y Combinator classes</Link>
               <Link href="/research/batches">Coverage program</Link>
               <Link href="/facts">FACTS methodology</Link>
               <Link href="/methodology">Data &amp; coverage methodology</Link>

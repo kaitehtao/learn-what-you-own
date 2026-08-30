@@ -2219,7 +2219,8 @@ test("keeps the complete masthead inside the viewport at every width", async () 
   assert.match(navigation, /aria-controls="primary-navigation"/);
   assert.match(navigation, /aria-expanded=\{open\}/);
   assert.match(navigation, /href="\/contribute">Contribute Research<\/Link>/);
-  assert.match(navigation, /href="\/emerging-companies">Private Companies &amp; YC<\/Link>/);
+  assert.match(navigation, /href="\/emerging-companies">Private Companies &amp; IPOs<\/Link>/);
+  assert.match(navigation, /href="\/emerging-companies\/y-combinator">Y Combinator classes<\/Link>/);
   assert.match(styles, /\.site-header \.nav-inner>nav\{display:none\}/);
   assert.match(styles, /\.site-header \.menu-button\{display:grid/);
   assert.match(styles, /\.site-header \.nav-inner>nav\.open\{display:flex;position:absolute/);
