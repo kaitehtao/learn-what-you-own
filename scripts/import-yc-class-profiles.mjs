@@ -1,18 +1,16 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  buildDirectoryRoster,
+  decodeHtmlAttribute,
+  extractAlgoliaOptions,
+  validateDirectoryRoster,
+} from "./lib/yc-directory.mjs";
 
 const dataPath = resolve(process.cwd(), "app/data/ycSummer2026.json");
 const roster = JSON.parse(await readFile(dataPath, "utf8"));
+const batch = roster.batch;
 const concurrency = 4;
-
-function decodeAttribute(value) {
-  return value
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#39;", "'")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&amp;", "&");
-}
 
 function cleanText(value) {
   return String(value ?? "")
@@ -28,14 +26,53 @@ function absoluteYcUrl(value) {
   return new URL(value, "https://www.ycombinator.com").toString();
 }
 
-async function fetchProfile(company, attempt = 1) {
-  const response = await fetch(company.ycUrl, {
-    headers: { "user-agent": "LearnWhatYouOwn research importer (contact: kai@parkonecapital.com)" },
-  });
+async function fetchWithRetry(url, options = {}, attempt = 1) {
+  const response = await fetch(url, options);
   if ((!response.ok || response.status === 429) && attempt < 4) {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 750 * attempt));
-    return fetchProfile(company, attempt + 1);
+    return fetchWithRetry(url, options, attempt + 1);
   }
+  return response;
+}
+
+async function discoverClassRoster() {
+  const sourceUrl = `https://www.ycombinator.com/companies?batch=${encodeURIComponent(batch)}`;
+  const directoryResponse = await fetchWithRetry(sourceUrl, {
+    headers: { "user-agent": "LearnWhatYouOwn research importer (contact: kai@parkonecapital.com)" },
+  });
+  if (!directoryResponse.ok) throw new Error(`YC directory returned ${directoryResponse.status}`);
+  const options = extractAlgoliaOptions(await directoryResponse.text());
+  const searchResponse = await fetchWithRetry(
+    `https://${options.app}-dsn.algolia.net/1/indexes/YCCompany_production/query`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-algolia-application-id": options.app,
+        "x-algolia-api-key": options.key,
+      },
+      body: JSON.stringify({
+        params: new URLSearchParams({
+          query: "",
+          hitsPerPage: "1000",
+          facetFilters: JSON.stringify([[`batch:${batch}`]]),
+        }).toString(),
+      }),
+    },
+  );
+  if (!searchResponse.ok) throw new Error(`YC directory search returned ${searchResponse.status}`);
+  const payload = await searchResponse.json();
+  const hits = validateDirectoryRoster(payload.hits, { batch, previousCount: roster.companies.length });
+  if (payload.nbHits !== hits.length) {
+    throw new Error(`YC directory returned ${hits.length} of ${payload.nbHits} companies`);
+  }
+  return buildDirectoryRoster(hits, roster.companies);
+}
+
+async function fetchProfile(company) {
+  const response = await fetchWithRetry(company.ycUrl, {
+    headers: { "user-agent": "LearnWhatYouOwn research importer (contact: kai@parkonecapital.com)" },
+  });
   if (!response.ok) throw new Error(`${company.slug}: YC returned ${response.status}`);
   const html = await response.text();
   if (/Access Denied|Just a moment|Attention Required|Checking your browser|captcha/i.test(html)) {
@@ -43,7 +80,7 @@ async function fetchProfile(company, attempt = 1) {
   }
   const encoded = html.match(/data-page="([^"]+)"/)?.[1];
   if (!encoded) throw new Error(`${company.slug}: structured profile data was not found`);
-  const props = JSON.parse(decodeAttribute(encoded)).props;
+  const props = JSON.parse(decodeHtmlAttribute(encoded)).props;
   const profile = props.company;
   if (!profile || profile.slug !== company.slug) throw new Error(`${company.slug}: profile identity mismatch`);
   return {
@@ -84,16 +121,17 @@ async function fetchProfile(company, attempt = 1) {
   };
 }
 
-const output = new Array(roster.companies.length);
+const discoveredCompanies = await discoverClassRoster();
+const output = new Array(discoveredCompanies.length);
 const errors = [];
 let cursor = 0;
 async function worker() {
-  while (cursor < roster.companies.length) {
+  while (cursor < discoveredCompanies.length) {
     const index = cursor++;
-    const company = roster.companies[index];
+    const company = discoveredCompanies[index];
     try {
       output[index] = await fetchProfile(company);
-      console.log(`[${index + 1}/${roster.companies.length}] ${company.name}`);
+      console.log(`[${index + 1}/${discoveredCompanies.length}] ${company.name}`);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
       output[index] = company;
@@ -109,5 +147,5 @@ if (errors.length) {
 }
 
 const founderCount = output.reduce((sum, company) => sum + company.founders.length, 0);
-await writeFile(dataPath, `${JSON.stringify({ ...roster, sourceAsOf: new Date().toISOString().slice(0, 10), companies: output }, null, 2)}\n`);
-console.log(`Imported ${output.length} YC companies and ${founderCount} founder records.`);
+await writeFile(dataPath, `${JSON.stringify({ ...roster, sourceUrl: `https://www.ycombinator.com/companies?batch=${encodeURIComponent(batch)}`, sourceAsOf: new Date().toISOString().slice(0, 10), companies: output }, null, 2)}\n`);
+console.log(`Discovered and imported ${output.length} YC companies and ${founderCount} founder records.`);
