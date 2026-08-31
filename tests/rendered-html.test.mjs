@@ -1375,11 +1375,13 @@ test("builds a private-by-identity collaborative earnings workbook with public a
 });
 
 test("lists the official Summer 2026 Y Combinator class with ranking placeholders", async () => {
-  const [page, explorer, data, sitemap] = await Promise.all([
+  const [page, explorer, data, sitemap, importer, workflow] = await Promise.all([
     source("app/emerging-companies/y-combinator/page.tsx"),
     source("app/emerging-companies/y-combinator/YcBatchExplorer.tsx"),
     source("app/data/ycSummer2026.json"),
     source("app/sitemaps/core.xml/route.ts"),
+    source("scripts/import-yc-class-profiles.mjs"),
+    source(".github/workflows/yc-roster-refresh.yml"),
   ]);
   const roster = JSON.parse(data);
   assert.equal(roster.batch, "Summer 2026");
@@ -1397,6 +1399,11 @@ test("lists the official Summer 2026 Y Combinator class with ranking placeholder
   assert.match(explorer, /Full YC profile ↗/);
   assert.match(explorer, /href=\{company\.ycUrl\}/);
   assert.match(sitemap, /emerging-companies\/y-combinator/);
+  assert.match(importer, /discoverClassRoster/);
+  assert.match(importer, /no published data changed/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /npm run yc:update/);
+  assert.match(workflow, /npm run deploy:production/);
 });
 
 test("provides an admin-only audience and account control center", async () => {

@@ -147,5 +147,11 @@ if (errors.length) {
 }
 
 const founderCount = output.reduce((sum, company) => sum + company.founders.length, 0);
-await writeFile(dataPath, `${JSON.stringify({ ...roster, sourceUrl: `https://www.ycombinator.com/companies?batch=${encodeURIComponent(batch)}`, sourceAsOf: new Date().toISOString().slice(0, 10), companies: output }, null, 2)}\n`);
-console.log(`Discovered and imported ${output.length} YC companies and ${founderCount} founder records.`);
+const sourceUrl = `https://www.ycombinator.com/companies?batch=${encodeURIComponent(batch)}`;
+const contentChanged = JSON.stringify({ sourceUrl, companies: output }) !== JSON.stringify({ sourceUrl: roster.sourceUrl, companies: roster.companies });
+if (contentChanged) {
+  await writeFile(dataPath, `${JSON.stringify({ ...roster, sourceUrl, sourceAsOf: new Date().toISOString().slice(0, 10), companies: output }, null, 2)}\n`);
+  console.log(`Discovered and imported ${output.length} YC companies and ${founderCount} founder records.`);
+} else {
+  console.log(`Verified ${output.length} YC companies and ${founderCount} founder records; no published data changed.`);
+}
