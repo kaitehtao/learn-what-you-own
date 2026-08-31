@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: yc-roster-refresh
@@ -16,9 +17,6 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,14 +43,15 @@ jobs:
           npm run lint
           npx tsc --noEmit
           npm test
-      - name: Publish the verified roster to canonical main
+      - name: Open or refresh a verified roster pull request
         if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B automation/yc-roster-refresh
           git add app/data/ycSummer2026.json
           git commit -m "Refresh Y Combinator class roster"
-          git push origin HEAD:main
-      - name: Deploy the exact canonical commit
-        if: steps.changes.outputs.changed == 'true'
-        run: npm run deploy:production
+          git push --force origin HEAD:automation/yc-roster-refresh
+          gh pr create --base main --head automation/yc-roster-refresh --title "Refresh Y Combinator class roster" --body "Automated official-directory discovery and profile refresh. Merge only after the required checks pass; canonical production deployment remains an explicit release step." || gh pr edit automation/yc-roster-refresh --title "Refresh Y Combinator class roster" --body "Automated official-directory discovery and profile refresh. Merge only after the required checks pass; canonical production deployment remains an explicit release step."

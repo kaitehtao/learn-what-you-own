@@ -32,6 +32,17 @@ export type ValuationStatistic = {
   observationCount: number;
 };
 
+export type ValuationWindow = {
+  requestedYears: number;
+  requestedMonths: number;
+  observationCount: number;
+  firstObservation: string | null;
+  lastObservation: string | null;
+  availableMonths: number;
+  complete: boolean;
+  statistics: ValuationStatistic[];
+};
+
 const valuationMetrics: ValuationStatistic["metric"][] = [
   "priceToEarnings", "evToRevenue", "evToEbitda", "priceToFreeCashFlow", "freeCashFlowYield",
 ];
@@ -120,4 +131,39 @@ export function summarizeValuationHistory(points: HistoricalValuationPoint[]) {
       observationCount: values.length,
     };
   });
+}
+
+function subtractYears(value: string, years: number) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCFullYear(date.getUTCFullYear() - years);
+  return date.toISOString().slice(0, 10);
+}
+
+function inclusiveMonthCount(first: string, last: string) {
+  const [firstYear, firstMonth] = first.slice(0, 7).split("-").map(Number);
+  const [lastYear, lastMonth] = last.slice(0, 7).split("-").map(Number);
+  return Math.max(0, ((lastYear - firstYear) * 12) + lastMonth - firstMonth + 1);
+}
+
+export function buildValuationWindows(points: HistoricalValuationPoint[], windows: readonly number[] = [1, 3, 5]) {
+  const lastObservation = points.at(-1)?.date ?? null;
+  return Object.fromEntries(windows.map((requestedYears): [string, ValuationWindow] => {
+    const cutoff = lastObservation ? subtractYears(lastObservation, requestedYears) : null;
+    const selected = cutoff ? points.filter((point) => point.date >= cutoff) : [];
+    const firstObservation = selected[0]?.date ?? null;
+    const availableMonths = firstObservation && lastObservation ? inclusiveMonthCount(firstObservation, lastObservation) : 0;
+    const requestedMonths = requestedYears * 12;
+    // Month-end observations can begin up to one month after the exact cutoff.
+    const complete = availableMonths >= requestedMonths;
+    return [`${requestedYears}y`, {
+      requestedYears,
+      requestedMonths,
+      observationCount: selected.length,
+      firstObservation,
+      lastObservation,
+      availableMonths,
+      complete,
+      statistics: summarizeValuationHistory(selected),
+    }];
+  }));
 }

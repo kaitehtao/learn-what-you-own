@@ -4,15 +4,9 @@ import { filingFacts } from "../../../db/schema";
 import { importSecFilingFacts } from "../../data/secFactsRepository";
 import { researchUniverse } from "../../data/universe";
 import { fetchNasdaqHistoricalPrices, fetchNasdaqQuote } from "../../market-quotes";
-import { buildHistoricalValuationSeries, summarizeValuationHistory } from "../../valuation-history";
+import { buildHistoricalValuationSeries, buildValuationWindows } from "../../valuation-history";
 
 export const dynamic = "force-dynamic";
-
-function periodStart(years: number) {
-  const date = new Date();
-  date.setUTCFullYear(date.getUTCFullYear() - years);
-  return date.toISOString().slice(0, 10);
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -25,7 +19,10 @@ export async function GET(request: Request) {
     const db = getDb();
     let facts = await db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
       .orderBy(asc(filingFacts.filedAt), asc(filingFacts.periodEnd));
-    if (!facts.some((fact) => fact.metricKey === "shares_outstanding" || fact.metricKey === "diluted_shares")) {
+    const metricCounts = new Map<string, number>();
+    for (const fact of facts) metricCounts.set(fact.metricKey, (metricCounts.get(fact.metricKey) ?? 0) + 1);
+    const hasLegacyHistoryCap = [...metricCounts.values()].some((count) => count === 20);
+    if (!facts.some((fact) => fact.metricKey === "shares_outstanding" || fact.metricKey === "diluted_shares") || hasLegacyHistoryCap) {
       try {
         await importSecFilingFacts(ticker);
         facts = await db.select().from(filingFacts).where(eq(filingFacts.ticker, ticker))
@@ -44,9 +41,8 @@ export async function GET(request: Request) {
       sourceLabel: latestQuote.sourceLabel, sourceUrl: latestQuote.sourceUrl,
     });
     const points = buildHistoricalValuationSeries(facts, historicalPrices);
-    const statistics = Object.fromEntries(([1, 3, 5] as const).map((windowYears) => [
-      `${windowYears}y`, summarizeValuationHistory(points.filter((point) => point.date >= periodStart(windowYears))),
-    ]));
+    const windows = buildValuationWindows(points, [1, 3, 5]);
+    const statistics = Object.fromEntries(Object.entries(windows).map(([key, window]) => [key, window.statistics]));
     const sourceUrl = historicalPrices.at(-1)?.sourceUrl ?? latestQuote?.sourceUrl ?? null;
     return Response.json({
       ticker,
@@ -54,6 +50,7 @@ export async function GET(request: Request) {
       years,
       points: points.slice(-120).reverse(),
       statistics,
+      windows,
       latest: points.at(-1) ?? null,
       sources: {
         prices: sourceUrl,

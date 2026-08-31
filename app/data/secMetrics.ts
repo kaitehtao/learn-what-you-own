@@ -5,6 +5,11 @@ export type SecMetricDefinition = {
   preferredUnits: string[];
 };
 
+// Five years of point-in-time valuation work needs more than the 20 newest
+// quarterly/annual periods. Forty periods preserve roughly a decade of
+// quarterly history while keeping each company-facts import bounded.
+export const SEC_FACT_HISTORY_PER_METRIC = 40;
+
 // Concepts are ordered from the modern, broadly used tag to common legacy
 // alternatives. Importers merge equivalent concepts and prefer the first one
 // when the same reporting period appears under multiple tags.
@@ -130,7 +135,7 @@ export function normalizeCompanyFacts(cik: string, payload: SecCompanyFacts): No
 
     const facts = [...latestByPeriod.values()]
       .sort((a, b) => (b.fact.end ?? "").localeCompare(a.fact.end ?? ""))
-      .slice(0, 20);
+      .slice(0, SEC_FACT_HISTORY_PER_METRIC);
     for (const candidate of facts) {
       const { fact } = candidate;
       normalized.push({

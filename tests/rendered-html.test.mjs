@@ -1403,7 +1403,8 @@ test("lists the official Summer 2026 Y Combinator class with ranking placeholder
   assert.match(importer, /no published data changed/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /npm run yc:update/);
-  assert.match(workflow, /npm run deploy:production/);
+  assert.match(workflow, /gh pr create/);
+  assert.doesNotMatch(workflow, /git push origin HEAD:main/);
 });
 
 test("provides an admin-only audience and account control center", async () => {
