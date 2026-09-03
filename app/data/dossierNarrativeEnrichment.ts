@@ -4,7 +4,7 @@ import type { CompletionClaim } from "./dossierCompletionClaims";
 import { citationExcerptResolves, fetchPrimarySourceDocument, filingEvidenceCatalog, filingHtmlToText, parseNarrativeModelResponse, resolveNarrativeEvidenceIds, strategicFilingExcerpt, withDeadline } from "./dossierNarrativeText";
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const PIPELINE_MODEL = `${MODEL}#evidence-ids-v9`;
+const PIPELINE_MODEL = `${MODEL}#evidence-ids-v10`;
 const SEC_USER_AGENT = "LearnWhatYouOwn research automation kai@parkonecapital.com";
 
 type MarkdownConversion = { format?: string; data?: string; error?: string };
@@ -53,6 +53,14 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
     return value[field] as unknown[];
   };
   const description = cited("description");
+  // This is workflow metadata, not a company claim. Keep a deterministic note
+  // when a long model response truncates this otherwise non-material field.
+  let editorNote: CitedText = {
+    text: "This AI-assisted draft must be refreshed when a newer material filing becomes available.",
+    sourceUrl: description.sourceUrl,
+    sourceExcerpt: description.sourceExcerpt,
+  };
+  try { editorNote = cited("editorNote"); } catch { /* Preserve deterministic workflow note. */ }
   const insufficientCompetitorEvidence: CitedText = {
     text: "The approved filing pack does not establish a complete named competitor set; peer selection requires separate verified market evidence.",
     sourceUrl: description.sourceUrl,
@@ -68,7 +76,7 @@ function validateNarrative(value: Record<string, unknown>, sourceText: Map<strin
   }
   const result: EnrichedNarrative = {
     description, lede: cited("lede"), sells: cited("sells"), revenueModel: cited("revenueModel"),
-    opportunity: cited("opportunity"), mustGoRight: cited("mustGoRight"), thesisBreaker: cited("thesisBreaker"), editorNote: cited("editorNote"),
+    opportunity: cited("opportunity"), mustGoRight: cited("mustGoRight"), thesisBreaker: cited("thesisBreaker"), editorNote,
     bullTitle: typeof value.bullTitle === "string" ? value.bullTitle.trim() : "Evidence supporting the bull case",
     bull: list("bull", 2).map((item, index) => exactText(item, `bull[${index}]`)),
     bearTitle: typeof value.bearTitle === "string" ? value.bearTitle.trim() : "Evidence supporting the bear case",
@@ -224,7 +232,7 @@ export async function enrichNextDossierNarrative() {
     const response = await withDeadline(bindings.AI.run(MODEL, { messages: [
       { role: "system", content: "You are an evidence-disciplined public-equity research analyst. Return valid JSON only." },
       { role: "user", content: prompt(target, documents) },
-    ], response_format: { type: "json_object" }, max_tokens: 2_200, temperature: 0.1 }), 45_000, "Dossier narrative generation");
+    ], response_format: { type: "json_object" }, max_tokens: 3_000, temperature: 0.1 }), 45_000, "Dossier narrative generation");
     const catalog = filingEvidenceCatalog(documents);
     const narrative = validateNarrative(resolveNarrativeEvidenceIds(parseNarrativeModelResponse(response), catalog), new Map(documents.map((source) => [source.url, source.text])));
     const claims = await saveNarrative(target, narrative, sources, jobId);

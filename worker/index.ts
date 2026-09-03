@@ -185,10 +185,14 @@ const worker = {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Filing facts rotate through the published dossier universe several times
-    // per day. The member digest and earnings alerts still run only at 08:00
+    // Filing facts rotate through the published dossier universe in bounded
+    // five-minute batches. The member digest and earnings alerts still run only at 08:00
     // Pacific, including across daylight-saving changes.
     ctx.waitUntil((async () => {
+      if (controller.cron === "0-59/5 * * * *") {
+        await refreshScheduledSecFacts(env, ctx);
+        return;
+      }
       if (controller.cron === "1-59/5 * * * *") {
         await discoverScheduledSecFilings(env, ctx);
         return;
@@ -217,7 +221,6 @@ const worker = {
         return;
       }
       await refreshScheduledRolloutMarketCaps(env, ctx);
-      await refreshScheduledSecFacts(env, ctx);
       await refreshScheduledInsiderActivity(env, ctx);
       if (!isPacificDigestHour(controller.scheduledTime)) return;
       await refreshScheduledEarningsAlerts(env, ctx);

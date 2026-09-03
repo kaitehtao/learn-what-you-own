@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 // The Worker invokes this serial batch several times per day. It rotates across
 // all evidence-bearing published dossiers without creating a burst against SEC
 // data services or D1; first dossier reads can still self-heal sooner.
-const SCHEDULED_REFRESH_LIMIT = 12;
+const SCHEDULED_REFRESH_LIMIT = 4;
 
 function secretValue() {
   const bindings = env as unknown as Record<string, unknown>;

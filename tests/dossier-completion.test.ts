@@ -100,6 +100,16 @@ test("server evidence IDs resolve when the model wraps the ID in extra text", ()
   assert.equal(resolved.description.sourceExcerpt, catalog[0].excerpt);
 });
 
+test("server evidence IDs restore an omitted model source URL", () => {
+  const source = { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to customers through recurring contracts and usage arrangements." };
+  const catalog = filingEvidenceCatalog([source]);
+  const resolved = resolveNarrativeEvidenceIds({
+    description: { text: "A sufficiently complete description for validation.", sourceExcerpt: catalog[0].id },
+  }, catalog) as { description: { sourceUrl: string; sourceExcerpt: string } };
+  assert.equal(resolved.description.sourceUrl, source.url);
+  assert.equal(resolved.description.sourceExcerpt, catalog[0].excerpt);
+});
+
 test("snaps a lightly paraphrased excerpt back to an unambiguous server evidence snippet", () => {
   const source = { url: "https://www.sec.gov/Archives/annual.htm", text: "The business provides software services to enterprise customers through recurring contracts and usage based arrangements. Revenue depends on customer demand and disciplined capital allocation." };
   const catalog = filingEvidenceCatalog([source]);

@@ -127,9 +127,13 @@ export function resolveNarrativeEvidenceIds(value: Record<string, unknown>, cata
     if (Array.isArray(input)) return input.map(visit);
     if (!input || typeof input !== "object") return input;
     const record = Object.fromEntries(Object.entries(input as Record<string, unknown>).map(([key, nested]) => [key, visit(nested)]));
-    if (typeof record.sourceUrl === "string" && typeof record.sourceExcerpt === "string") {
+    if (typeof record.sourceExcerpt === "string") {
       const evidenceId = record.sourceExcerpt.trim().match(/\bS\d+-\d+\b/i)?.[0]?.toUpperCase();
-      const entry = evidenceId ? byId.get(evidenceId) : closestCatalogEntry(record.sourceUrl, record.sourceExcerpt);
+      const entry = evidenceId
+        ? byId.get(evidenceId)
+        : typeof record.sourceUrl === "string"
+          ? closestCatalogEntry(record.sourceUrl, record.sourceExcerpt)
+          : undefined;
       // The evidence ID is server-generated and therefore authoritative. The
       // model occasionally selects a valid ID but repeats the other approved
       // filing URL beside it. Resolve both fields from the catalog so a valid

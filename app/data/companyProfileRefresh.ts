@@ -165,6 +165,13 @@ async function selectTarget() {
         AND j.status='error' AND j.started_at>=datetime('now','-30 days')
         AND j.error_message NOT LIKE 'Unterminated string in JSON%'
         AND j.error_message NOT LIKE 'Unexpected end of JSON%')<3
+      AND NOT EXISTS (SELECT 1 FROM company_profile_refresh_jobs cooldown WHERE cooldown.ticker=d.ticker
+        AND cooldown.status='error' AND cooldown.started_at>=datetime('now',CASE
+          WHEN lower(cooldown.error_message) LIKE '%exceeded % seconds%'
+            OR lower(cooldown.error_message) LIKE '%timed out%' THEN '-6 hours'
+          WHEN lower(cooldown.error_message) LIKE '%filing excerpt%'
+            OR lower(cooldown.error_message) LIKE '%biography passed filing validation%' THEN '-7 days'
+          ELSE '-24 hours' END))
       AND NOT EXISTS (SELECT 1 FROM company_profile_refresh_jobs j WHERE j.ticker=d.ticker
         AND j.status='running' AND j.started_at>=datetime('now','-20 minutes'))
     ORDER BY c.market_cap IS NULL,c.market_cap DESC,c.ticker LIMIT 1`).first<Target>();
@@ -234,7 +241,11 @@ async function extractManagement(target: Target, submissions: SubmissionProfile)
   retry ? "Management biography retry" : "Management biography extraction");
   let people: ManagementPerson[];
   try { people = validatePeople(await request(false), text); }
-  catch { people = validatePeople(await request(true), text); }
+  catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    if (message.includes("exceeded") || message.includes("timed out") || message.includes("abort")) throw error;
+    people = validatePeople(await request(true), text);
+  }
   return { sourceUrl: filing.sourceUrl, filingDate: filing.filingDate, people };
 }
 

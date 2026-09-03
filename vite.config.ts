@@ -35,10 +35,12 @@ const localBindingConfig = {
     { pattern: "learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
     { pattern: "www.learnwhatyouown.com/*", zone_name: "learnwhatyouown.com" },
   ],
-  // Rotate filing refreshes through the dossier universe every six hours.
+  // Rotate filing facts through the dossier universe in small five-minute
+  // batches. This keeps each invocation bounded while completing a full
+  // historical-valuation refresh cycle in roughly three days.
   // 15:00 UTC is 08:00 PDT and 16:00 UTC is 08:00 PST; the Worker confirms
   // local time before member alerts and the digest are delivered.
-  triggers: { crons: ["1-59/5 * * * *", "2-59/5 * * * *", "3-59/5 * * * *", "4-59/5 * * * *", "*/15 * * * *", "0 0,6,12,18 * * *", "0 15,16 * * *"] },
+  triggers: { crons: ["0-59/5 * * * *", "1-59/5 * * * *", "2-59/5 * * * *", "3-59/5 * * * *", "4-59/5 * * * *", "*/15 * * * *", "0 0,6,12,18 * * *", "0 15,16 * * *"] },
   queues: {
     producers: [
       { binding: "DOSSIER_INGESTION_QUEUE", queue: DOSSIER_INGESTION_QUEUE },

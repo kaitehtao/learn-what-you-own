@@ -1794,7 +1794,7 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(importer, /quarterlyDossierUpdates/);
   assert.match(importer, /ensureFeaturedDossierRegistration/);
   assert.match(importer, /Founding editorial research/);
-  assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 12/);
+  assert.match(scheduledRoute, /SCHEDULED_REFRESH_LIMIT = 4/);
   assert.match(scheduledRoute, /FROM company_dossiers d JOIN companies c/);
   assert.match(scheduledRoute, /COALESCE\(f\.last_attempted_at,''\) ASC/);
   assert.match(scheduledRoute, /COALESCE\(d\.quality_tier,'starting_point'\)<>'starting_point'/);
@@ -1804,8 +1804,10 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(scheduledRoute, /bindings\.NOTIFICATION_CRON_SECRET/);
   assert.match(scheduledRoute, /bindings\.NOTIFICATION_CRON_SECRET \|\| bindings\.SCHEDULED_TASK_SECRET/);
   assert.match(worker, /refreshScheduledSecFacts/);
+  assert.match(worker, /controller\.cron === "0-59\/5 \* \* \* \*"/);
   assert.match(worker, /if \(!isPacificDigestHour\(controller\.scheduledTime\)\) return/);
   assert.match(viteConfig, /0 0,6,12,18 \* \* \*/);
+  assert.match(viteConfig, /0-59\/5 \* \* \* \*/);
   assert.match(schema, /export const quarterlyDossierUpdates/);
   assert.match(quarterlyMigration, /quarterly_dossier_updates/);
   assert.match(quarterlyMigration, /facts_refreshed/);
@@ -2267,9 +2269,13 @@ test("adds sourced company contacts and management biographies to every dossier"
   assert.match(refresh, /company_profile_refresh_already_running/);
   assert.match(refresh, /started_at<datetime\('now','-2 minutes'\)/);
   assert.match(refresh, /status='error' AND j\.started_at/);
+  assert.match(refresh, /cooldown\.error_message/);
+  assert.match(refresh, /'-6 hours'/);
+  assert.match(refresh, /'-7 days'/);
   assert.match(refresh, /Unterminated string in JSON/);
   assert.match(refresh, /max_tokens: retry \? 1_100 : 1_500/);
   assert.match(refresh, /validatePeople\(await request\(true\), text\)/);
+  assert.match(refresh, /message\.includes\("exceeded"\)/);
   assert.match(worker, /refreshScheduledCompanyProfiles/);
   assert.match(worker, /company-profile-refresh/);
   assert.match(worker, /controller\.cron === "4-59\/5 \* \* \* \*"/);
