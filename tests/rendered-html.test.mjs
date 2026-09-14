@@ -1805,6 +1805,10 @@ test("automatically imports, refreshes, and explains filing-grounded financial h
   assert.match(scheduledRoute, /bindings\.NOTIFICATION_CRON_SECRET \|\| bindings\.SCHEDULED_TASK_SECRET/);
   assert.match(worker, /refreshScheduledSecFacts/);
   assert.match(worker, /controller\.cron === "0-59\/5 \* \* \* \*"/);
+  assert.match(worker, /Promise\.allSettled/);
+  assert.match(worker, /Scheduled source backfill failed/);
+  assert.match(worker, /Scheduled filing-change backfill failed/);
+  assert.match(worker, /finally \{/);
   assert.match(worker, /if \(!isPacificDigestHour\(controller\.scheduledTime\)\) return/);
   assert.match(viteConfig, /0 0,6,12,18 \* \* \*/);
   assert.match(viteConfig, /0-59\/5 \* \* \* \*/);

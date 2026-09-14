@@ -198,18 +198,28 @@ const worker = {
         return;
       }
       if (controller.cron === "2-59/5 * * * *") {
-        await Promise.all([
+        const results = await Promise.allSettled([
           backfillScheduledDossierSources(env, ctx),
           completeScheduledDossiers(env, ctx),
         ]);
+        for (const [index, result] of results.entries()) {
+          if (result.status === "rejected") console.error(
+            index === 0 ? "Scheduled source backfill failed." : "Scheduled dossier completion failed.",
+            result.reason,
+          );
+        }
         return;
       }
       if (controller.cron === "3-59/5 * * * *") {
-        await backfillScheduledFilingChanges(env, ctx);
-        // Use the otherwise idle remainder of this scheduled invocation for a
-        // second bounded narrative attempt. The completion lease prevents an
-        // overlap if the minute-two attempt is still running.
-        await completeScheduledDossiers(env, ctx);
+        try {
+          await backfillScheduledFilingChanges(env, ctx);
+        } catch (error) {
+          console.error("Scheduled filing-change backfill failed.", error);
+        } finally {
+          // A filing-change failure must not starve the independent narrative
+          // backlog. The lease prevents overlap with the minute-two attempt.
+          await completeScheduledDossiers(env, ctx);
+        }
         return;
       }
       if (controller.cron === "4-59/5 * * * *") {
