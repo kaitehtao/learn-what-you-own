@@ -1,6 +1,6 @@
 # LearnWhatYouOwn canonical project state
 
-Last verified: 2026-08-26 (America/Los_Angeles)
+Last verified: 2026-09-15 (America/Los_Angeles)
 
 This document is the durable handoff for LearnWhatYouOwn. Historical ChatGPT and Codex conversations explain how the product evolved, but they are not deployment proof. When a chat conflicts with this document or live infrastructure, verify the live layer and update this file in the same release.
 
@@ -35,6 +35,34 @@ The release order is GitHub `main` -> Cloudflare -> Supabase migration verificat
 
 ## Verified release snapshot
 
+The 2026-09-14 scheduler-isolation release at code commit
+`11d6b5997441a787d5c663b10e0d96b42c53baad` is the current canonical release.
+It prevents source-backfill and filing-change failures from starving the
+independent dossier-completion worker. The preceding stabilization commit
+`168cdbbe45808a9ddf240761438bacbd31863d28` made server-generated evidence IDs
+authoritative for both citation URLs and excerpts, added error-specific company
+profile cooldowns, and moved SEC fact/history rotation to bounded four-company
+batches every five minutes. Lint, type checking, the 520-ticker repository
+audit, and all 155 automated tests passed. GitHub `main`, the apex domain, and
+the direct Worker reported the deployed commit. The ChatGPT Sites mirror still
+returns an exact HTTP 308 redirect to canonical production.
+
+The public production authority reported on 2026-09-15:
+
+- 25,651 searchable symbols;
+- 2,984 published dossiers;
+- 80,934 distinct primary-source documents; and
+- 30,808 published claims, all 30,808 linked to sources.
+
+Seven of the 17 dossiers blocked at the prior snapshot subsequently passed the
+same automatic benchmark rule: `BSY`, `DDS`, `UGI`, `RDN`, `NEXT`, `SPIR`, and
+`LZM`. Ten remain machine-enriched: `NU`, `TRI`, `BIRK`, `DLO`, `FCPT`, `KOS`,
+`ODC`, `NREF`, `TRDA`, and `KGEI`. Every one has at least six public sources;
+the remaining gate is source-grounded narrative validation, not source absence.
+The protected D1 job ledger could not be re-audited in this verification pass
+because the local Cloudflare CLI session had expired; public quality, source,
+claim, and freshness endpoints were independently verified.
+
 The 2026-08-25 narrative-reliability release at code commit
 `1442d60fd9b83947f2512f106358ff7c7be3a96d` repaired the final small cohort of
 filing-backed dossiers that had exhausted the prior model retry window. The
@@ -68,12 +96,12 @@ live SEO audit passed 32 sampled public pages drawn from 3,006 canonical URLs
 across three sitemaps. Use `npm run verify:authority` for the currently deployed
 SHA rather than treating a dated Markdown value as live proof.
 
-The shared production D1 authority reported on 2026-08-26:
+The shared production D1 authority reported on 2026-09-15:
 
 - 25,651 searchable symbols;
 - 2,984 published dossiers;
-- 75,228 distinct primary-source documents; and
-- 30,544 published claims, all 30,544 linked to sources.
+- 80,934 distinct primary-source documents; and
+- 30,808 published claims, all 30,808 linked to sources.
 
 The most recent complete freshness-ledger audit remains the 2026-08-15 check:
 2,983 freshness records, zero current errors, and zero records that had never
@@ -89,8 +117,8 @@ Current production coverage is:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | S&P 500 | 502 | 502 | 502 | 502 | 0 |
 | Nasdaq-100 | 102 | 102 | 102 | 101 | 1 |
-| Russell 2000 | 1,950 | 1,950 | 1,950 | 1,939 | 11 |
-| Russell 3000 | 2,965 | 2,965 | 2,965 | 2,949 | 16 |
+| Russell 2000 | 1,950 | 1,950 | 1,950 | 1,943 | 7 |
+| Russell 3000 | 2,965 | 2,965 | 2,965 | 2,956 | 9 |
 
 Component counts are ticker rows, not marketing names: multiple share classes
 can make an index view contain more ticker rows than the index name implies.
@@ -98,12 +126,12 @@ Every published row in the four views has at least five distinct primary
 sources, but `machine_enriched` is not the same quality claim as
 `benchmark_complete`. All current component rows in these four views have a
 published source foundation. The remaining index backlog overlaps across
-universes: 16 Russell 3000 rows remain machine-enriched, including 11 Russell
-2000 rows. Thomson Reuters (`TRI`) is the single remaining machine-enriched
-Nasdaq-100 row. Across the complete listed universe, 17 dossiers remain
-machine-enriched. The remaining names at the time of verification were `NU`,
-`TRI`, `BSY`, `DDS`, `UGI`, `BIRK`, `RDN`, `DLO`, `FCPT`, `NEXT`, `KOS`, `ODC`,
-`SPIR`, `LZM`, `NREF`, `TRDA`, and `KGEI`.
+universes: nine Russell 3000 rows remain machine-enriched, including seven
+Russell 2000 rows. Thomson Reuters (`TRI`) is the single remaining
+machine-enriched Nasdaq-100 row. Across the complete listed universe, ten
+dossiers remain machine-enriched. The remaining names at the time of
+verification were `NU`, `TRI`, `BIRK`, `DLO`, `FCPT`, `KOS`, `ODC`, `NREF`,
+`TRDA`, and `KGEI`.
 
 The 2026-08-13 worker repair raised the bounded paid-Worker CPU budget from the
 accidental 100 ms ceiling to 30,000 ms, reduced AI prompt size, added explicit
